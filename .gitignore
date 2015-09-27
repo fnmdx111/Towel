@@ -18,3 +18,24 @@ _build/
 # oasis generated files
 setup.data
 setup.log
+
+# towels
+
+*.t
+*.o
+*.w
+*.e
+*.l
+
+# latex files
+
+*.out
+*.aux
+*.log
+*.pdf
+
+# emacs backups
+
+*~
+\#*\#
+.#*
