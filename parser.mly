@@ -37,19 +37,19 @@ arg_def:
 | NAME AT type_def { ArgDefWithType($1, $3) }
 
 pattern:
-  list(word) COMMA list(word) { PatternAndMatch($1, $3) }
+  word COMMA word { PatternAndMatch($1, $3) }
 
 if_sform:
-  IFGEZ list(word) COMMA list(word) { IfGEZ(IfBody($2, $4)) }
-| IFGZ list(word) COMMA list(word) { IfGZ(IfBody($2, $4)) }
-| IFLEZ list(word) COMMA list(word) { IfLEZ(IfBody($2, $4)) }
-| IFLZ list(word) COMMA list(word) { IfLZ(IfBody($2, $4)) }
-| IFE list(word) COMMA list(word) { IfEmpty(IfBody($2, $4)) }
-| IFNE list(word) COMMA list(word) { IfNonEmpty(IfBody($2, $4)) }
-| IFEZ list(word) COMMA list(word) { IfEZ(IfBody($2, $4)) }
-| IFNEZ list(word) COMMA list(word) { IfNEZ(IfBody($2, $4)) }
-| IFT list(word) COMMA list(word) { IfT(IfBody($2, $4)) }
-| IFF list(word) COMMA list(word) { IfF(IfBody($2, $4)) }
+  IFGEZ word word { IfGEZ(IfBody($2, $3)) }
+| IFGZ word word { IfGZ(IfBody($2, $3)) }
+| IFLEZ word word { IfLEZ(IfBody($2, $3)) }
+| IFLZ word word { IfLZ(IfBody($2, $3)) }
+| IFE word word { IfEmpty(IfBody($2, $3)) }
+| IFNE word word { IfNonEmpty(IfBody($2, $3)) }
+| IFEZ word word { IfEZ(IfBody($2, $3)) }
+| IFNEZ word word { IfNEZ(IfBody($2, $3)) }
+| IFT word word { IfT(IfBody($2, $3)) }
+| IFF word word { IfF(IfBody($2, $3)) }
 
 match_sform:
   MATCH separated_nonempty_list(SEMICOLON, pattern) {
@@ -61,11 +61,11 @@ control_sequence:
 | match_sform { CtrlSeqMatchForm($1) }
 
 other_form:
-  BIND NAME list(word) { Bind($2, $3) }
-| BIND NAME list(word) IN list(word) { BindIn($2, $3, $5) }
-| FUNCTION list(arg_def) COMMA list(word) { Function($2, $4) }
+  BIND NAME word { Bind($2, $3) }
+| BIND NAME word IN word { BindIn($2, $3, $5) }
+| FUNCTION list(arg_def) word { Function($2, $3) }
 | word IMPORT { Import($1) }
-| list(word) AT list(word) { At($1, $3) }
+| word AT word { At($1, $3) }
 
 word:
   backquote { WBackquote($1) }

@@ -39,14 +39,14 @@ and cs_stringify cs =
   let if_stringify s body =
     match body with
       IfBody(ws1, ws2) -> P.sprintf "%s { %s; %s }" s
-                            (words_stringify ws1)
-                            (words_stringify ws2)
+                            (word_stringify ws1)
+                            (word_stringify ws2)
   in let pattern_stringify p =
        match p with
          PatternAndMatch(p, m) ->
          P.sprintf "pattern %s -> %s;"
-           (words_stringify p)
-           (words_stringify m)
+           (word_stringify p)
+           (word_stringify m)
   in match cs with
     CtrlSeqIfForm(i) ->
     (match i with
@@ -91,18 +91,18 @@ and arg_def_stringify d =
 and of_stringify o =
   match o with
     Bind(n, ws) ->
-    String.concat " = " [name_stringify n; words_stringify ws]
+    String.concat " = " [name_stringify n; word_stringify ws]
   | BindIn(n, ws1, ws2) ->
     P.sprintf "%s = %s in %s"
-      (name_stringify n) (words_stringify ws1) (words_stringify ws2)
+      (name_stringify n) (word_stringify ws1) (word_stringify ws2)
   | Function(ds, ws) ->
     P.sprintf "fun %s = %s"
       (String.concat "; " (List.map arg_def_stringify ds))
-      (words_stringify ws)
+      (word_stringify ws)
   | Import(ws) ->
     P.sprintf "import %s" (word_stringify ws)
   | At(ws1, ws2) ->
-    P.sprintf "%s@%s" (words_stringify ws1) (words_stringify ws2)
+    P.sprintf "%s@%s" (word_stringify ws1) (word_stringify ws2)
 
 and word_stringify w =
   let _w s n = P.sprintf "(%s %s)" s n in

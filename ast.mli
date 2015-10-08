@@ -51,7 +51,7 @@ and word =
 and sequence =
   Sequence of word list
 
-and if_body = IfBody of word list * word list
+and if_body = IfBody of word * word
 
 and if_sform =
     IfGEZ of if_body
@@ -65,7 +65,7 @@ and if_sform =
   | IfT of if_body
   | IfF of if_body
 
-and pattern = PatternAndMatch of word list * word list
+and pattern = PatternAndMatch of word * word
 and match_sform = PatternsAndMatches of pattern list
 
 and control_sequence =
@@ -77,11 +77,11 @@ and arg_def =
 | ArgDefWithType of name * type_def
 
 and other_form =
-  Bind of name * word list
-| BindIn of name * word list * word list
-| Function of arg_def list * word list
+  Bind of name * word
+| BindIn of name * word * word
+| Function of arg_def list * word
 | Import of word
-| At of word list * word list
+| At of word * word
 
 and terminator = Period
 
