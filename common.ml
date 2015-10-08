@@ -33,14 +33,15 @@ and backquote_stringify a = P.sprintf "(bq-lit %s)"
     (match a with
        BQValue(pv) -> lit_stringify pv.value_content
      | BQName(n) -> name_stringify n
-     | BQSeq(seq) -> seq_stringify seq)
+     | BQSeq(seq) -> seq_stringify seq
+     | BQBackquote(bq) -> backquote_stringify bq)
 
 and cs_stringify cs =
   let if_stringify s body =
     match body with
-      IfBody(ws1, ws2) -> P.sprintf "%s { %s; %s }" s
-                            (word_stringify ws1)
-                            (word_stringify ws2)
+      IfBody(w1, w2) -> P.sprintf "%s { %s; %s }" s
+                          (word_stringify w1)
+                          (word_stringify w2)
   in let pattern_stringify p =
        match p with
          PatternAndMatch(p, m) ->
@@ -90,19 +91,19 @@ and arg_def_stringify d =
 
 and of_stringify o =
   match o with
-    Bind(n, ws) ->
-    String.concat " = " [name_stringify n; word_stringify ws]
-  | BindIn(n, ws1, ws2) ->
+    Bind(n, w) ->
+    String.concat " = " [name_stringify n; word_stringify w]
+  | BindIn(n, w1, w2) ->
     P.sprintf "%s = %s in %s"
-      (name_stringify n) (word_stringify ws1) (word_stringify ws2)
-  | Function(ds, ws) ->
+      (name_stringify n) (word_stringify w1) (word_stringify w2)
+  | Function(ds, w) ->
     P.sprintf "fun %s = %s"
       (String.concat "; " (List.map arg_def_stringify ds))
-      (word_stringify ws)
-  | Import(ws) ->
-    P.sprintf "import %s" (word_stringify ws)
-  | At(ws1, ws2) ->
-    P.sprintf "%s@%s" (word_stringify ws1) (word_stringify ws2)
+      (word_stringify w)
+  | Import(w) ->
+    P.sprintf "import %s" (word_stringify w)
+  | At(w1, w2) ->
+    P.sprintf "%s@%s" (word_stringify w1) (word_stringify w2)
 
 and word_stringify w =
   let _w s n = P.sprintf "(%s %s)" s n in

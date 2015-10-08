@@ -39,6 +39,7 @@ and backquote =
   BQValue of pvalue
 | BQName of name
 | BQSeq of sequence
+| BQBackquote of backquote
 
 and word =
   WLiteral of pvalue
