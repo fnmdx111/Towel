@@ -10,23 +10,23 @@
 
 \begin{document}
 \maketitle
+\tableofcontents
 
 \section{What is it anyway}
 
 \epigraph{A towel, is about the most massively useful thing an interstellar hitchhiker can have.}{The Hitchhiker's Guide to the Galaxy}
 
-
 The Towel programming language is a general-purposed, stack-based, statically typed, functional, postfix-syntaxed programming language. It is inspired by some famous functional programming language, like Erlang, Haskell and Lisp.
 
-\section{General-purposed}
+\subsection{General-purposed}
 
 Towel aims at being able to program everything, from scripting to get your files backed up, to large projects such as web applications. \textit{It's also very good at sending stress signals to strags.} This means that the syntax should be expressive (yet concise). And \textit{maybe} a foreign function interface should also be provided to extend the ability of Towel.
 
-\section{Stack-based}
+\subsection{Stack-based}
 
 Stack-based languages are simple to implement, yet powerful and relatively efficient to use. It's the best if you want to implement a language in three months.
 
-\section{Statically typed and functional}
+\subsection{Statically typed and functional}
 
 Being statically typed, means that everything has a type. Futhermore, these types are tagged to names before we can execute the program. With this being done, things run more efficiently. Types also help Towel to figure out the order of computation, we'll see that in a moment.\\
 
@@ -35,11 +35,11 @@ However, this does not mean that you have to tag types to the names yourself, To
 We don't plan to implement sophisticated type system in Towel. One thing is that most times, simplicity is good and all you need. The other thing is that we don't believe we have enough related mathematic knowledge.
 
 It is worth mentioning here that the built-in types of Towel will be \texttt{Int} and \texttt{Float}, which are subclasses of \texttt{Number},
-\texttt{String}, \texttt{List} and finally the superclass of every type \texttt{Any}. Subclasses are said to be ``compatible with'' their superclasses.
+\texttt{String}, \texttt{List} and finally the superclass of every type \texttt{Any}. Subclasses are said to be ``compatible with'' their superclasses.\\
 
 Literals are provided with these built-in types.
 
-\section{Postfix-syntaxed}
+\subsection{Postfix-syntaxed}
 
 We have all seen prefix-syntaxed and infix-syntaxed languages, a lot.\\
 
@@ -47,9 +47,21 @@ What about postfix-syntaxed ones? We rarely see them. There seems to have much l
 
 \section{And now for something completely different...}
 
-To see Towel in action, let me present the quicksort algorithm in Towel. (Names are capitalized. And there are no operators in Towel except in patterns used in match forms.)
+To see Towel in action, let me present some code in Towel.
 
 \begin{Verbatim}[samepage=true]
+  ``this is a comment.''
+  bind SomeLiterals [1 ``numbers: FixedInt, Float, Int and''
+                       ``their superclass Number''
+                     (2 3 +) ``a sequence to be evaluated,''
+                             ``i.e., a special anonymous function''
+                     (2 *) ``a partial anonymous function''
+                     'spam spam\nspam' ``strings are single-quoted''
+                     arthur-dent ``Atoms are not capitalized,''
+                                 ``whereas names are''] ``Lists''
+  in
+    SomeLiterals@3 Printn. ``print the third element (the atom) with and \n''
+
   bind Quicksort function L,
     match
       []:;
@@ -60,13 +72,13 @@ To see Towel in action, let me present the quicksort algorithm in Towel. (Names 
           ++!
 \end{Verbatim}
 
-Below is just technically memo which shows, to some extent, how Towel will work.
+From now on, it's just technically memo which shows to some extent how things will work in Towel.
 
 \subsection{The compilation}
 
 Overall, the program (with extension ``t'') is compiled into slightly-compiled-towel program (with extension ``o'') which looks a bit like stack-based assembly source code. Then the compiler simulates running the slightly-compiled-towel to inflate the source code with type information and order of computation. This results in files called more-slightly-compiled-towel programs (with extension ``w'').\\
 
-These ``w'' files are already good to go. However, with more information in ``w'' files, we can construct a more meaningful abstract syntax tree (the AST made from ``o'' files would probably be some linked lists), and be able to perform some optimizations (which probably won't be implemented due to limited time). The compiler will then convert the AST in plain text form. This procedure produces the ``e'' files, called optimized-towel programs.\\
+With more information in ``w'' files, we can construct a more meaningful abstract syntax tree (the AST made from ``o'' files would probably be some linked lists), and be able to perform some optimizations (which probably won't be implemented due to limited time). The compiler will then convert the AST in plain text form. This procedure produces the ``e'' files, called optimized-towel programs.\\
 
 Finally, the compiler grabs the ``e'' files and produces bytecode version programs called binary-towel programs, with extension ``l''. One thing to clarify is that you get one ``o'', ``w'', ``e'', ``l'' file per ``t'' source code file.\\
 
@@ -92,7 +104,9 @@ It should be pointed out that \texttt{match} is a special form keyword that patt
 
 By knowing this, the top element on the stack is pattern-matched against the patterns. More precisely, whatever \texttt{L} is referencing to is matched against \texttt{[]} and \texttt{Head Tail \&} in a one-by-one manner. If the matching against \texttt{[]} succeeds, the \texttt{match} special form evaluates to its first branch expression, i.e., an empty expression, in other words, it's the top element of the stack, which is an empty list. The rest branches are simply ignored.\\
 
-The other case is that the matching against \texttt{[]} fails, whereas \texttt{Head \& Tail} succeeds, then the head of \texttt{L} is bound to \texttt{Head}, while the rest of \texttt{L} is bound to \texttt{Tail}, just like OCaml and Haskell. And the second branch expression is evaluated under these name bindings.\\
+Patterns are simply functions with return type of List with the keyword \texttt{pattern}, rather than \texttt{function}. The elements of the returned list are bound to the names in the patterns.\\
+
+The other case is that the matching against \texttt{[]} fails, whereas \texttt{Head Tail \&} succeeds, then the head of \texttt{L} is bound to \texttt{Head}, while the rest of \texttt{L} is bound to \texttt{Tail}, just like OCaml and Haskell. And the second branch expression is evaluated under these name bindings.\\
 
 Then, the compiler pushes the whole bunch of \newline
 
@@ -124,9 +138,9 @@ What about the piece of code \texttt{Tail Head < Filter 'eval}, or anonymous par
 
 The same rules apply to the rest of the program, thus we will elaborate no more here.\\
 
-Wait, what's that \texttt{@} over there? Good question. Suppose I have a variadic function, how many arguments will I supply to it? \texttt{@} comes in handy in such situation. When evaluation terminator is an exclamation mark, everything between the at sign and the function name is applied to the function. For example, when \texttt{++} (function for concatenating lists) is terminated with period, it is a binary function, on the other hand, when it is terminated with exclamation mark, it takes as many arguments as possible until it reaches \texttt{@}.
+Wait, what's that \texttt{@} over there? Glad you asked. Suppose I have a variadic function, how many arguments will I supply to it? \texttt{@} comes in handy in such situation. When evaluation terminator is an exclamation mark, everything between the at sign and the function name is applied to the function. For example, when \texttt{++} (function for concatenating lists) is terminated with period, it is a binary function, on the other hand, when it is terminated with exclamation mark, it takes as many arguments as possible until it reaches \texttt{@}.
 
-\section{Towel for Vogons}
+\subsection{Towel for Vogons}
 
 Vogons may like Towel too, because they know we respect how they like to write poems and plan to provide for them an alternative lexer which understands programs written in a Vogon-poem manner.
 
@@ -162,7 +176,7 @@ One thing to notice is that irrelevant words are stripped out, such as words sta
 If you would like to write poems describing something else, you can configure the lexer to recognize other characters as valid tokens.
 
 \appendix
-\section{\\Details on ``o'' and ``w'' files} \label{appI}
+\section{~ Much more technical details} \label{appI}
 ``o'' files are somewhat simple lists of instruction in a text file format. For the quicksort example, the ``o'' file looks like this:
 
 \begin{Verbatim}
@@ -290,19 +304,9 @@ It's a bit complicated, because we have to consider two scenarioes, where x is a
 		exit
 \end{Verbatim}
 
-The second round of phase `w` actually does the following things:
-
-\begin{itemize}
-\item Resolve any previously unresolved label and tags, we can have
-  as many times of this round as possible, until there is no
-  unresolved labels
-\item Reduce some of the `eval'`s, for example, the
-  ones that evaluates partial functions
-\end{itemize}
+One kind of optimization that transformations from `w` to `e` actually do is reducing some of the `eval'`s, for example, the ones that evaluates partial functions. Thus reduces the work needed to be done at runtime.\\
 
 The instructions between a make-partial-function-marker' and the corresponding end instruction is the actual function body of the partial function, which is to be scraped out and put to a new place along with some function initialization boilerplate.\\
-
-So there is little simluation going on here, basically some string replacing and appending in this round of "w" files.
 
 The output looks like this:
 
@@ -373,5 +377,58 @@ The output looks like this:
 		ret
 \end{Verbatim}
 
+\section{~ Recognising different parts of the Towel}
+
+For the purpose of being maintainable and collaboratible, Towel will be decomposed into following parts which may contain several modules:
+
+\begin{itemize}
+\item General utilities
+\item The compiler
+\item The virtual machine (we are not going to generate any real assembly or code, though translating ``e'' files to C seems easy)
+\item The standard library
+\end{itemize}
+
+General utilities is used by both the compiler and the virtual machine. It may contain:
+
+\begin{itemize}
+\item Type system
+\item Maintenance of object reference table
+\item Maintenance of names and scopes
+\item Garbage collection
+\item Package and module control
+\item etc.
+\end{itemize}
+
+The compiler may contain:
+
+\begin{itemize}
+\item Module import handling
+\item Module that transform source code (``t'' files) to slightly-compiled-towel (``o'' files)
+\item Module that transform ``o'' files to more-slightly-compiled-towel (``w'' files)
+\item Module that transform ``w'' files to optimized-towel (``e'' files)
+\item Module that transform ``e'' files to bytecode-towel (``l'' files)
+\item Vogon lexer
+\end{itemize}
+
+The virtual machine may contain:
+
+\begin{itemize}
+\item Module that reads ``e'' and ``l'' files and streams instructions
+\item Module that execute the instructions
+\item Module that interoperates with the foreign function interface
+\item Debug utilities
+\end{itemize}
+
+The standard library (called rack in Towel) may contain:
+
+\begin{itemize}
+\item Arithmetic operations
+\item String utilities
+\item IO utilities
+\item etc.
+\end{itemize}
+
+Implementation of each module will be (hopefully evenly) distributed to each member of the team. By the \texttt{helloworld} demo, all modules of compiler,
+certain parts of general utilities and virtual machine, and IO utilities of the standard library shall be implemented without error.
 
 \end{document}

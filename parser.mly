@@ -1,67 +1,82 @@
 %{ open Ast %}
 
 %token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
-%token MATCH FUNCTION BIND IN IMPORT
-%token SLASH SQUOTE DQUOTE BQUOTE COMMA SEMICOLON PERIOD
-%token LBRACKET RBRACKET LPAREN RPAREN EOF
+%token MATCH FUNCTION BIND IN IMPORT FTO AT
+%token SLASH BQUOTE COMMA SEMICOLON EOF
+%token LBRACKET RBRACKET LPAREN RPAREN
 
-%token <literal> LITERAL
-%token <name> NAME
-%token <terminator> TERMINATOR
-%token <type_def> TYPE_DEF
+%token <Ast.pvalue> LITERAL
+%token <Ast.name> NAME
+%token <Ast.terminator> TERMINATOR
 
 %start sentence
 %type <Ast.sentence> sentence
 %%
 
-list:
-  LBRACKET LITERAL
+lit_list:
+  LBRACKET list(word) RBRACKET { VList($2) }
 
-identifier:
-  NAME { Name($1) }
-| LITERAL { Literal($1) }
+literal:
+  LITERAL { $1 }
+| lit_list { {value_id = 1;
+              value_content = $1;
+              value_type = TypeDef([TDPrimitiveType(PT_List)])} }
 
-pattern_name:
-  identifier { PatternName($1) }
+backquote:
+  BQUOTE literal { BQValue($2) }
+| BQUOTE NAME { BQName($2) }
+| BQUOTE sequence { BQSeq($2) }
+
+type_def:
+  separated_nonempty_list(FTO, NAME) {
+    TypeDef(List.map (fun x -> TDName(x)) $1)
+  }
+
+arg_def:
+  NAME { ArgDef($1) }
+| NAME AT type_def { ArgDefWithType($1, $3) }
 
 pattern:
-  identifier pattern { Pattern($1, $2) }
-| identifier { Id($1) }
-| pattern_name { PatternOp($1) }
+  list(word) COMMA list(word) { PatternAndMatch($1, $3) }
+
+if_sform:
+  IFGEZ list(word) COMMA list(word) { IfGEZ(IfBody($2, $4)) }
+| IFGZ list(word) COMMA list(word) { IfGZ(IfBody($2, $4)) }
+| IFLEZ list(word) COMMA list(word) { IfLEZ(IfBody($2, $4)) }
+| IFLZ list(word) COMMA list(word) { IfLZ(IfBody($2, $4)) }
+| IFE list(word) COMMA list(word) { IfEmpty(IfBody($2, $4)) }
+| IFNE list(word) COMMA list(word) { IfNonEmpty(IfBody($2, $4)) }
+| IFEZ list(word) COMMA list(word) { IfEZ(IfBody($2, $4)) }
+| IFNEZ list(word) COMMA list(word) { IfNEZ(IfBody($2, $4)) }
+| IFT list(word) COMMA list(word) { IfT(IfBody($2, $4)) }
+| IFF list(word) COMMA list(word) { IfF(IfBody($2, $4)) }
 
 match_sform:
-  pattern COMMA clause SEMICOLON match_sform { Multiple(SubMatch($1, $3), $5) }
-| pattern COMMA clause { Single(SubMatch($1, $3)) }
+  MATCH separated_nonempty_list(SEMICOLON, pattern) {
+    PatternsAndMatches($2)
+  }
 
-arg:
-  NAME { WithoutTypeDef($1) }
-| NAME LPAREN TYPE_DEF RPAREN { WithTypeDef($1, $3) }
+control_sequence:
+  if_sform { CtrlSeqIfForm($1) }
+| match_sform { CtrlSeqMatchForm($1) }
 
-args:
-  arg args { Args($1, $2) }
-| arg { Arg($1) }
+other_form:
+  BIND NAME list(word) { Bind($2, $3) }
+| BIND NAME list(word) IN list(word) { BindIn($2, $3, $5) }
+| FUNCTION list(arg_def) COMMA list(word) { Function($2, $4) }
+| word IMPORT { Import($1) }
+| list(word) AT list(word) { At($1, $3) }
 
-expression:
-  LITERAL { Literal($1) }
-| NAME { Name($1) }
-| BIND NAME expression { Bind($2, $3) }
-| BIND NAME expression IN expression { BindIn($2, $3, $5) }
-| IFGEZ expression COMMA expression { If(GEZ($2, $4)) }
-| IFGZ expression COMMA expression { If(GZ($2, $4)) }
-| IFLEZ expression COMMA expression { If(LEZ($2, $4)) }
-| IFLZ expression COMMA expression { If(LZ($2, $4)) }
-| IFE expression COMMA expression { If(Empty($2, $4)) }
-| IFNE expression COMMA expression { If(NonEmpty($2, $4)) }
-| IFEZ expression COMMA expression { If(EZ($2, $4)) }
-| IFNEZ expression COMMA expression { If(NEZ($2, $4)) }
-| IFT expression COMMA expression { If(T($2, $4)) }
-| IFF expression COMMA expression { If(F($2, $4)) }
-| MATCH match_sform { Match($2) }
-| LPAREN expression RPAREN { AnonyFunction($2) }
-| FUNCTION args COMMA expression { Function($2, $4) }
-| IMPORT atom { Import($2) }
-| identifier expression { Sequence{$1, $2) }
+word:
+  backquote { WBackquote($1) }
+| sequence { WSequence($1) }
+| literal { WLiteral($1) }
+| control_sequence { WControl($1) }
+| other_form { WOtherForm($1) }
+| NAME { WName($1) }
+
+sequence:
+  LPAREN list(word) RPAREN { Sequence($2) }
 
 sentence:
-  expression TERMINATOR { Sentence($1, $2) }
-
+  list(word) TERMINATOR { Sentence($1, $2) }

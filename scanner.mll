@@ -1,13 +1,7 @@
 {
+open Ast
 open Parser
-
-let atom_counter =
-    let cnt = Array.of_list [-1]
-    in fun () -> cnt.(0) <- cnt.[0] + 1; cnt.(0);;
-
-let name_counter =
-    let cnt = Array.of_list [-1]
-    in fun () -> cnt.(0) <- cnt.[0] + 1; cnt.(0);;
+open Common
 }
 
 let _WHITESPACE = [' ' '\t']
@@ -23,6 +17,7 @@ let _RPAREN = ')'
 let _LBRACKET = '['
 let _RBRACKET = ']'
 let _SLASH = '\\'
+let _FTO = "->"
 
 let string_char = [^ '\\' '\'']
 let string_esc_charseq = '\\' string_char
@@ -48,17 +43,16 @@ let frac = '.' digit*
 let float_lit = signed? digit+ frac? ('e' digit+)?
 
 rule token = parse
-| _SQUOTE { SQUOTE }
-| _DQUOTE { DQUOTE }
 | _BQUOTE { BQUOTE }
 | _COMMA { COMMA }
 | _SEMICOLON { SEMICOLON }
-| _PERIOD { PERIOD }
+| _PERIOD { TERMINATOR(Ast.Period) }
 | _LPAREN { LPAREN }
 | _RPAREN { RPAREN }
 | _LBRACKET { LBRACKET }
 | _RBRACKET { RBRACKET }
 | _SLASH { SLASH }
+| _FTO { FTO }
 
 | "if>=0" { IFGEZ }
 | "if>0" { IFGZ }
@@ -78,15 +72,38 @@ rule token = parse
 
 | eof { EOF }
 
-| _DQUOTE [^ '"'] _DQUOTE { token lexbuf }
+| name as n {
+    NAME({name_ref_key = name_counter ();
+          name_repr = n;
+          name_type = TypeDef([TDPrimitiveType(PT_Any)])})
+  }
 
               (* literals start here *)
+| atom_lit as a {
+    LITERAL({value_id = value_counter ();
+             value_content = VAtom({atom_name = a;
+                                    atom_repr = value_counter ()});
+             value_type = TypeDef([TDPrimitiveType(PT_Atom)])})
+  }
 | string_lit as str {
-    LITERAL(LString(String.sub str 1 (String.length str - 2)))
+    LITERAL({value_id = value_counter ();
+             value_content = VString(String.sub str 1 (String.length str - 2));
+             value_type = TypeDef([TDPrimitiveType(PT_String)])})
   }
-| name as n {
-	NAME({name_repr: n; name_ref_key: name_counter (); name_type: SingleDef(Any)})
+| int_lit as i {
+    LITERAL({value_id = value_counter ();
+             value_content = VFixedInt(int_of_string i);
+             value_type = TypeDef([TDPrimitiveType(PT_FixedInt)])})
   }
-| int_lit as i { LITERAL(LFixedInt(int_of_string i)) }
-| float_lit as f { LITERAL(LFloat(float_of_string f)) }
-| atom_lit as a { LITERAL(LAtom({atom_name: a; atom_repr: atom_counter ()) }
+| float_lit as f {
+    LITERAL({value_id = value_counter ();
+             value_content = VFloat(float_of_string f);
+             value_type = TypeDef([TDPrimitiveType(PT_Float)])})
+  }
+| _ as s {
+    LITERAL({value_id = -1;
+             value_content = VString("not matched " ^ (String.make 1 s));
+             value_type = TypeDef([TDPrimitiveType(PT_String)])})
+  }
+
+| _DQUOTE [^ '"'] _DQUOTE { token lexbuf } (* comments *)

@@ -7,6 +7,12 @@
 *.cmx
 *.cmxs
 *.cmxa
+parser.mli
+parser.ml
+scanner.ml
+
+*.automaton
+*.conflicts
 
 # ocamlbuild working directory
 _build/
@@ -33,6 +39,9 @@ setup.log
 *.aux
 *.log
 *.pdf
+*.toc
+*.lof
+*.lot
 
 # emacs backups
 

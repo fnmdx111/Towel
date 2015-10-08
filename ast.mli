@@ -9,16 +9,17 @@ type primitive_type =
   | PT_Any;;
 
 
-type type_def =
-    Def of primitive_type * type_def
-  | SingleDef of primitive_type;;
-
 type atom = {
   atom_name: string;
   atom_repr: int
 };;
 
-type name = { mutable
+type type_def =
+    TypeDef of type_def_item list
+
+and type_def_item = TDName of name | TDPrimitiveType of primitive_type
+
+and name = { mutable
   name_ref_key: int;
   name_repr: string;
   name_type: type_def
@@ -38,68 +39,50 @@ and backquote =
   BQValue of pvalue
 | BQName of name
 | BQSeq of sequence
+
 and word =
   WLiteral of pvalue
 | WName of name
 | WBackquote of backquote
 | WSequence of sequence
+| WControl of control_sequence
+| WOtherForm of other_form
+
 and sequence =
   Sequence of word list
 
-type sentence =
-  Sentence of word list
-| EOF
+and if_body = IfBody of word list * word list
 
-type if_body = IfBody of word * word;;
+and if_sform =
+    IfGEZ of if_body
+  | IfGZ of if_body
+  | IfLEZ of if_body
+  | IfLZ of if_body
+  | IfEmpty of if_body
+  | IfNonEmpty of if_body
+  | IfEZ of if_body
+  | IfNEZ of if_body
+  | IfT of if_body
+  | IfF of if_body
 
-type if_sform =
-    GEZ of if_body
-  | GZ of if_body
-  | LEZ of if_body
-  | LZ of if_body
-  | Empty of if_body
-  | NonEmpty of if_body
-  | EZ of if_body
-  | NEZ of if_body
-  | T of if_body
-  | F of if_body;;
+and pattern = PatternAndMatch of word list * word list
+and match_sform = PatternsAndMatches of pattern list
 
-(* type pattern_name = PatternName of identifier;; *)
+and control_sequence =
+  CtrlSeqIfForm of if_sform
+| CtrlSeqMatchForm of match_sform
 
-(* type pattern = *)
-(*     Pattern of identifier * pattern *)
-(*   | Id of identifier *)
-(*   | PatternOp of pattern_name;; *)
+and arg_def =
+  ArgDef of name
+| ArgDefWithType of name * type_def
 
-(* type match_clause = SubMatch of pattern * expression;; *)
+and other_form =
+  Bind of name * word list
+| BindIn of name * word list * word list
+| Function of arg_def list * word list
+| Import of word
+| At of word list * word list
 
-(* type match_sform = *)
-(*     Multiple of match_clause * match_sform *)
-(*   | Single of match_clause;; *)
+and terminator = Period
 
-(* type arg = *)
-(*     WithoutTypeDef of name *)
-(*   | WithTypeDef of name * type_def;; *)
-
-(* type args = *)
-(*     Args of arg * args *)
-(*   | Arg of arg;; *)
-
-(* type expression = *)
-(*     Literal of literal *)
-(*   | EmptyExpression *)
-(*   | Name of name *)
-(*   | Bind of name * expression *)
-(*   | BindIn of name * expression * expression *)
-(*   | If of if_sform *)
-(*   | Match of match_sform *)
-(*   | AnonyFunction of expression *)
-(*   | Function of args * expression *)
-(*   | Import of name *)
-(*   | Sequence of identifier * expression;; *)
-
-type terminator =
-  Period | Exclamation | Question;;
-
-(* type sentence = Sentence of expression * terminator;; *)
-      
+type sentence = Sentence of word list * terminator;;
