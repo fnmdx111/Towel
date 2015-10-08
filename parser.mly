@@ -29,6 +29,7 @@ backquote:
   BQUOTE literal { BQValue($2) }
 | BQUOTE NAME { BQName($2) }
 | BQUOTE sequence { BQSeq($2) }
+| BQUOTE backquote { BQBackquote($2) }
 
 type_def:
   separated_nonempty_list(FTO, NAME) {

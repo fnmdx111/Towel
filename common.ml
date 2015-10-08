@@ -33,7 +33,8 @@ and backquote_stringify a = P.sprintf "(bq-lit %s)"
     (match a with
        BQValue(pv) -> lit_stringify pv.value_content
      | BQName(n) -> name_stringify n
-     | BQSeq(seq) -> seq_stringify seq)
+     | BQSeq(seq) -> seq_stringify seq
+     | BQBackquote(bq) -> backquote_stringify bq)
 
 and cs_stringify cs =
   let if_stringify s body =
@@ -102,7 +103,7 @@ and of_stringify o =
   | Import(ws) ->
     P.sprintf "import %s" (word_stringify ws)
   | At(ws1, ws2) ->
-    P.sprintf "%s@%s" (words_stringify ws1) (words_stringify ws2)
+    P.sprintf "%s@%s" (word_stringify ws1) (word_stringify ws2)
 
 and word_stringify w =
   let _w s n = P.sprintf "(%s %s)" s n in

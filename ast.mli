@@ -39,6 +39,7 @@ and backquote =
   BQValue of pvalue
 | BQName of name
 | BQSeq of sequence
+| BQBackquote of backquote
 
 and word =
   WLiteral of pvalue
@@ -81,7 +82,7 @@ and other_form =
 | BindIn of name * word list * word list
 | Function of arg_def list * word list
 | Import of word
-| At of word list * word list
+| At of word * word
 
 and terminator = Period
 
