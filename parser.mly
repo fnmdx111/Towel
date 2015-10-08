@@ -22,6 +22,9 @@ literal:
               value_content = $1;
               value_type = TypeDef([TDPrimitiveType(PT_List)])} }
 
+sequence:
+  LPAREN list(word) RPAREN { Sequence($2) }
+
 backquote:
   BQUOTE literal { BQValue($2) }
 | BQUOTE NAME { BQName($2) }
@@ -36,9 +39,6 @@ arg_def:
   NAME { ArgDef($1) }
 | NAME AT type_def { ArgDefWithType($1, $3) }
 
-pattern:
-  list(word) COMMA list(word) { PatternAndMatch($1, $3) }
-
 if_sform:
   IFGEZ list(word) COMMA list(word) { IfGEZ(IfBody($2, $4)) }
 | IFGZ list(word) COMMA list(word) { IfGZ(IfBody($2, $4)) }
@@ -51,6 +51,9 @@ if_sform:
 | IFT list(word) COMMA list(word) { IfT(IfBody($2, $4)) }
 | IFF list(word) COMMA list(word) { IfF(IfBody($2, $4)) }
 
+pattern:
+  list(word) COMMA list(word) { PatternAndMatch($1, $3) }
+
 match_sform:
   MATCH separated_nonempty_list(SEMICOLON, pattern) {
     PatternsAndMatches($2)
@@ -61,22 +64,19 @@ control_sequence:
 | match_sform { CtrlSeqMatchForm($1) }
 
 other_form:
-  BIND NAME list(word) { Bind($2, $3) }
+  FUNCTION list(arg_def) COMMA list(word) { Function($2, $4) }
+| BIND NAME list(word) { Bind($2, $3) }
 | BIND NAME list(word) IN list(word) { BindIn($2, $3, $5) }
-| FUNCTION list(arg_def) COMMA list(word) { Function($2, $4) }
 | word IMPORT { Import($1) }
-| list(word) AT list(word) { At($1, $3) }
+| word AT word { At($1, $3) }
 
 word:
-  backquote { WBackquote($1) }
-| sequence { WSequence($1) }
+  NAME { WName($1) }
 | literal { WLiteral($1) }
+| backquote { WBackquote($1) }
+| sequence { WSequence($1) }
 | control_sequence { WControl($1) }
 | other_form { WOtherForm($1) }
-| NAME { WName($1) }
-
-sequence:
-  LPAREN list(word) RPAREN { Sequence($2) }
 
 sentence:
   list(word) TERMINATOR { Sentence($1, $2) }
