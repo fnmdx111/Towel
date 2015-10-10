@@ -1,3 +1,5 @@
+TARFILES = Makefile scanner.mll parser.mly ast.mli common.ml traverse.ml docs/*.tex
+
 OBJS = common.cmo parser.cmo scanner.cmo traverse.cmo
 
 traverse : $(OBJS)
@@ -14,6 +16,9 @@ parser.ml parser.mli : parser.mly
 
 %.cmi : %.mli
 	ocamlc -c $<
+
+towel.tar.gz : $(TARFILES)
+	cd .. && tar zcf Towel/towel.tar.gz $(TARFILES:%=Towel/%)
 
 .PHONY : clean
 clean :
