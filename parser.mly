@@ -9,7 +9,7 @@ let err s loc stofs eofs = raise (SyntacticError(s,
 %}
 
 %token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
-%token MATCH FUNCTION BIND IN FTO AT
+%token MATCH FUNCTION BIND IN AT
 %token SLASH BQUOTE COMMA SEMICOLON
 %token LBRACKET RBRACKET LPAREN RPAREN
 
@@ -27,7 +27,7 @@ let err s loc stofs eofs = raise (SyntacticError(s,
 lit_list:
   LBRACKET list(word) RBRACKET { VList($2) }
 | LBRACKET list(word) error {
-    err "missing right bracket for list literals"
+    err "expected a right bracket for list literal"
       $startpos($3) $startofs($1) $endofs($3)
   }
 
@@ -44,16 +44,21 @@ backquote:
 | backquote BQUOTE { BQBackquote($1) }
 
 type_def:
-  separated_nonempty_list(FTO, name) {
-    TypeDef(List.map (fun x -> TDName(x)) $1)
+  LPAREN nonempty_list(name) RPAREN {
+    TypeDef(List.map (fun x -> TDName(x)) $2)
   }
-| error {
-    err "unexpected type definition" $startpos($1) $startofs($1) $endofs($1)
+| LPAREN error {
+    err "expected names for type definition"
+      $startpos($2) $startofs($2) $endofs($2)
+  }
+| LPAREN nonempty_list(name) error {
+    err "expected a right parenthesis for type definition"
+    $startpos($3) $startofs($3) $endofs($3)
   }
 
 arg_def:
   NAME { ArgDef($1) }
-| NAME AT type_def { ArgDefWithType($1, $3) }
+| NAME type_def { ArgDefWithType($1, $2) }
 
 if_sform:
   IFGEZ word COMMA word { IfGEZ(IfBody($2, $4)) }
@@ -67,43 +72,43 @@ if_sform:
 | IFT word COMMA word { IfT(IfBody($2, $4)) }
 | IFF word COMMA word { IfF(IfBody($2, $4)) }
 | IFGEZ word error {
-    err "expecting comma for else branch"
+    err "expected a comma for else branch"
     $startpos($3) $startofs($1) $endofs($3)
   }
 | IFGZ word error {
-    err "expecting comma for else branch"
+    err "expected a comma for else branch"
     $startpos($3) $startofs($1) $endofs($3)
   }
 | IFLEZ word error {
-    err "expecting comma for else branch"    
+    err "expected a comma for else branch"    
     $startpos($3) $startofs($1) $endofs($3)
   }
 | IFLZ word error {
-    err "expecting comma for else branch"
+    err "expected a comma for else branch"
     $startpos($3) $startofs($1) $endofs($3)
   }
 | IFE word error {
-    err "expecting comma for else branch"
+    err "expected a comma for else branch"
     $startpos($3) $startofs($1) $endofs($3)
   }
 | IFNE word error {
-    err "expecting comma for else branch"
+    err "expected a comma for else branch"
     $startpos($3) $startofs($1) $endofs($3)
   }
 | IFEZ word error {
-    err "expecting comma for else branch"
+    err "expected a comma for else branch"
     $startpos($3) $startofs($1) $endofs($3)
   }
 | IFNEZ word error {
-    err "expecting comma for else branch"
+    err "expected a comma for else branch"
     $startpos($3) $startofs($1) $endofs($3)
   }
 | IFT word error {
-    err "expecting comma for else branch"
+    err "expected a comma for else branch"
     $startpos($3) $startofs($1) $endofs($3)
   }
 | IFF word error {
-    err "expecting comma for else branch"
+    err "expected a comma for else branch"
     $startpos($3) $startofs($1) $endofs($3)
   }
 | IFGEZ word COMMA error {
@@ -149,6 +154,17 @@ if_sform:
 
 pattern:
   list(word) COMMA restricted_word { PatternAndMatch($1, $3) }
+| list(word) COMMA error {
+    err "unexpected action clause form"
+      $startpos($3) $startofs($1) $endofs($3)
+  }
+(*
+ why does this rule have something to do with conflicts of a function rule?
+| list(word) error {
+    err "expected a comma for action clause"
+      $startpos($2) $startofs($1) $endofs($2)
+  }
+*)
 
 match_sform:
   MATCH separated_nonempty_list(SEMICOLON, pattern) {
@@ -184,7 +200,7 @@ restricted_word:
 function_:
   FUNCTION list(arg_def) COMMA word { Function($2, $4) }
 | FUNCTION list(arg_def) error {
-    err "missing comma for function special form"
+    err "expected a comma for function special form"
     $startpos($3) $startofs($1) $endofs($3)
   }
 
@@ -192,7 +208,7 @@ bind_sform:
   BIND name word IN word { BindIn($2, $3, $5) }
 | BIND name word { Bind($2, $3) }
 | BIND name word IN error {
-    err "missing form for bind-in special form"
+    err "expected a form for bind-in special form"
     $startpos($5) $startofs($1) $endofs($5)
   }
 | BIND error {
@@ -218,7 +234,7 @@ word:
 sequence:
   LPAREN list(word) RPAREN { Sequence($2) }
 | LPAREN list(word) error {
-    err "missing right parenthesis for sequences"
+    err "expected right parenthesis for sequence"
     $startpos($3) $startofs($1) $endofs($3)
   }
 

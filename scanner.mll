@@ -18,7 +18,6 @@ let _RPAREN = ')'
 let _LBRACKET = '['
 let _RBRACKET = ']'
 let _SLASH = '\\'
-let _FTO = "->"
 let _AT = "@"
 
 let string_char = [^ '\\' '\'']
@@ -56,7 +55,6 @@ rule token = parse
 | _LBRACKET { LBRACKET }
 | _RBRACKET { RBRACKET }
 | _SLASH { SLASH }
-| _FTO { FTO }
 | _AT { AT }
 
 | "if>=0" { IFGEZ }
