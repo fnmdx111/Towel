@@ -70,7 +70,7 @@ rule token = parse
 | "match" { MATCH }
 | "function" { FUNCTION }
 | "bind" { BIND }
-| "in" { IN }
+| "then" { THEN }
 | "fun" { FUNCTION }
 
 | eof { TERMINATOR(Ast.EOF) }

@@ -9,16 +9,13 @@ let err s loc stofs eofs = raise (SyntacticError(s,
 %}
 
 %token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
-%token MATCH FUNCTION BIND IN AT
+%token MATCH FUNCTION BIND THEN AT
 %token SLASH BQUOTE COMMA SEMICOLON
 %token LBRACKET RBRACKET LPAREN RPAREN
 
 %token <Ast.pvalue> LITERAL
 %token <Ast.name> NAME
 %token <Ast.terminator> TERMINATOR
-
-%right BIND
-%left IN
 
 %start sentence
 %type <Ast.sentence> sentence
@@ -153,8 +150,8 @@ if_sform:
   }
 
 pattern:
-  list(word) COMMA restricted_word { PatternAndMatch($1, $3) }
-| list(word) COMMA error {
+  list(restricted_word) COMMA restricted_word { PatternAndMatch($1, $3) }
+| list(restricted_word) COMMA error {
     err "unexpected action clause form"
       $startpos($3) $startofs($1) $endofs($3)
   }
@@ -205,10 +202,9 @@ function_:
   }
 
 bind_sform:
-  BIND name word IN word { BindIn($2, $3, $5) }
-| BIND name word { Bind($2, $3) }
-| BIND name word IN error {
-    err "expected a form for bind-in special form"
+  BIND NAME word THEN word { BindThen($2, $3, $5) }
+| BIND NAME word THEN error {
+    err "expected a form for bind-then special form"
     $startpos($5) $startofs($1) $endofs($5)
   }
 | BIND error {

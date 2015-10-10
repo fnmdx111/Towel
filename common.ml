@@ -124,9 +124,7 @@ and arg_def_stringify d =
       P.sprintf "(%s: %s)" (name_stringify n) (type_def_stringify td)
 
 and bind_stringify = function
-    Bind(n, w) ->
-    String.concat " = " [name_stringify n; word_stringify w]
-  | BindIn(n, w1, w2) ->
+    BindThen(n, w1, w2) ->
     P.sprintf "%s = %s in %s"
       (name_stringify n) (word_stringify w1) (word_stringify w2)
 and fun_stringify = function
