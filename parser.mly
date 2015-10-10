@@ -13,7 +13,6 @@
 %right BIND
 %left IN
 
-
 %start sentence
 %type <Ast.sentence> sentence
 %%
@@ -67,7 +66,7 @@ control_sequence:
 | match_sform { CtrlSeqMatchForm($1) }
 
 name:
-  NAME SLASH NAME {
+  NAME SLASH name {
     promote_name_to_module_name $3;
     $1.name_domain <- SomeModule({module_name = $3;
                                   module_path = ""});
