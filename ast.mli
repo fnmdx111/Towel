@@ -6,8 +6,8 @@ type primitive_type =
   | PT_Float
   | PT_String
   | PT_List
+  | PT_Module
   | PT_Any;;
-
 
 type atom = {
   atom_name: string;
@@ -19,10 +19,18 @@ type type_def =
 
 and type_def_item = TDName of name | TDPrimitiveType of primitive_type
 
-and name = { mutable
+and _module = {
+  mutable module_name: name;
+  mutable module_path: string;
+}
+
+and module_ = SomeModule of _module | MetaModule
+
+and name = {
   name_ref_key: int;
   name_repr: string;
-  name_type: type_def
+  mutable name_domain: module_;
+  mutable name_type: type_def
 };;
 
 type pvalue = {value_id: int;
@@ -66,7 +74,7 @@ and if_sform =
   | IfT of if_body
   | IfF of if_body
 
-and pattern = PatternAndMatch of word * word
+and pattern = PatternAndMatch of word list * word
 and match_sform = PatternsAndMatches of pattern list
 
 and control_sequence =
@@ -84,6 +92,6 @@ and other_form =
 | Import of word
 | At of word * word
 
-and terminator = Period
+and terminator = Period | Newline | EOF;;
 
 type sentence = Sentence of word list * terminator;;

@@ -2,10 +2,13 @@
 open Ast
 open Parser
 open Common
+open Lexing
+
+exception LexicalError of string
 }
 
 let _WHITESPACE = [' ' '\t']
-let _NELINE = '\n' | '\r' | "\r\n"
+let _NEWLINE = '\n' | '\r' | "\r\n"
 let _SQUOTE = '\''
 let _DQUOTE = '"'
 let _BQUOTE = '`'
@@ -43,6 +46,7 @@ let frac = '.' digit*
 let float_lit = signed? digit+ frac? ('e' digit+)?
 
 rule token = parse
+| _NEWLINE { Lexing.new_line lexbuf; TERMINATOR(Ast.Newline) }
 | _BQUOTE { BQUOTE }
 | _COMMA { COMMA }
 | _SEMICOLON { SEMICOLON }
@@ -68,14 +72,17 @@ rule token = parse
 | "function" { FUNCTION }
 | "bind" { BIND }
 | "in" { IN }
-| "import" { IMPORT }
 
-| eof { EOF }
+| eof { TERMINATOR(Ast.EOF) }
+
+| _DQUOTE [^ '"'] _DQUOTE { token lexbuf } (* comments *)
 
 | name as n {
+    let path = lexbuf.lex_buffer in
     NAME({name_ref_key = name_counter ();
           name_repr = n;
-          name_type = TypeDef([TDPrimitiveType(PT_Any)])})
+          name_type = TypeDef([TDPrimitiveType(PT_Any)]);
+          name_domain = SomeModule(module_from_path path)})
   }
 
               (* literals start here *)
@@ -101,9 +108,9 @@ rule token = parse
              value_type = TypeDef([TDPrimitiveType(PT_Float)])})
   }
 | _ as s {
-    LITERAL({value_id = -1;
-             value_content = VString("not matched " ^ (String.make 1 s));
-             value_type = TypeDef([TDPrimitiveType(PT_String)])})
+    raise (LexicalError
+             (Printf.sprintf "Unexpected character: %c at (%d,%d)"
+                s
+                lexbuf.lex_curr_p.pos_lnum
+                lexbuf.lex_curr_p.pos_bol))
   }
-
-| _DQUOTE [^ '"'] _DQUOTE { token lexbuf } (* comments *)

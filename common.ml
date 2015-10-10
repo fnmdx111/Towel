@@ -11,10 +11,32 @@ let name_counter =
     let cnt = Array.of_list [-1]
     in fun () -> cnt.(0) <- cnt.(0) + 1; cnt.(0);;
 
-module P = Printf
+(* build canonical module name out of paths *)
+let module_name_from_path p =
+  let path_delim = if Sys.os_type = "Win32" then "\\" else "/" in
+  let full_fn = List.hd (List.rev (Str.split (Str.regexp path_delim) p)) in
+  let file_name = List.hd (Str.split (Str.regexp ".") full_fn) in
+  Printf.sprintf "module__%s" file_name;;
+
+let promote_name_to_module_name n =
+  n.name_type <- TypeDef([TDPrimitiveType(PT_Module)]);
+  n.name_domain <- Ast.MetaModule;;
+
+let module_from_path p =
+  let module_name = module_name_from_path p in
+  { module_name = { name_repr = module_name;
+                    name_type = TypeDef([TDPrimitiveType(PT_Module)]);
+                    name_ref_key = -42;
+                    name_domain = Ast.MetaModule };
+    module_path = p };;
+
+module P = Printf;;
 
 let rec atom_stringify a = P.sprintf "(atom %s %d)" a.atom_name a.atom_repr
-and name_stringify a = P.sprintf "(name %s %d)" a.name_repr a.name_ref_key
+and name_stringify a = P.sprintf "(name %s of %s %d)"
+    a.name_repr (match a.name_domain with
+          MetaModule -> "-META-MODULE"
+        | SomeModule(x) -> x.module_name.name_repr) a.name_ref_key
 and int_stringify a = P.sprintf "(int-lit %d)" a
 and float_stringify a = P.sprintf "(float-lit %f)" a
 and string_stringify a = P.sprintf "(str-lit %s)" a
@@ -46,7 +68,7 @@ and cs_stringify cs =
        match p with
          PatternAndMatch(p, m) ->
          P.sprintf "pattern %s -> %s;"
-           (word_stringify p)
+           (words_stringify p)
            (word_stringify m)
   in match cs with
     CtrlSeqIfForm(i) ->
@@ -76,6 +98,7 @@ and type_def_item_stringify i =
      | PT_List -> "PT_List"
      | PT_Float -> "PT_Float"
      | PT_String -> "PT_String"
+     | PT_Module -> "PT_Module"
      | PT_FixedInt -> "PT_FixedInt")
 
 and type_def_stringify d =
