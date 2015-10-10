@@ -3,8 +3,6 @@ open Ast
 open Parser
 open Common
 open Lexing
-
-exception LexicalError of string
 }
 
 let _WHITESPACE = [' ' '\t']
@@ -21,19 +19,20 @@ let _LBRACKET = '['
 let _RBRACKET = ']'
 let _SLASH = '\\'
 let _FTO = "->"
+let _AT = "@"
 
 let string_char = [^ '\\' '\'']
 let string_esc_charseq = '\\' string_char
 let string_item = string_char | string_esc_charseq
 let string_lit = _SQUOTE string_item* _SQUOTE
-(* from python lexical analysis
+(* From python lexical analysis
    https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals*)
 
 let alpha = ['a'-'z']
-let common_legal_char = [^ ',' ';' '.' '\'' '\\' '`'
+let common_legal_char = [^ ',' ';' '.' '\'' '\\' '`' '@'
                           '(' ')' '[' ']'
                           ' ' '\t' '\n' '\r']
-let name = [^ ',' ';' '.' '\\' '\'' '`'
+let name = [^ ',' ';' '.' '\\' '\'' '`' '@'
               '(' ')' '[' ']'
               'a'-'z' '0'-'9'
               ' ' '\t' '\n' '\r'] common_legal_char*
@@ -42,10 +41,11 @@ let atom_lit = alpha common_legal_char*
 let digit = ['0'-'9']
 let signed = ['+' '-']
 let int_lit = signed? digit+
-let frac = '.' digit*
+let frac = '.' digit+
 let float_lit = signed? digit+ frac? ('e' digit+)?
 
 rule token = parse
+| _WHITESPACE+ { token lexbuf }
 | _NEWLINE { Lexing.new_line lexbuf; TERMINATOR(Ast.Newline) }
 | _BQUOTE { BQUOTE }
 | _COMMA { COMMA }
@@ -57,6 +57,7 @@ rule token = parse
 | _RBRACKET { RBRACKET }
 | _SLASH { SLASH }
 | _FTO { FTO }
+| _AT { AT }
 
 | "if>=0" { IFGEZ }
 | "if>0" { IFGZ }
@@ -72,6 +73,7 @@ rule token = parse
 | "function" { FUNCTION }
 | "bind" { BIND }
 | "in" { IN }
+| "fun" { FUNCTION }
 
 | eof { TERMINATOR(Ast.EOF) }
 
@@ -109,8 +111,7 @@ rule token = parse
   }
 | _ as s {
     raise (LexicalError
-             (Printf.sprintf "Unexpected character: %c at (%d,%d)"
-                s
-                lexbuf.lex_curr_p.pos_lnum
-                lexbuf.lex_curr_p.pos_bol))
+             (Printf.sprintf "unexpected character `%c'" s,
+              lexbuf.lex_curr_p.pos_lnum,
+              lexbuf.lex_curr_p.pos_bol))
   }

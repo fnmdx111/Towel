@@ -1,4 +1,3 @@
-
 type primitive_type =
     PT_Atom
   (*  | Int *)
@@ -44,21 +43,23 @@ and pvalue_content =
   | VString of string
 
 and backquote =
-  BQValue of pvalue
-| BQName of name
-| BQSeq of sequence
-| BQBackquote of backquote
+    BQValue of pvalue
+  | BQName of name
+  | BQSeq of sequence
+  | BQBackquote of backquote
 
 and word =
-  WLiteral of pvalue
-| WName of name
-| WBackquote of backquote
-| WSequence of sequence
-| WControl of control_sequence
-| WOtherForm of other_form
+    WLiteral of pvalue
+  | WName of name
+  | WBackquote of backquote
+  | WSequence of sequence
+  | WControl of control_sequence
+  | WFunction of function_sform
+  | WAt of at_sform
+  | WBind of bind_sform
 
 and sequence =
-  Sequence of word list
+    Sequence of word list
 
 and if_body = IfBody of word * word
 
@@ -78,19 +79,22 @@ and pattern = PatternAndMatch of word list * word
 and match_sform = PatternsAndMatches of pattern list
 
 and control_sequence =
-  CtrlSeqIfForm of if_sform
-| CtrlSeqMatchForm of match_sform
+    CtrlSeqIfForm of if_sform
+  | CtrlSeqMatchForm of match_sform
 
 and arg_def =
-  ArgDef of name
-| ArgDefWithType of name * type_def
+    ArgDef of name
+  | ArgDefWithType of name * type_def
 
-and other_form =
-  Bind of name * word
-| BindIn of name * word * word
-| Function of arg_def list * word
-| Import of word
-| At of word * word
+and function_sform =
+    Function of arg_def list * word
+
+and bind_sform =
+    Bind of name * word
+  | BindIn of name * word * word
+
+and at_sform =
+    At of word * word
 
 and terminator = Period | Newline | EOF;;
 

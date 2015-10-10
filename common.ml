@@ -1,8 +1,14 @@
 open Ast
 
-(* counters *)
-(* I think they might be useful, but I still am not able to find out
-   even one of them :( *)
+exception LexicalError of (string * int * int);;
+exception SyntacticError of (string * int * int * int);;
+
+(* =======================================
+     Counters
+
+     I think they might be useful, but I still am not able to find out
+    even one of them :(
+   ======================================= *)
 let value_counter =
     let cnt = Array.of_list [-1]
     in fun () -> cnt.(0) <- cnt.(0) + 1; cnt.(0);;
@@ -11,7 +17,9 @@ let name_counter =
     let cnt = Array.of_list [-1]
     in fun () -> cnt.(0) <- cnt.(0) + 1; cnt.(0);;
 
-(* build canonical module name out of paths *)
+(* =======================================
+     Build canonical module names out of paths
+   ======================================= *)
 let module_name_from_path p =
   let path_delim = if Sys.os_type = "Win32" then "\\" else "/" in
   let full_fn = List.hd (List.rev (Str.split (Str.regexp path_delim) p)) in
@@ -30,6 +38,9 @@ let module_from_path p =
                     name_domain = Ast.MetaModule };
     module_path = p };;
 
+(* =======================================
+     AST stringifiers
+   ======================================= *)
 module P = Printf;;
 
 let rec atom_stringify a = P.sprintf "(atom %s %d)" a.atom_name a.atom_repr
@@ -112,31 +123,32 @@ and arg_def_stringify d =
     | ArgDefWithType(n, td) ->
       P.sprintf "(%s: %s)" (name_stringify n) (type_def_stringify td)
 
-and of_stringify o =
-  match o with
+and bind_stringify = function
     Bind(n, w) ->
     String.concat " = " [name_stringify n; word_stringify w]
   | BindIn(n, w1, w2) ->
     P.sprintf "%s = %s in %s"
       (name_stringify n) (word_stringify w1) (word_stringify w2)
-  | Function(ds, w) ->
+and fun_stringify = function
+    Function(ds, w) ->
     P.sprintf "fun %s = %s"
       (String.concat "; " (List.map arg_def_stringify ds))
       (word_stringify w)
-  | Import(w) ->
-    P.sprintf "import %s" (word_stringify w)
-  | At(w1, w2) ->
+and at_stringify = function
+    At(w1, w2) ->
     P.sprintf "%s@%s" (word_stringify w1) (word_stringify w2)
 
 and word_stringify w =
-  let _w s n = P.sprintf "(%s %s)" s n in
+  let _w s n = P.sprintf "(%s of %s)" s n in
   match w with
     WLiteral(pv) -> _w (lit_stringify pv.value_content) "literal"
   | WName(n) -> _w (name_stringify n) "name"
   | WBackquote(bq) -> _w (backquote_stringify bq) "bquote"
   | WSequence(seq) -> _w (seq_stringify seq) "seq"
   | WControl(cs) -> _w (cs_stringify cs) "cs"
-  | WOtherForm(o) -> _w (of_stringify o) "other"
+  | WFunction(f) -> _w (fun_stringify f) "fun"
+  | WAt(a) -> _w (at_stringify a) "@"
+  | WBind(b) -> _w (bind_stringify b) "bind"
 
 and words_stringify ws =
   String.concat "/" (List.map word_stringify ws)
