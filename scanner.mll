@@ -2,10 +2,11 @@
 open Ast
 open Parser
 open Common
+open Lexing
 }
 
 let _WHITESPACE = [' ' '\t']
-let _NELINE = '\n' | '\r' | "\r\n"
+let _NEWLINE = '\n' | '\r' | "\r\n"
 let _SQUOTE = '\''
 let _DQUOTE = '"'
 let _BQUOTE = '`'
@@ -18,19 +19,20 @@ let _LBRACKET = '['
 let _RBRACKET = ']'
 let _SLASH = '\\'
 let _FTO = "->"
+let _AT = "@"
 
 let string_char = [^ '\\' '\'']
 let string_esc_charseq = '\\' string_char
 let string_item = string_char | string_esc_charseq
 let string_lit = _SQUOTE string_item* _SQUOTE
-(* from python lexical analysis
+(* From python lexical analysis
    https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals*)
 
 let alpha = ['a'-'z']
-let common_legal_char = [^ ',' ';' '.' '\'' '\\' '`'
+let common_legal_char = [^ ',' ';' '.' '\'' '\\' '`' '@'
                           '(' ')' '[' ']'
                           ' ' '\t' '\n' '\r']
-let name = [^ ',' ';' '.' '\\' '\'' '`'
+let name = [^ ',' ';' '.' '\\' '\'' '`' '@'
               '(' ')' '[' ']'
               'a'-'z' '0'-'9'
               ' ' '\t' '\n' '\r'] common_legal_char*
@@ -39,10 +41,12 @@ let atom_lit = alpha common_legal_char*
 let digit = ['0'-'9']
 let signed = ['+' '-']
 let int_lit = signed? digit+
-let frac = '.' digit*
+let frac = '.' digit+
 let float_lit = signed? digit+ frac? ('e' digit+)?
 
 rule token = parse
+| _WHITESPACE+ { token lexbuf }
+| _NEWLINE { Lexing.new_line lexbuf; TERMINATOR(Ast.Newline) }
 | _BQUOTE { BQUOTE }
 | _COMMA { COMMA }
 | _SEMICOLON { SEMICOLON }
@@ -53,6 +57,7 @@ rule token = parse
 | _RBRACKET { RBRACKET }
 | _SLASH { SLASH }
 | _FTO { FTO }
+| _AT { AT }
 
 | "if>=0" { IFGEZ }
 | "if>0" { IFGZ }
@@ -68,14 +73,18 @@ rule token = parse
 | "function" { FUNCTION }
 | "bind" { BIND }
 | "in" { IN }
-| "import" { IMPORT }
+| "fun" { FUNCTION }
 
-| eof { EOF }
+| eof { TERMINATOR(Ast.EOF) }
+
+| _DQUOTE [^ '"'] _DQUOTE { token lexbuf } (* comments *)
 
 | name as n {
+    let path = lexbuf.lex_buffer in
     NAME({name_ref_key = name_counter ();
           name_repr = n;
-          name_type = TypeDef([TDPrimitiveType(PT_Any)])})
+          name_type = TypeDef([TDPrimitiveType(PT_Any)]);
+          name_domain = SomeModule(module_from_path path)})
   }
 
               (* literals start here *)
@@ -101,9 +110,8 @@ rule token = parse
              value_type = TypeDef([TDPrimitiveType(PT_Float)])})
   }
 | _ as s {
-    LITERAL({value_id = -1;
-             value_content = VString("not matched " ^ (String.make 1 s));
-             value_type = TypeDef([TDPrimitiveType(PT_String)])})
+    raise (LexicalError
+             (Printf.sprintf "unexpected character `%c'" s,
+              lexbuf.lex_curr_p.pos_lnum,
+              lexbuf.lex_curr_p.pos_bol))
   }
-
-| _DQUOTE [^ '"'] _DQUOTE { token lexbuf } (* comments *)

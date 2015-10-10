@@ -1,8 +1,14 @@
 open Ast
 
-(* counters *)
-(* I think they might be useful, but I still am not able to find out
-   even one of them :( *)
+exception LexicalError of (string * int * int);;
+exception SyntacticError of (string * int * int * int);;
+
+(* =======================================
+     Counters
+
+     I think they might be useful, but I still am not able to find out
+    even one of them :(
+   ======================================= *)
 let value_counter =
     let cnt = Array.of_list [-1]
     in fun () -> cnt.(0) <- cnt.(0) + 1; cnt.(0);;
@@ -11,10 +17,37 @@ let name_counter =
     let cnt = Array.of_list [-1]
     in fun () -> cnt.(0) <- cnt.(0) + 1; cnt.(0);;
 
-module P = Printf
+(* =======================================
+     Build canonical module names out of paths
+   ======================================= *)
+let module_name_from_path p =
+  let path_delim = if Sys.os_type = "Win32" then "\\" else "/" in
+  let full_fn = List.hd (List.rev (Str.split (Str.regexp path_delim) p)) in
+  let file_name = List.hd (Str.split (Str.regexp ".") full_fn) in
+  Printf.sprintf "module__%s" file_name;;
+
+let promote_name_to_module_name n =
+  n.name_type <- TypeDef([TDPrimitiveType(PT_Module)]);
+  n.name_domain <- Ast.MetaModule;;
+
+let module_from_path p =
+  let module_name = module_name_from_path p in
+  { module_name = { name_repr = module_name;
+                    name_type = TypeDef([TDPrimitiveType(PT_Module)]);
+                    name_ref_key = -42;
+                    name_domain = Ast.MetaModule };
+    module_path = p };;
+
+(* =======================================
+     AST stringifiers
+   ======================================= *)
+module P = Printf;;
 
 let rec atom_stringify a = P.sprintf "(atom %s %d)" a.atom_name a.atom_repr
-and name_stringify a = P.sprintf "(name %s %d)" a.name_repr a.name_ref_key
+and name_stringify a = P.sprintf "(name %s of %s %d)"
+    a.name_repr (match a.name_domain with
+          MetaModule -> "-META-MODULE"
+        | SomeModule(x) -> x.module_name.name_repr) a.name_ref_key
 and int_stringify a = P.sprintf "(int-lit %d)" a
 and float_stringify a = P.sprintf "(float-lit %f)" a
 and string_stringify a = P.sprintf "(str-lit %s)" a
@@ -39,15 +72,15 @@ and backquote_stringify a = P.sprintf "(bq-lit %s)"
 and cs_stringify cs =
   let if_stringify s body =
     match body with
-      IfBody(ws1, ws2) -> P.sprintf "%s { %s; %s }" s
-                            (words_stringify ws1)
-                            (words_stringify ws2)
+      IfBody(w1, w2) -> P.sprintf "%s { %s; %s }" s
+                          (word_stringify w1)
+                          (word_stringify w2)
   in let pattern_stringify p =
        match p with
          PatternAndMatch(p, m) ->
          P.sprintf "pattern %s -> %s;"
            (words_stringify p)
-           (words_stringify m)
+           (word_stringify m)
   in match cs with
     CtrlSeqIfForm(i) ->
     (match i with
@@ -76,6 +109,7 @@ and type_def_item_stringify i =
      | PT_List -> "PT_List"
      | PT_Float -> "PT_Float"
      | PT_String -> "PT_String"
+     | PT_Module -> "PT_Module"
      | PT_FixedInt -> "PT_FixedInt")
 
 and type_def_stringify d =
@@ -89,31 +123,32 @@ and arg_def_stringify d =
     | ArgDefWithType(n, td) ->
       P.sprintf "(%s: %s)" (name_stringify n) (type_def_stringify td)
 
-and of_stringify o =
-  match o with
-    Bind(n, ws) ->
-    String.concat " = " [name_stringify n; words_stringify ws]
-  | BindIn(n, ws1, ws2) ->
+and bind_stringify = function
+    Bind(n, w) ->
+    String.concat " = " [name_stringify n; word_stringify w]
+  | BindIn(n, w1, w2) ->
     P.sprintf "%s = %s in %s"
-      (name_stringify n) (words_stringify ws1) (words_stringify ws2)
-  | Function(ds, ws) ->
+      (name_stringify n) (word_stringify w1) (word_stringify w2)
+and fun_stringify = function
+    Function(ds, w) ->
     P.sprintf "fun %s = %s"
       (String.concat "; " (List.map arg_def_stringify ds))
-      (words_stringify ws)
-  | Import(ws) ->
-    P.sprintf "import %s" (word_stringify ws)
-  | At(ws1, ws2) ->
-    P.sprintf "%s@%s" (word_stringify ws1) (word_stringify ws2)
+      (word_stringify w)
+and at_stringify = function
+    At(w1, w2) ->
+    P.sprintf "%s@%s" (word_stringify w1) (word_stringify w2)
 
 and word_stringify w =
-  let _w s n = P.sprintf "(%s %s)" s n in
+  let _w s n = P.sprintf "(%s of %s)" s n in
   match w with
     WLiteral(pv) -> _w (lit_stringify pv.value_content) "literal"
   | WName(n) -> _w (name_stringify n) "name"
   | WBackquote(bq) -> _w (backquote_stringify bq) "bquote"
   | WSequence(seq) -> _w (seq_stringify seq) "seq"
   | WControl(cs) -> _w (cs_stringify cs) "cs"
-  | WOtherForm(o) -> _w (of_stringify o) "other"
+  | WFunction(f) -> _w (fun_stringify f) "fun"
+  | WAt(a) -> _w (at_stringify a) "@"
+  | WBind(b) -> _w (bind_stringify b) "bind"
 
 and words_stringify ws =
   String.concat "/" (List.map word_stringify ws)

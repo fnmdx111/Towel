@@ -1,4 +1,3 @@
-
 type primitive_type =
     PT_Atom
   (*  | Int *)
@@ -6,8 +5,8 @@ type primitive_type =
   | PT_Float
   | PT_String
   | PT_List
+  | PT_Module
   | PT_Any;;
-
 
 type atom = {
   atom_name: string;
@@ -19,10 +18,18 @@ type type_def =
 
 and type_def_item = TDName of name | TDPrimitiveType of primitive_type
 
-and name = { mutable
+and _module = {
+  mutable module_name: name;
+  mutable module_path: string;
+}
+
+and module_ = SomeModule of _module | MetaModule
+
+and name = {
   name_ref_key: int;
   name_repr: string;
-  name_type: type_def
+  mutable name_domain: module_;
+  mutable name_type: type_def
 };;
 
 type pvalue = {value_id: int;
@@ -36,23 +43,25 @@ and pvalue_content =
   | VString of string
 
 and backquote =
-  BQValue of pvalue
-| BQName of name
-| BQSeq of sequence
-| BQBackquote of backquote
+    BQValue of pvalue
+  | BQName of name
+  | BQSeq of sequence
+  | BQBackquote of backquote
 
 and word =
-  WLiteral of pvalue
-| WName of name
-| WBackquote of backquote
-| WSequence of sequence
-| WControl of control_sequence
-| WOtherForm of other_form
+    WLiteral of pvalue
+  | WName of name
+  | WBackquote of backquote
+  | WSequence of sequence
+  | WControl of control_sequence
+  | WFunction of function_sform
+  | WAt of at_sform
+  | WBind of bind_sform
 
 and sequence =
-  Sequence of word list
+    Sequence of word list
 
-and if_body = IfBody of word list * word list
+and if_body = IfBody of word * word
 
 and if_sform =
     IfGEZ of if_body
@@ -66,24 +75,27 @@ and if_sform =
   | IfT of if_body
   | IfF of if_body
 
-and pattern = PatternAndMatch of word list * word list
+and pattern = PatternAndMatch of word list * word
 and match_sform = PatternsAndMatches of pattern list
 
 and control_sequence =
-  CtrlSeqIfForm of if_sform
-| CtrlSeqMatchForm of match_sform
+    CtrlSeqIfForm of if_sform
+  | CtrlSeqMatchForm of match_sform
 
 and arg_def =
-  ArgDef of name
-| ArgDefWithType of name * type_def
+    ArgDef of name
+  | ArgDefWithType of name * type_def
 
-and other_form =
-  Bind of name * word list
-| BindIn of name * word list * word list
-| Function of arg_def list * word list
-| Import of word
-| At of word * word
+and function_sform =
+    Function of arg_def list * word
 
-and terminator = Period
+and bind_sform =
+    Bind of name * word
+  | BindIn of name * word * word
+
+and at_sform =
+    At of word * word
+
+and terminator = Period | Newline | EOF;;
 
 type sentence = Sentence of word list * terminator;;
