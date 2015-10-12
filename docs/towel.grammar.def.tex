@@ -14,14 +14,12 @@
 
 Keywords in the Towel programming language is as follows:
 \begin{verbatim}
-if>=0 if>0 if<=0 if<0 if~0 if=0 ift iff ife ifne
-match function fun bind then
+ift match fun bind then
 \end{verbatim}
 
 The corresponding tokens are:
 \begin{verbatim}
-IFGEZ IFGZ IFLEZ IFLZ IFNEZ IFEZ IFT IFF IFE IFNE
-MATCH FUNCTION FUNCTION BIND THEN
+IFT MATCH FUNCTION BIND THEN
 \end{verbatim}
 
 \subsection{Punctuations}
@@ -46,6 +44,8 @@ More formally,
 \begin{verbatim}
   reserved_punct ::= ['`' ''' '"' ',' ';' '.' '\' '@' 
                       '(' ')' '[' ']' '\n' '\r' ' ' '\t']
+  valid_punct ::= ['!' '~' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '|'
+                   ':' '<' '>' '?' '/']
   BQUOTE ::= '`'
   SQUOTE ::= '''
   DQUOTE ::= '"'
@@ -88,7 +88,7 @@ Most easy-to-use languages support a wide variety of literals (Python is a good 
 
 Comments are defined as follows:
 \begin{verbatim}
-  __COMMENTS ::= '"' [^ '"'] '"'
+  __COMMENTS ::= '"' [^ '"']* '"'
 \end{verbatim}
 
 When the scanner encounters any other character not mentioned above, it will raise a \texttt{LexicalError} exception.
@@ -114,6 +114,7 @@ A \texttt{word} (or form) is a basic element of Towel programs:
       | function
       | bind_sform
       | at_sform
+      | LPAREN word RPAREN
 \end{verbatim}
 
 \subsection{Literals}
@@ -137,8 +138,11 @@ Referencing to names in other namespaces (or modules) is allowed with the follow
 
 A sequence is a series of words delimited by a pair of parentheses. They are basically anonymous functions that use the same stack along with the current function. See example section for detailed use cases. The rule for parsing sequences is as follows:
 \begin{verbatim}
-  sequence: LPAREN word* RPAREN
+  sequence: LBRACE word* RBRACE
+          | LBRACE AT word* RBRACE
 \end{verbatim}
+
+The second rule parses sequences as shared sequences (they share the same stack with the caller, useful when implementing macros).
 
 \subsection{Backquotes}
 
@@ -157,16 +161,7 @@ Control sequences consists of \texttt{if} special forms and \texttt{match} speic
   control_sequence: if_sform
                   | match_sform
 
-  if_sform: IFGEZ word COMMA word
-          | IFGZ word COMMA word
-          | IFLEZ word COMMA word
-          | IFLZ word COMMA word
-          | IFE word COMMA word
-          | IFNE word COMMA word
-          | IFEZ word COMMA word
-          | IFNEZ word COMMA word
-          | IFT word COMMA word
-          | IFF word COMMA word
+  if_sform: IFT word COMMA word
 
   match_sform: MATCH (pattern SEMICOLON)* pattern
   (* e.g. "match pattern1, form1; pattern2, form2" *)
@@ -279,6 +274,20 @@ Note that \texttt{X} and \texttt{Y} are already in the stack by default (because
   then (1 5 AnotherFun).
 \end{verbatim}
 
-A quick explanation: when \texttt{SomeFun} is called with \texttt{A}, it returns either evaluated backquoted name \texttt{+} or \texttt{-}, in other words, it returns either name \texttt{+} or \texttt{-}. And because we are evaluating return values of functions, \texttt{+} and \texttt{-} are evaluated (derefenced to) some function values, for example \texttt{fv1:0x0001} and \texttt{fv2:0x0002}. And again because we are evaluating values that the names are pointing to, one of \texttt{fv1:0x0001} and \texttt{fv2:0x0002} is called\footnote{It is worth mentioning that because we have exited \texttt{SomeFun}, we are now evaluating the function value with the stack of \texttt{AnotherFun}} with \texttt{A} and \texttt{B}, thus resulting in either adding or substracting \texttt{A} and \texttt{B}.
+A quick explanation: when \texttt{SomeFun} is called with \texttt{A}, it returns either evaluated backquoted name \texttt{+} or \texttt{-}, in other words, it returns either name \texttt{+} or \texttt{-}.
+
+What the \textbf{returning} actually does it that it cleans up the current function, and pushes whatever is on top of the stack (a name \texttt{+} or \texttt{-} in this case) of the current function (in this case, it is the stack of \texttt{SomeFun}) onto the caller's stack (in this case, it is the stack of \texttt{AnotherFun}). And finally jump to the instruction next to the last one. So there is a name \texttt{+} or \texttt{-} on top of the function \texttt{AnotherFun}.
+
+And because we are evaluating return values of functions, \texttt{+} and \texttt{-} are evaluated (derefenced to) some function values, for example \texttt{fv1:0x0001} and \texttt{fv2:0x0002}. And again because we are evaluating values that the names are pointing to, one of \texttt{fv1:0x0001} and \texttt{fv2:0x0002} is called\footnote{It is worth mentioning that because we have exited \texttt{SomeFun}, we are now evaluating the function value with the stack of \texttt{AnotherFun}} with \texttt{A} and \texttt{B}, thus resulting in either adding or substracting \texttt{A} and \texttt{B}.
+
+\subsection{Macro}
+\begin{verbatim}
+bind A-Macro fun,
+  (@ if~0 +, -)`
+then bind AnotherFun fun A B,
+  (A B A-Macro)
+\end{verbatim}
+
+A quick explanation:
 
 \end{document}
