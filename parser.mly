@@ -153,6 +153,7 @@ word:
 sequence:
   LBRACE list(word) RBRACE { Sequence($2) }
 | LBRACE AT list(word) RBRACE { SharedSequence($3) }
+| LBRACE AT error { err "a" $startpos($3) $startofs($1) $endofs($3) }
 | LBRACE list(word) error {
     err "expected right parenthesis for sequence"
     $startpos($3) $startofs($1) $endofs($3)
@@ -162,5 +163,5 @@ sentence:
   list(word) TERMINATOR { Sentence($1, $2) }
 | list(word) error {
     err "expected a terminator"
-    $startpos($2) $startofs($1) $endofs($2)
+    $startpos($2) $startofs($2) $endofs($2)
   }
