@@ -8,10 +8,10 @@ let err s loc stofs eofs = raise (SyntacticError(s,
                                                  eofs));;
 %}
 
-%token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
+%token IFT
 %token MATCH FUNCTION BIND THEN AT
 %token SLASH BQUOTE COMMA SEMICOLON
-%token LBRACKET RBRACKET LPAREN RPAREN
+%token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 
 %token <Ast.pvalue> LITERAL
 %token <Ast.name> NAME
@@ -58,93 +58,12 @@ arg_def:
 | NAME type_def { ArgDefWithType($1, $2) }
 
 if_sform:
-  IFGEZ word COMMA word { IfGEZ(IfBody($2, $4)) }
-| IFGZ word COMMA word { IfGZ(IfBody($2, $4)) }
-| IFLEZ word COMMA word { IfLEZ(IfBody($2, $4)) }
-| IFLZ word COMMA word { IfLZ(IfBody($2, $4)) }
-| IFE word COMMA word { IfEmpty(IfBody($2, $4)) }
-| IFNE word COMMA word { IfNonEmpty(IfBody($2, $4)) }
-| IFEZ word COMMA word { IfEZ(IfBody($2, $4)) }
-| IFNEZ word COMMA word { IfNEZ(IfBody($2, $4)) }
-| IFT word COMMA word { IfT(IfBody($2, $4)) }
-| IFF word COMMA word { IfF(IfBody($2, $4)) }
-| IFGEZ word error {
-    err "expected a comma for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFGZ word error {
-    err "expected a comma for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFLEZ word error {
-    err "expected a comma for else branch"    
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFLZ word error {
-    err "expected a comma for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFE word error {
-    err "expected a comma for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFNE word error {
-    err "expected a comma for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFEZ word error {
-    err "expected a comma for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFNEZ word error {
-    err "expected a comma for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
+| IFT word COMMA word { IfT($2, $4) }
 | IFT word error {
     err "expected a comma for else branch"
     $startpos($3) $startofs($1) $endofs($3)
   }
-| IFF word error {
-    err "expected a comma for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFGEZ word COMMA error {
-    err "unexpected form for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFGZ word COMMA error {
-    err "unexpected form for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFLEZ word COMMA error {
-    err "unexpected form for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFLZ word COMMA error {
-    err "unexpected form for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFEZ word COMMA error {
-    err "unexpected form for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFNEZ word COMMA error {
-    err "unexpected form for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFE word COMMA error {
-    err "unexpected form for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFNE word COMMA error {
-    err "unexpected form for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
 | IFT word COMMA error {
-    err "unexpected form for else branch"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-| IFF word COMMA error {
     err "unexpected form for else branch"
     $startpos($3) $startofs($1) $endofs($3)
   }
@@ -203,6 +122,10 @@ function_:
 
 bind_sform:
   BIND NAME word THEN word { BindThen($2, $3, $5) }
+| BIND NAME word error {
+    err "expected \"then\" for bind-then special form"
+    $startpos($4) $startofs($1) $endofs($4)
+  }
 | BIND NAME word THEN error {
     err "expected a form for bind-then special form"
     $startpos($5) $startofs($1) $endofs($5)
@@ -228,8 +151,9 @@ word:
 | name { WName($1) }
 
 sequence:
-  LPAREN list(word) RPAREN { Sequence($2) }
-| LPAREN list(word) error {
+  LBRACE list(word) RBRACE { Sequence($2) }
+| LBRACE AT list(word) RBRACE { SharedSequence($3) }
+| LBRACE list(word) error {
     err "expected right parenthesis for sequence"
     $startpos($3) $startofs($1) $endofs($3)
   }

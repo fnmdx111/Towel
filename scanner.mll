@@ -19,6 +19,8 @@ let _LBRACKET = '['
 let _RBRACKET = ']'
 let _SLASH = '\\'
 let _AT = "@"
+let _LBRACE = '{'
+let _RBRACE = '}'
 
 let string_char = [^ '\\' '\'']
 let string_esc_charseq = '\\' string_char
@@ -28,14 +30,16 @@ let string_lit = _SQUOTE string_item* _SQUOTE
    https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals*)
 
 let alpha = ['a'-'z']
-let common_legal_char = [^ ',' ';' '.' '\'' '\\' '`' '@'
-                          '(' ')' '[' ']'
-                          ' ' '\t' '\n' '\r']
-let name = [^ ',' ';' '.' '\\' '\'' '`' '@'
-              '(' ')' '[' ']'
-              'a'-'z' '0'-'9'
-              ' ' '\t' '\n' '\r'] common_legal_char*
-let atom_lit = alpha common_legal_char*
+let reserved_char = [',' ';' '.' '\'' '\\' '`' '@'
+                     '(' ')' '[' ']'
+                     ' ' '\t' '\n' '\r']
+let common_valid_char = ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '='
+                         '|' ':' '<' '>' '?' '/' 'a'-'z' 'A'-'Z' '0'-'9']
+let valid_upper_char = ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '='
+                        '|' ':' '<' '>' '?' '/' 'A'-'Z']
+
+let name = valid_upper_char common_valid_char*
+let atom_lit = alpha common_valid_char*
 
 let digit = ['0'-'9']
 let signed = ['+' '-']
@@ -56,19 +60,11 @@ rule token = parse
 | _RBRACKET { RBRACKET }
 | _SLASH { SLASH }
 | _AT { AT }
+| _LBRACE { LBRACE }
+| _RBRACE { RBRACE }
 
-| "if>=0" { IFGEZ }
-| "if>0" { IFGZ }
-| "if<=0" { IFLEZ }
-| "if<0" { IFLZ }
-| "if=0" { IFEZ }
-| "if~0" { IFNEZ }
 | "ift" { IFT }
-| "iff" { IFF }
-| "ife" { IFE }
-| "ifne" { IFNE }
 | "match" { MATCH }
-| "function" { FUNCTION }
 | "bind" { BIND }
 | "then" { THEN }
 | "fun" { FUNCTION }
