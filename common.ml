@@ -61,6 +61,7 @@ and lit_stringify = function
 and seq_stringify seq =
   match seq with
     Sequence(ws) -> String.concat ", " (List.map word_stringify ws)
+  | SharedSequence(ws) -> String.concat "-, " (List.map word_stringify ws)
 
 and backquote_stringify a = P.sprintf "(bq-lit %s)"
     (match a with
@@ -70,12 +71,7 @@ and backquote_stringify a = P.sprintf "(bq-lit %s)"
      | BQBackquote(bq) -> backquote_stringify bq)
 
 and cs_stringify cs =
-  let if_stringify s body =
-    match body with
-      IfBody(w1, w2) -> P.sprintf "%s { %s; %s }" s
-                          (word_stringify w1)
-                          (word_stringify w2)
-  in let pattern_stringify p =
+  let pattern_stringify p =
        match p with
          PatternAndMatch(p, m) ->
          P.sprintf "pattern %s -> %s;"
@@ -84,16 +80,9 @@ and cs_stringify cs =
   in match cs with
     CtrlSeqIfForm(i) ->
     (match i with
-       IfGEZ(ib) -> if_stringify "gez" ib
-     | IfGZ(ib) -> if_stringify "gz" ib
-     | IfLEZ(ib) -> if_stringify "lez" ib
-     | IfLZ(ib) -> if_stringify "lz" ib
-     | IfEmpty(ib) -> if_stringify "empty" ib
-     | IfNonEmpty(ib) -> if_stringify "non-empty" ib
-     | IfEZ(ib) -> if_stringify "ez" ib
-     | IfNEZ(ib) -> if_stringify "nez" ib
-     | IfT(ib) -> if_stringify "t" ib
-     | IfF(ib) -> if_stringify "f" ib)
+       IfT(w1, w2) -> P.sprintf "if-true { %s; %s }"
+                        (word_stringify w1)
+                        (word_stringify w2))
   | CtrlSeqMatchForm(m) ->
     (match m with
        PatternsAndMatches(ps) -> String.concat "; "
