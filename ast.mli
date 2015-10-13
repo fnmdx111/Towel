@@ -62,8 +62,19 @@ and sequence =
     SharedSequence of word list
   | Sequence of word list
 
+and if_body = IfBody of word * word
+
 and if_sform =
-    IfT of word * word
+    IfGEZ of if_body
+  | IfGZ of if_body
+  | IfLEZ of if_body
+  | IfLZ of if_body
+  | IfEmpty of if_body
+  | IfNonEmpty of if_body
+  | IfEZ of if_body
+  | IfNEZ of if_body
+  | IfT of if_body
+  | IfF of if_body
 
 and pattern = PatternAndMatch of word list * word
 and match_sform = PatternsAndMatches of pattern list
