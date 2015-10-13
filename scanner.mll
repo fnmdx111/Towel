@@ -63,7 +63,16 @@ rule token = parse
 | _LBRACE { LBRACE }
 | _RBRACE { RBRACE }
 
+| "if>=0" { IFGEZ }
+| "if>0" { IFGZ }
+| "if<=0" { IFLEZ }
+| "if<0" { IFLZ }
+| "if=0" { IFEZ }
+| "if~0" { IFNEZ }
 | "ift" { IFT }
+| "iff" { IFF }
+| "ife" { IFE }
+| "ifne" { IFNE }
 | "match" { MATCH }
 | "bind" { BIND }
 | "then" { THEN }

@@ -14,12 +14,14 @@
 
 Keywords in the Towel programming language is as follows:
 \begin{verbatim}
-ift match fun bind then
+if>=0 if>0 if<=0 if<0 if~0 if=0 ift iff ife ifne
+match function fun bind then
 \end{verbatim}
 
 The corresponding tokens are:
 \begin{verbatim}
-IFT MATCH FUNCTION BIND THEN
+IFGEZ IFGZ IFLEZ IFLZ IFNEZ IFEZ IFT IFF IFE IFNE
+MATCH FUNCTION FUNCTION BIND THEN
 \end{verbatim}
 
 \subsection{Punctuations}
@@ -161,7 +163,16 @@ Control sequences consists of \texttt{if} special forms and \texttt{match} speic
   control_sequence: if_sform
                   | match_sform
 
-  if_sform: IFT word COMMA word
+  if_sform: IFGEZ word COMMA word
+          | IFGZ word COMMA word
+          | IFLEZ word COMMA word
+          | IFLZ word COMMA word
+          | IFE word COMMA word
+          | IFNE word COMMA word
+          | IFEZ word COMMA word
+          | IFNEZ word COMMA word
+          | IFT word COMMA word
+          | IFF word COMMA word
 
   match_sform: MATCH (pattern SEMICOLON)* pattern
   (* e.g. "match pattern1, form1; pattern2, form2" *)
