@@ -1,4 +1,5 @@
-open Common
+open Common;;
+open Exc;;
 
 let _ =
   let lexbuf = Lexing.from_channel stdin in

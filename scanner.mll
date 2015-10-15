@@ -3,6 +3,7 @@ open Ast
 open Parser
 open Common
 open Lexing
+open Exc
 }
 
 let _WHITESPACE = [' ' '\t']

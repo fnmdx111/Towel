@@ -1,5 +1,6 @@
 open Common
 open Parser
+open Exc
 
 let _ =
   let lexbuf = Lexing.from_channel stdin in

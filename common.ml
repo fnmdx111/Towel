@@ -1,8 +1,5 @@
 open Ast
 
-exception LexicalError of (string * int * int);;
-exception SyntacticError of (string * int * int * int);;
-
 (* =======================================
      Counters
 
@@ -37,6 +34,11 @@ let module_from_path p =
                     name_ref_key = -42;
                     name_domain = Ast.MetaModule };
     module_path = p };;
+
+(* ==========================================
+   Utilities for types defined in AST
+   ========================================== *)
+
 
 (* =======================================
      AST stringifiers
@@ -111,6 +113,8 @@ and type_def_item_stringify i =
      | PT_Float -> "PT_Float"
      | PT_String -> "PT_String"
      | PT_Module -> "PT_Module"
+     | PT_Number -> "PT_Number"
+     | PT_Int -> "PT_Int"
      | PT_FixedInt -> "PT_FixedInt")
 
 and type_def_stringify d =

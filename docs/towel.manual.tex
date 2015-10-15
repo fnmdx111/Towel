@@ -1,0 +1,313 @@
+\documentclass{book}
+
+\usepackage[left=1in, right=1in, top=1in, bottom=1in]{geometry}
+
+\title{Towel Reference Manual}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\chapter{Grammar definition}
+\section{Lexical definition}
+
+\subsection{Keywords}
+
+Keywords in the Towel programming language is as follows:
+\begin{verbatim}
+if>=0 if>0 if<=0 if<0 if~0 if=0 ift iff ife ifne
+match function fun bind then
+\end{verbatim}
+
+The corresponding tokens are:
+\begin{verbatim}
+IFGEZ IFGZ IFLEZ IFLZ IFNEZ IFEZ IFT IFF IFE IFNE
+MATCH FUNCTION FUNCTION BIND THEN
+\end{verbatim}
+
+\subsection{Punctuations}
+
+Punctuations used in the Towel programming language is as follows:
+
+\begin{itemize}
+\item Whitespace characters are simply ignored.
+\item These characters have special meanings in the Towel programming language: \texttt{` ' `` , ; . ( ) [ ] { } \ @ eof}. This means that you cannot use these characters in names and atoms. \footnote{In other words, you can use any other punctuation characters in names and atoms.}
+\end{itemize}
+
+Specially,
+\begin{verbatim}
+  TERMINATOR ::= ['.' '\n' '\r' '\r\n' eof]
+\end{verbatim}
+
+\subsection{Names}
+
+Names are used for naming (or referencing to) values. Valid names should not start with reserved punctuations, lowercased letters, and numbers.
+
+More formally,
+\begin{verbatim}
+  reserved_punct ::= ['`' ''' '"' ',' ';' '.' '\' '@' 
+                      '(' ')' '[' ']' '{' '}' '\n' '\r' ' ' '\t']
+  valid_punct ::= ['!' '~' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '|'
+                   ':' '<' '>' '?' '/']
+  BQUOTE ::= '`'
+  SQUOTE ::= '''
+  DQUOTE ::= '"'
+  COMMA ::= ','
+  SEMICOLON ::= ';'
+  PERIOD ::= '.'
+  SLASH ::= '\'
+  AT ::= '@'
+  LPAREN ::= '('
+  RPAREN ::= ')'
+  LBRACKET ::= '['
+  RBRACKET ::= ']'
+  LBRACE ::= '{'
+  RBRACE ::= '}'
+
+  digit ::= ['0'-'9']
+  lc_chars ::= ['a'-'z']
+  NAME ::= [^ reserved_punct digit lc_chars] [^ reserved_punct]*
+\end{verbatim}
+
+\subsection{Literals}
+
+Most easy-to-use languages support a wide variety of literals (Python is a good example and Java is not). The Towel programming language supports literals for atoms, integers (fixed), floats, strings, and lists. They are defined as follows (rule for list literals will be revealed later):
+\begin{verbatim}
+  ATOM ::= lc_chars [^ reserved_punct]*
+
+  signed ::= ['+' '-']
+  INT ::= signed? digit+
+
+  frac ::= '.' digit+
+  FLOAT ::= signed? digit+ frac? ('e' digit+)?
+
+  string_char ::= [^ '\' ''']
+  string_esc_seq ::= '\' string_char
+  string_item ::= string_char | string_esc_seq
+  STRING ::= ''' string_item* '''
+  (Rules for strings is from the lexical parsing section of the Python
+   language reference manual.)
+\end{verbatim}
+
+\subsection{Comments}
+
+Comments are defined as follows:
+\begin{verbatim}
+  __COMMENTS ::= '"' [^ '"']* '"'
+\end{verbatim}
+
+When the scanner encounters any other character not mentioned above, it will raise a \texttt{LexicalError} exception.
+
+\section{Syntactic definition}
+
+\texttt{menhir} compiles the grammar below without complaining about shift/reduce conflicts.
+
+A Towel program is basically a \texttt{sentence} consisting a series of \texttt{word}s and a \texttt{TERMINATOR} token.
+\begin{verbatim}
+  sentence: word* TERMINATOR
+\end{verbatim}
+
+\subsection{Words}
+
+A \texttt{word} (or form) is a basic element of Towel programs:
+\begin{verbatim}
+  word: literal
+      | name
+      | sequence
+      | backquote
+      | control_sequence
+      | function
+      | bind_sform
+      | at_sform
+      | LPAREN word RPAREN
+\end{verbatim}
+
+\subsection{Literals}
+
+Although list literals are, like strings, delimited by delimiters (single quotes for strings, brackets for lists). However, string items are simply characters that can be handled by scanner, while list items are much more complicated than characters. Thus list literals must be parsed by parser:
+\begin{verbatim}
+  list_literal: LBRACKET word* RBRACKET
+  literal: LITERAL (* LITERAL tokens from scanner *)
+         | list_literal
+\end{verbatim}
+
+\subsection{Names}
+
+Referencing to names in other namespaces (or modules) is allowed with the following rule:
+\begin{verbatim}
+  name: NAME SLASH name
+      | NAME
+\end{verbatim}
+
+\subsection{Sequences}
+
+A sequence is a series of words delimited by a pair of parentheses. They are basically anonymous functions that use the same stack along with the current function. See example section for detailed use cases. The rule for parsing sequences is as follows:
+\begin{verbatim}
+  sequence: LPAREN word* RPAREN
+          | LPAREN AT word* RPAREN
+\end{verbatim}
+
+The second rule parses sequences as shared sequences (they share the same stack with the caller, useful when implementing macros).
+
+\subsection{Backquotes}
+
+A \texttt{backquote} is a special form that defers the evaluation of names and values. You can backquote any value and name. You can quote sequences as well.
+\begin{verbatim}
+  backquote: literal BQUOTE
+           | name BQUOTE
+           | sequence BQUOTE
+           | backquote BQUOTE
+           | LBRACE word* RBRACE
+\end{verbatim}
+
+Notice that \texttt{{ word* }} will create a backquoted shared sequenced, which is very useful when creating macros.
+
+\subsection{Control sequences}
+
+Control sequences consists of \texttt{if} special forms and \texttt{match} speical form:
+\begin{verbatim}
+  control_sequence: if_sform
+                  | match_sform
+
+  if_sform: IFGEZ word COMMA word
+          | IFGZ word COMMA word
+          | IFLEZ word COMMA word
+          | IFLZ word COMMA word
+          | IFE word COMMA word
+          | IFNE word COMMA word
+          | IFEZ word COMMA word
+          | IFNEZ word COMMA word
+          | IFT word COMMA word
+          | IFF word COMMA word
+
+  match_sform: MATCH (pattern SEMICOLON)* pattern
+  (* e.g. "match pattern1, form1; pattern2, form2" *)
+
+  pattern: word* COMMA restricted_word (* e.g. "pattern, form" *)
+
+  restricted_word: name
+                 | backquote
+                 | literal
+                 | sequence
+  (* this rule is to avoid some shift/reduce conflicts *)
+\end{verbatim}
+
+\subsection{Functions}
+
+Function forms are used to define functions:
+\begin{verbatim}
+  function: FUNCTION arg_def* COMMA word
+
+  arg_def: NAME
+         | NAME type_def
+
+  type_def: LPAREN name+ RPAREN
+\end{verbatim}
+
+\subsection{Bind-Then forms}
+
+Bind-Then forms are special forms about name scoping. They are defined as follows:
+\begin{verbatim}
+  bind_sform: BIND NAME word THEN word
+\end{verbatim}
+
+\subsection{At special form}
+
+This special form is provided as an infix operator\footnote{It is probably the only operator throughout this language.} despite the postfix syntax fashion of Towel. It is mainly used as a syntactic sugar (such as referencing items on stack by indices). It is defined as follows:
+\begin{verbatim}
+  at_sform: restricted_word AT word
+\end{verbatim}
+
+\section{Rules for evaluation}
+
+When evaluating a Towel program, you must evaluate each form:
+\begin{itemize}
+\item For integer, float, string, and atom literals, return them directly;
+\item For each list literal, return the list after you have evaluated each item of it;
+\item For a backqoute, you return whatever is quoted (without evaluating);
+\item For a sequence, you create a new function out of the sequence and evaluate that function (i.e. evaluate the sequence on a new stack) and return the evaluated value;
+\item For a function, you apply\footnote{A stack is always created along with a function invocation, this is to avoid the potential corruption of shared stacks.} required arguments to it (if not, a backquoted partial applied function will be returned), then you evaluate the return value of the function and return the evaluated value;
+\item For a name, you look up the value it references to, evaluated that value and return the evaluated value.
+\end{itemize}
+
+After evaluating the forms, you push the result onto the stack.
+
+To show this in pseudocode:
+\begin{verbatim}
+  eval t = match t with
+      List(l) -> List(map eval l)
+    | Backquote(bq) -> bq
+    | Sequence(seq) -> eval (apply (create_fun seq) [])
+    | Function(f) -> eval (apply f current_stack)
+    | Name(n) -> eval (lookup n scope)
+    | _ -> _
+\end{verbatim}
+
+\chapter{Examples}
+
+The \texttt{traverse} tool produces correct syntax tree with these examples.
+
+\section{Concrete examples}
+\subsection{Quicksort}
+\begin{verbatim}
+  bind Quicksort fun L,
+    match
+      [], [];
+      Head Tail ::,
+        (Tail (Head <) Filter Quicksort
+         [Head]
+         Tail (Head >=) Filter Quicksort
+         ++3)
+  then ([5 4 3 2 1] Quicksort).
+\end{verbatim}
+
+\footnote{In order to eliminate the shift/reduce conflicts, I have to import a lot of parentheses (sequences).}Note that \texttt{++3} is a trinary version of function \texttt{++} (list concatenation).
+
+Also The second pattern action is written as a sequence, which creates an anonymous function whose body is the forms in the sequence, then the anonymous function is evaluted. The scope is shared between these functions, so \texttt{Head} and \texttt{Tail} are still visible to the anonymous function.
+
+\subsection{Greatest common divisor}
+\begin{verbatim}
+  bind Greated-common-divisor fun X(Int) Y,
+    (- if=0 X,
+       if>0 (Y X - Y Greatest-common-divisor),
+            (X X Y - Greatest-common-divisor))
+  then (42 24 Greatest-common-divisor).
+\end{verbatim}
+
+Note that \texttt{X} and \texttt{Y} are already in the stack by default (because Towel pushes arguments onto stack), so we can immediately evaluate function \texttt{-}.
+
+\subsection{Fibonacci numbers}
+\begin{verbatim}
+  bind Fib fun A B N,
+    if=0 A, (A B + A 1 N - Fib)
+  then (1 1 10 Fib).
+\end{verbatim}
+
+\subsection{Something about backquotes}
+\begin{verbatim}
+  bind SomeFun fun A,
+    if~0 +`, -`
+  then bind AnotherFun fun A B,
+    (A B A SomeFun)
+  then (1 5 AnotherFun).
+\end{verbatim}
+
+A quick explanation: when \texttt{SomeFun} is called with \texttt{A}, it returns either evaluated backquoted name \texttt{+} or \texttt{-}, in other words, it returns either name \texttt{+} or \texttt{-}.
+
+What the \textbf{returning} actually does it that it cleans up the current function, and pushes whatever is on top of the stack (a name \texttt{+} or \texttt{-} in this case) of the current function (in this case, it is the stack of \texttt{SomeFun}) onto the caller's stack (in this case, it is the stack of \texttt{AnotherFun}). And finally jump to the instruction next to the last one. So there is a name \texttt{+} or \texttt{-} on top of the function \texttt{AnotherFun}.
+
+And because we are evaluating return values of functions, \texttt{+} and \texttt{-} are evaluated (derefenced to) some function values, for example \texttt{fv1:0x0001} and \texttt{fv2:0x0002}. And again because we are evaluating values that the names are pointing to, one of \texttt{fv1:0x0001} and \texttt{fv2:0x0002} is called\footnote{It is worth mentioning that because we have exited \texttt{SomeFun}, we are now evaluating the function value with the stack of \texttt{AnotherFun}} with \texttt{A} and \texttt{B}, thus resulting in either adding or substracting \texttt{A} and \texttt{B}.
+
+\section{Advanced examples}
+\subsection{Macro}
+\begin{verbatim}
+bind A-Macro fun,
+  (@ if~0 +, -)`
+then bind AnotherFun fun A B,
+  (A B A-Macro)
+\end{verbatim}
+
+A quick explanation: \texttt{(@ if~0 +, -)} is returned as we want, so a sequence (which is essentially an anonymous function that test whether the value on top of the stack is zero), and by adding a \texttt{@} we define the sequence to be a shared sequence which shares the same stack with the caller, so the overall effect is like we have done a code replacement.
+
+
+\end{document}

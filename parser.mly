@@ -1,11 +1,8 @@
 %{
 open Ast
 open Common
+open Exc
 
-let err s loc stofs eofs = raise (SyntacticError(s,
-                                                 loc.Lexing.pos_lnum,
-                                                 stofs,
-                                                 eofs));;
 %}
 
 %token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
@@ -233,6 +230,7 @@ restricted_word:
 | backquote { WBackquote($1) }
 | literal { WLiteral($1) }
 | sequence { WSequence($1) }
+| LBRACE list(word) RBRACE { WSequence(SharedSequence($2)) }
 
 function_:
   FUNCTION list(arg_def) COMMA word { Function($2, $4) }
@@ -272,13 +270,13 @@ word:
 | name { WName($1) }
 
 sequence:
-  LBRACE list(word) RBRACE { Sequence($2) }
-| LBRACE AT list(word) RBRACE { SharedSequence($3) }
-| LBRACE AT error {
+  LPAREN list(word) RPAREN { Sequence($2) }
+| LPAREN AT list(word) RPAREN { SharedSequence($3) }
+| LPAREN AT error {
     err "expected a list of words for shared sequence"
     $startpos($3) $startofs($1) $endofs($3)
   }
-| LBRACE list(word) error {
+| LPAREN list(word) error {
     err "expected right parenthesis for sequence"
     $startpos($3) $startofs($1) $endofs($3)
   }

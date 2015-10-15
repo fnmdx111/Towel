@@ -1,11 +1,12 @@
 type primitive_type =
     PT_Atom
-  (*  | Int *)
+  | PT_Int
   | PT_FixedInt
   | PT_Float
   | PT_String
   | PT_List
   | PT_Module
+  | PT_Number
   | PT_Any;;
 
 type atom = {
