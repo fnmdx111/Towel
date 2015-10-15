@@ -91,7 +91,9 @@ and arg_def =
 and function_sform =
     Function of arg_def list * word
 
-and bind_sform = BindThen of name * word * word
+and bind_body = BindBody of name * word
+
+and bind_sform = BindThen of bind_body list * word
 
 and at_sform =
     At of word * word

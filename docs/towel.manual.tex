@@ -8,21 +8,21 @@
 \maketitle
 \tableofcontents
 
-\chapter{Grammar definition}
-\section{Lexical definition}
+\chapter{Grammar Definition}
+\section{Lexical Elements}
 
 \subsection{Keywords}
 
 Keywords in the Towel programming language is as follows:
 \begin{verbatim}
 if>=0 if>0 if<=0 if<0 if~0 if=0 ift iff ife ifne
-match function fun bind then
+match function fun bind also then
 \end{verbatim}
 
 The corresponding tokens are:
 \begin{verbatim}
 IFGEZ IFGZ IFLEZ IFLZ IFNEZ IFEZ IFT IFF IFE IFNE
-MATCH FUNCTION FUNCTION BIND THEN
+MATCH FUNCTION FUNCTION BIND ALSO THEN
 \end{verbatim}
 
 \subsection{Punctuations}
@@ -160,7 +160,7 @@ A \texttt{backquote} is a special form that defers the evaluation of names and v
            | LBRACE word* RBRACE
 \end{verbatim}
 
-Notice that \texttt{{ word* }} will create a backquoted shared sequenced, which is very useful when creating macros.
+Note that \texttt{{ word* }} will create a backquoted shared sequenced, which is extremely useful when creating macros.
 
 \subsection{Control sequences}
 
@@ -192,6 +192,22 @@ Control sequences consists of \texttt{if} special forms and \texttt{match} speic
   (* this rule is to avoid some shift/reduce conflicts *)
 \end{verbatim}
 
+The rationale on so many \texttt{if} forms is to support chained \texttt{if} forms naturally, like this:
+\begin{verbatim}
+  A if>0 Something,
+    if<0 (Some other things),
+    if=0 (Some more other things),
+      Impossible.
+\end{verbatim}
+
+rather than:
+\begin{verbatim}
+  0 A > ift Something,
+ (0 A < ift (Some other things),
+ (0 A = ift (Some more other things),
+          Impossible)).
+\end{verbatim}
+
 \subsection{Functions}
 
 Function forms are used to define functions:
@@ -208,8 +224,10 @@ Function forms are used to define functions:
 
 Bind-Then forms are special forms about name scoping. They are defined as follows:
 \begin{verbatim}
-  bind_sform: BIND NAME word THEN word
+  bind_sform: BIND NAME word (ALSO NAME word)* THEN word
 \end{verbatim}
+
+With token \texttt{ALSO}, you can bind multiple values to multiple names simultaneous, enabling you to cross-reference these names.
 
 \subsection{At special form}
 
@@ -303,11 +321,14 @@ And because we are evaluating return values of functions, \texttt{+} and \texttt
 \begin{verbatim}
 bind A-Macro fun,
   (@ if~0 +, -)`
+also B-Macro fun,
+  {if~0 +, -}
 then bind AnotherFun fun A B,
   (A B A-Macro)
 \end{verbatim}
 
 A quick explanation: \texttt{(@ if~0 +, -)} is returned as we want, so a sequence (which is essentially an anonymous function that test whether the value on top of the stack is zero), and by adding a \texttt{@} we define the sequence to be a shared sequence which shares the same stack with the caller, so the overall effect is like we have done a code replacement.
 
+\texttt{B-Macro} is a short-hand version of \texttt{A-Macro}
 
 \end{document}

@@ -128,10 +128,17 @@ and arg_def_stringify d =
     | ArgDefWithType(n, td) ->
       P.sprintf "(%s: %s)" (name_stringify n) (type_def_stringify td)
 
+and bind_body_stringify = function
+    BindBody(n, w) ->
+    P.sprintf "%s = %s" (name_stringify n) (word_stringify w)
+
 and bind_stringify = function
-    BindThen(n, w1, w2) ->
-    P.sprintf "%s = %s in %s"
-      (name_stringify n) (word_stringify w1) (word_stringify w2)
+    BindThen(bodies, w) ->
+    P.sprintf "%s in %s"
+      (String.concat " also "
+         (List.map bind_body_stringify bodies))
+      (word_stringify w)
+
 and fun_stringify = function
     Function(ds, w) ->
     P.sprintf "fun %s = %s"

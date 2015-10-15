@@ -76,6 +76,7 @@ rule token = parse
 | "ifne" { IFNE }
 | "match" { MATCH }
 | "bind" { BIND }
+| "also" { ALSO }
 | "then" { THEN }
 | "fun" { FUNCTION }
 

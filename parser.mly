@@ -6,7 +6,7 @@ open Exc
 %}
 
 %token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
-%token MATCH FUNCTION BIND THEN AT
+%token MATCH FUNCTION BIND ALSO THEN AT
 %token SLASH BQUOTE COMMA SEMICOLON
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 
@@ -239,15 +239,20 @@ function_:
     $startpos($3) $startofs($1) $endofs($3)
   }
 
+bind_body:
+  NAME word { BindBody($1, $2) }
+
 bind_sform:
-  BIND NAME word THEN word { BindThen($2, $3, $5) }
-| BIND NAME word error {
-    err "expected \"then\" for bind-then special form"
-    $startpos($4) $startofs($1) $endofs($4)
+  BIND separated_nonempty_list(ALSO, bind_body) THEN word {
+    BindThen($2, $4)
   }
-| BIND NAME word THEN error {
+| BIND separated_nonempty_list(ALSO, bind_body) error {
+    err "expected \"then\" for bind-then special form"
+    $startpos($3) $startofs($1) $endofs($3)
+  }
+| BIND separated_nonempty_list(ALSO, bind_body) THEN error {
     err "expected a form for bind-then special form"
-    $startpos($5) $startofs($1) $endofs($5)
+    $startpos($4) $startofs($1) $endofs($4)
   }
 | BIND error {
     err "expected a name" $startpos($2) $startofs($1) $endofs($2)
