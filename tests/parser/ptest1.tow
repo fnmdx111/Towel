@@ -1,0 +1,11 @@
+"The classical quicksort test."
+"Tests bind-then, fun, match, sequences."
+
+bind Quicksort fun L,
+  match [], [];
+        Head Tail ::,
+          (Tail (Head <) Filter\Std Quicksort
+           [Head]
+           Tail (Head >=) Filter\Std Quicksort
+	   ++ ++)
+then ([5 4 3 2 1] Quicksort).

@@ -67,7 +67,6 @@ and sequence =
   | Sequence of word list
 
 and if_body = IfBody of word * word
-
 and if_sform =
     IfGEZ of if_body
   | IfGZ of if_body
@@ -110,6 +109,6 @@ and altype_sform = AlType of altype_def list * word
 and at_sform =
     At of word * word
 
-and terminator = Period | Newline | EOF;;
+and terminator = Period | EOF;;
 
 type sentence = Sentence of word list * terminator;;

@@ -50,7 +50,7 @@ let float_lit = signed? digit+ frac? ('e' digit+)?
 
 rule token = parse
 | _WHITESPACE+ { token lexbuf }
-| _NEWLINE { Lexing.new_line lexbuf; TERMINATOR(Ast.Newline) }
+| _NEWLINE { Lexing.new_line lexbuf; token lexbuf }
 | _BQUOTE { BQUOTE }
 | _COMMA { COMMA }
 | _SEMICOLON { SEMICOLON }
@@ -83,7 +83,7 @@ rule token = parse
 
 | eof { TERMINATOR(Ast.EOF) }
 
-| _DQUOTE [^ '"'] _DQUOTE { token lexbuf } (* comments *)
+| _DQUOTE [^ '"' '\n' '\r']* _DQUOTE { token lexbuf } (* comments *)
 
 | name as n {
     let path = lexbuf.lex_buffer in
@@ -113,6 +113,7 @@ rule token = parse
              value_content = VFloat(float_of_string f);
              value_type = TypeDef([TDPrimitiveType(PT_Float)])})
   }
+
 | _ as s {
     raise (LexicalError
              (Printf.sprintf "unexpected character `%c'" s,
