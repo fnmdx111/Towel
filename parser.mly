@@ -6,10 +6,11 @@ open Exc
 %}
 
 %token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
-%token MATCH FUNCTION BIND ALSO THEN AT
+%token MATCH FUNCTION BIND ALSO THEN AT TYPE
 %token SLASH BQUOTE COMMA SEMICOLON
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 
+%token <Ast.atom> ATOM
 %token <Ast.pvalue> LITERAL
 %token <Ast.name> NAME
 %token <Ast.terminator> TERMINATOR
@@ -25,11 +26,22 @@ lit_list:
       $startpos($3) $startofs($1) $endofs($3)
   }
 
+lit_tuple:
+  LBRACKET SLASH list(restricted_word) RBRACKET { VTuple($3) }
+
 literal:
   LITERAL { $1 }
+| ATOM { {value_id = 1; value_content = VAtom($1);
+          value_type = TypeDef([TDPrimitiveType(PT_Atom)])} }
 | lit_list { {value_id = 1;
               value_content = $1;
               value_type = TypeDef([TDPrimitiveType(PT_List)])} }
+| lit_tuple { {value_id = 1;
+               value_content = $1;
+               value_type = TypeDef([TDPrimitiveType(
+                   PT_Tuple(List.length (match $1 with
+                         VTuple(ws) -> ws
+                       | _ -> [])))])} }
 
 backquote:
   literal BQUOTE { BQValue($1) }
@@ -264,6 +276,29 @@ at_sform:
     err "unexpected form" $startpos($1) $startofs($1) $endofs($1)
   }
 
+altype_parameter:
+  LBRACE nonempty_list(ATOM) RBRACE { AlTypeParameter($2) }
+
+altype_case_def_item:
+  ATOM { AlTypeCaseDefItemAtom($1) }
+| NAME { AlTypeCaseDefItemName($1) }
+| NAME altype_parameter { AlTypeCaseDefItemNameWithParameter($1, $2) }
+
+altype_case_def:
+  LBRACKET SLASH list(altype_case_def_item) RBRACKET ATOM {
+    AlTypeCaseDef($3, $5)
+  }
+
+altype_def:
+  NAME separated_nonempty_list(COMMA, altype_case_def) {
+    AlTypeDef($1, $2)
+  }
+
+altype_sform:
+  TYPE separated_nonempty_list(ALSO, altype_def) THEN word {
+    AlType($2, $4)
+  }
+
 word:
   backquote { WBackquote($1) }
 | sequence { WSequence($1) }
@@ -273,6 +308,7 @@ word:
 | bind_sform { WBind($1) }
 | at_sform { WAt($1) }
 | name { WName($1) }
+| altype_sform { WAlType($1) }
 
 sequence:
   LPAREN list(word) RPAREN { Sequence($2) }

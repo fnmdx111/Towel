@@ -7,6 +7,7 @@ type primitive_type =
   | PT_List
   | PT_Module
   | PT_Number
+  | PT_Tuple of int
   | PT_Any;;
 
 type atom = {
@@ -42,6 +43,7 @@ and pvalue_content =
   | VFloat of float
   | VList of word list
   | VString of string
+  | VTuple of word list
 
 and backquote =
     BQValue of pvalue
@@ -58,6 +60,7 @@ and word =
   | WFunction of function_sform
   | WAt of at_sform
   | WBind of bind_sform
+  | WAlType of altype_sform
 
 and sequence =
     SharedSequence of word list
@@ -94,6 +97,15 @@ and function_sform =
 and bind_body = BindBody of name * word
 
 and bind_sform = BindThen of bind_body list * word
+
+and altype_parameter = AlTypeParameter of atom list
+and altype_case_def_item =
+    AlTypeCaseDefItemAtom of atom
+  | AlTypeCaseDefItemName of name
+  | AlTypeCaseDefItemNameWithParameter of name * altype_parameter
+and altype_case_def = AlTypeCaseDef of altype_case_def_item list * atom
+and altype_def = AlTypeDef of name * altype_case_def list
+and altype_sform = AlType of altype_def list * word
 
 and at_sform =
     At of word * word

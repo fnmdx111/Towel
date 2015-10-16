@@ -79,6 +79,7 @@ rule token = parse
 | "also" { ALSO }
 | "then" { THEN }
 | "fun" { FUNCTION }
+| "type" { TYPE }
 
 | eof { TERMINATOR(Ast.EOF) }
 
@@ -94,10 +95,8 @@ rule token = parse
 
               (* literals start here *)
 | atom_lit as a {
-    LITERAL({value_id = value_counter ();
-             value_content = VAtom({atom_name = a;
-                                    atom_repr = value_counter ()});
-             value_type = TypeDef([TDPrimitiveType(PT_Atom)])})
+    ATOM({atom_name = a;
+          atom_repr = value_counter ()});
   }
 | string_lit as str {
     LITERAL({value_id = value_counter ();

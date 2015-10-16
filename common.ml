@@ -53,12 +53,15 @@ and name_stringify a = P.sprintf "(name %s of %s %d)"
 and int_stringify a = P.sprintf "(int-lit %d)" a
 and float_stringify a = P.sprintf "(float-lit %f)" a
 and string_stringify a = P.sprintf "(str-lit %s)" a
+and tuple_stringify a = P.sprintf "(tuple-lit %s)"
+    (String.concat ", " (List.map word_stringify a))
 and lit_stringify = function
   VAtom(a) -> atom_stringify a
 | VFixedInt(i) -> int_stringify i
 | VFloat(f) -> float_stringify f
 | VList(l) -> list_stringify l
 | VString(ss) -> string_stringify ss
+| VTuple(ws) -> tuple_stringify ws
 
 and seq_stringify seq =
   match seq with
@@ -114,6 +117,7 @@ and type_def_item_stringify i =
      | PT_String -> "PT_String"
      | PT_Module -> "PT_Module"
      | PT_Number -> "PT_Number"
+     | PT_Tuple(x) -> P.sprintf "PT_Tuple-%d" x
      | PT_Int -> "PT_Int"
      | PT_FixedInt -> "PT_FixedInt")
 
@@ -148,6 +152,38 @@ and at_stringify = function
     At(w1, w2) ->
     P.sprintf "%s@%s" (word_stringify w1) (word_stringify w2)
 
+and altype_parameter_stringify = function
+    AlTypeParameter(ats) ->
+    String.concat " " (List.map
+                         (fun x -> P.sprintf "'%s" (atom_stringify x))
+                         ats)
+
+and altype_case_def_item_stringify = function
+    AlTypeCaseDefItemAtom(a) -> (atom_stringify a)
+  | AlTypeCaseDefItemName(n) -> (name_stringify n)
+  | AlTypeCaseDefItemNameWithParameter(n, aps) ->
+    P.sprintf "(%s %s)"
+      (altype_parameter_stringify aps)
+      (name_stringify n)
+
+and altype_case_def_stringify = function
+    AlTypeCaseDef(its, a) ->
+    P.sprintf "%s of %s" (atom_stringify a)
+      (String.concat " * "
+         (List.map altype_case_def_item_stringify its))
+
+and altype_def_stringify = function
+    AlTypeDef(n, acds) ->
+    P.sprintf "(%s: %s)"
+      (name_stringify n)
+      (String.concat " | " (List.map altype_case_def_stringify acds))
+
+and altype_stringify = function
+    AlType(atds, w) ->
+    P.sprintf "%s in %s"
+      (String.concat " also " (List.map altype_def_stringify atds))
+      (word_stringify w)
+
 and word_stringify w =
   let _w s n = P.sprintf "(%s of %s)" s n in
   match w with
@@ -159,6 +195,7 @@ and word_stringify w =
   | WFunction(f) -> _w (fun_stringify f) "fun"
   | WAt(a) -> _w (at_stringify a) "@"
   | WBind(b) -> _w (bind_stringify b) "bind"
+  | WAlType(alt) -> _w (altype_stringify alt) "al-type"
 
 and words_stringify ws =
   String.concat "/" (List.map word_stringify ws)
