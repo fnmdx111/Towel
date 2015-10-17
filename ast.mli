@@ -44,6 +44,7 @@ and pvalue_content =
   | VList of word list
   | VString of string
   | VTuple of word list
+  | VAlTypeLiteral of altype_lit
 
 and backquote =
     BQValue of pvalue
@@ -105,6 +106,12 @@ and altype_case_def_item =
 and altype_case_def = AlTypeCaseDef of altype_case_def_item list * atom
 and altype_def = AlTypeDef of name * altype_case_def list
 and altype_sform = AlType of altype_def list * word
+
+and altype_lit_constructor = AlTypeLiteralConstructor of atom * name
+and altype_lit_item = AlTypeLiteralItemWord of word
+                    | AlTypeLiteralItemConstructor of altype_lit_constructor
+and altype_lit =
+    AlTypeLiteral of altype_lit_item list * altype_lit_constructor
 
 and at_sform =
     At of word * word

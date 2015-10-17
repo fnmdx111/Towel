@@ -13,7 +13,9 @@ let _ =
        | BQUOTE -> accum ("`"::acc)
        | COMMA -> accum ("COMMA,"::acc)
        | SEMICOLON -> accum (";"::acc)
-       | TERMINATOR(_) -> "."::acc
+       | TERMINATOR(x) -> (match x with
+             Ast.Period -> "."::acc
+           | Ast.EOF -> "eof"::acc)
        | LPAREN -> accum ("("::acc)
        | RPAREN -> accum (")"::acc)
        | LBRACKET -> accum ("["::acc)

@@ -1,6 +1,7 @@
 \documentclass{book}
 
 \usepackage[left=1in, right=1in, top=1in, bottom=1in]{geometry}
+\usepackage{hyperref}
 
 \title{Towel Reference Manual}
 
@@ -8,7 +9,7 @@
 \maketitle
 \tableofcontents
 
-\chapter{Grammar Definition}
+\chapter{Grammar Definition}\label{chap:grammar}
 \section{Lexical Elements}
 
 \subsection{Keywords}
@@ -16,22 +17,23 @@
 Keywords in the Towel programming language is as follows:
 \begin{verbatim}
 if>=0 if>0 if<=0 if<0 if~0 if=0 ift iff ife ifne
-match function fun bind also then
+match fun bind type also then
 \end{verbatim}
 
 The corresponding tokens are:
 \begin{verbatim}
 IFGEZ IFGZ IFLEZ IFLZ IFNEZ IFEZ IFT IFF IFE IFNE
-MATCH FUNCTION FUNCTION BIND ALSO THEN
+MATCH FUNCTION BIND TYPE ALSO THEN
 \end{verbatim}
 
 \subsection{Punctuations}
 
-Punctuations used in the Towel programming language is as follows:
+Punctuations used in the Towel programming language are as follows:
 
 \begin{itemize}
 \item Whitespace characters are simply ignored.
 \item These characters have special meanings in the Towel programming language: \texttt{` ' `` , ; . ( ) [ ] { } \ @ eof}. This means that you cannot use these characters in names and atoms. \footnote{In other words, you can use any other punctuation characters in names and atoms.}
+\item Any unprintable character is reserved and won't be used.
 \end{itemize}
 
 Specially,
@@ -118,8 +120,8 @@ A \texttt{word} (or form) is a basic element of Towel programs:
       | control_sequence
       | function
       | bind_sform
+      | type_decl_sform
       | at_sform
-      | LPAREN word RPAREN
 \end{verbatim}
 
 \subsection{Literals}
@@ -127,8 +129,18 @@ A \texttt{word} (or form) is a basic element of Towel programs:
 Although list literals are, like strings, delimited by delimiters (single quotes for strings, brackets for lists). However, string items are simply characters that can be handled by scanner, while list items are much more complicated than characters. Thus list literals must be parsed by parser:
 \begin{verbatim}
   list_literal: LBRACKET word* RBRACKET
+  tuple_literal: LBRACKET SLASH word* RBRACKET
+
+  altype_literal_constructor: ATOM SLASH name
+  altype_literal_item: word
+                     | altype_literal_constructor
+  altype_literal: LBRACKET AT altype_literal_item BRACKET
+
   literal: LITERAL (* LITERAL tokens from scanner *)
+         | ATOM (* ATOM tokens from scanner *)
          | list_literal
+         | tuple_literal
+         | altype_literal
 \end{verbatim}
 
 \subsection{Names}
@@ -160,7 +172,7 @@ A \texttt{backquote} is a special form that defers the evaluation of names and v
            | LBRACE word* RBRACE
 \end{verbatim}
 
-Note that \texttt{{ word* }} will create a backquoted shared sequenced, which is extremely useful when creating macros.
+Note that \texttt{{ word* }} will create a backquoted shared sequenced, which is extremely useful when creating (runtime) macros.
 
 \subsection{Control sequences}
 
@@ -192,7 +204,7 @@ Control sequences consists of \texttt{if} special forms and \texttt{match} speic
   (* this rule is to avoid some shift/reduce conflicts *)
 \end{verbatim}
 
-The rationale on so many \texttt{if} forms is to support chained \texttt{if} forms naturally, like this:
+The rationale of providing so many \texttt{if} forms is to support chained \texttt{if} forms naturally, like this:
 \begin{verbatim}
   A if>0 Something,
     if<0 (Some other things),
@@ -229,6 +241,21 @@ Bind-Then forms are special forms about name scoping. They are defined as follow
 
 With token \texttt{ALSO}, you can bind multiple values to multiple names simultaneous, enabling you to cross-reference these names.
 
+\subsection{Type Declaration Forms}\label{ssec:tdsf}
+
+In order to support\footnote{Implementation for algebraic data types won't be around until later versions.} custom type declaration, a kind of special form is provided as follows:
+\begin{verbatim}
+  altype_param: LBRACE ATOM+ RBRACE
+  altype_case_def_item: ATOM
+                      | NAME
+                      | NAME altype_param
+  altype_case_def: LBRACKET AT altype_case_def_item* RBRACKET ATOM
+  altype_def: NAME altype_case_def (COMMA altype_case_def)*
+  altype_sform: TYPE altype_def (ALSO altype_def)* THEN word
+\end{verbatim}
+
+See \autoref{chap:examples} for examples on type declaration.
+
 \subsection{At special form}
 
 This special form is provided as an infix operator\footnote{It is probably the only operator throughout this language.} despite the postfix syntax fashion of Towel. It is mainly used as a syntactic sugar (such as referencing items on stack by indices). It is defined as follows:
@@ -261,7 +288,44 @@ To show this in pseudocode:
     | _ -> _
 \end{verbatim}
 
+\chapter{Data Types}
+\label{chap:data-types}
+
+\section{Primitive Types}
+Towel provides to the user the following primitive built-in types:
+\begin{itemize}
+\item Atom
+\item FixedInt
+\item Int (won't be implemented until later versions)
+\item String
+\item Float
+\item List
+\item Tuple
+\end{itemize}
+
+\subsection{Atoms}
+Atoms are names uniquely bound to constants. Any word starts with lowercased letter and does not contain reserved punctuations. Atoms are good for pattern matching.\footnote{This idea is from Erlang.}
+
+\subsection{\texttt{FixedInt}s, \texttt{Int}s, \texttt{Float}s}
+Fixed integers and floats are simply OCaml integers and floats. \texttt{Int}s are integers with arbitrary precision (like those \texttt{int}s in Python). These types are subclass of the class \texttt{Number}. A lot of arithmetic functions take \texttt{Number}s as their arguments. However, bitwise functions will take \texttt{FixedInt}s as arguments.
+
+\subsection{Strings}
+Strings are implemented as OCaml ones. String items are surrended by single quote, rather than double quote.\footnote{Because you don't have to hit the \textit{shift} key when inputing single quotes. Same goes for brackets.}
+
+\subsection{Lists and Tuples}
+Lists and tuples are implemented as OCaml lists. Types of tuples, for instance, \texttt{PT\_Tuple\-1} for 1-element tuples, are decided at compile time, and cannot be changed later, while the lengths of lists are not fixed.
+
+\subsection{\texttt{PT\_Any}}
+In current version, without generic typing and algebraic types implemented, \texttt{PT\_Any} is the superclass of the type of every value in Towel.
+
+\subsection{Algebraic Data Types}
+Users can use the \texttt{type} special form to define custom algebraic data types, see also \autoref{ssec:tdsf} and \autoref{chap:examples}.
+
+\subsection{Functions}
+The type of functions is a list of types, which consists of the types of input arguments along with the return type. When applying arguments to functions, if the arguments are not enough, a partial applied function is returned.\footnote{Maybe we could call this as partial Currying?}
+
 \chapter{Examples}
+\label{chap:examples}
 
 The \texttt{traverse} tool produces correct syntax tree with these examples.
 
@@ -312,23 +376,44 @@ Note that \texttt{X} and \texttt{Y} are already in the stack by default (because
 
 A quick explanation: when \texttt{SomeFun} is called with \texttt{A}, it returns either evaluated backquoted name \texttt{+} or \texttt{-}, in other words, it returns either name \texttt{+} or \texttt{-}.
 
-What the \textbf{returning} actually does it that it cleans up the current function, and pushes whatever is on top of the stack (a name \texttt{+} or \texttt{-} in this case) of the current function (in this case, it is the stack of \texttt{SomeFun}) onto the caller's stack (in this case, it is the stack of \texttt{AnotherFun}). And finally jump to the instruction next to the last one. So there is a name \texttt{+} or \texttt{-} on top of the function \texttt{AnotherFun}.
+What the \textbf{returning} actually does is that it cleans up the current function, and pushes whatever is on top of the stack (a name \texttt{+} or \texttt{-} in this case) of the current function (in this case, it is the stack of \texttt{SomeFun}) onto the caller's stack (in this case, it is the stack of \texttt{AnotherFun}). And finally jump to the instruction next to the last one. So there is a name \texttt{+} or \texttt{-} on top of the function \texttt{AnotherFun}.
 
 And because we are evaluating return values of functions, \texttt{+} and \texttt{-} are evaluated (derefenced to) some function values, for example \texttt{fv1:0x0001} and \texttt{fv2:0x0002}. And again because we are evaluating values that the names are pointing to, one of \texttt{fv1:0x0001} and \texttt{fv2:0x0002} is called\footnote{It is worth mentioning that because we have exited \texttt{SomeFun}, we are now evaluating the function value with the stack of \texttt{AnotherFun}} with \texttt{A} and \texttt{B}, thus resulting in either adding or substracting \texttt{A} and \texttt{B}.
 
 \section{Advanced examples}
 \subsection{Macro}
 \begin{verbatim}
-bind A-Macro fun,
-  (@ if~0 +, -)`
-also B-Macro fun,
-  {if~0 +, -}
-then bind AnotherFun fun A B,
-  (A B A-Macro)
+  bind A-Macro fun,
+    (@ if~0 +, -)`
+  also B-Macro fun,
+    {if~0 +, -}
+  then bind AnotherFun fun A B,
+    (A B A-Macro)
 \end{verbatim}
 
 A quick explanation: \texttt{(@ if~0 +, -)} is returned as we want, so a sequence (which is essentially an anonymous function that test whether the value on top of the stack is zero), and by adding a \texttt{@} we define the sequence to be a shared sequence which shares the same stack with the caller, so the overall effect is like we have done a code replacement.
 
 \texttt{B-Macro} is a short-hand version of \texttt{A-Macro}
+
+\subsection{Algebraic Data Type}
+\begin{verbatim}
+  type BinTree [@ BinTree{a} BinTree{a}] tree,
+               [@ a] leaf
+  also MyList [@ a MyList{a}] cons,
+              nil
+  then bind A [@ [@ [@ 42 nil\MyList] cons\MyList] leaf\BinTree
+                 [@ [@ 42 nil\MyList] cons\MyList] leaf\BinTree]
+              tree\BinTree
+  then (A export).
+\end{verbatim}
+
+This is equivalent to the following OCaml code:
+\begin{verbatim}
+  type 'a bin_tree = Tree of a bin_tree * a bin_tree
+                   | Leaf of a;;
+  type 'a my_list = Cons of a * a my_list
+                  | Nil;;
+  let a = Tree(Leaf(Cons(42, Nil)), Leaf(Cons(42, Nil)))
+\end{verbatim}
 
 \end{document}

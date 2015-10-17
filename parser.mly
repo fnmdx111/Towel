@@ -27,7 +27,18 @@ lit_list:
   }
 
 lit_tuple:
-  LBRACKET SLASH list(restricted_word) RBRACKET { VTuple($3) }
+  LBRACKET SLASH list(word) RBRACKET { VTuple($3) }
+
+lit_altype_literal_constructor:
+  ATOM SLASH name { AlTypeLiteralConstructor($1, $3) }
+
+lit_altype_literal_item:
+  word { AlTypeLiteralItemWord($1) }
+| lit_altype_literal_constructor { AlTypeLiteralItemConstructor($1) }
+
+lit_altype_literal:
+  LBRACKET AT nonempty_list(lit_altype_literal_item) RBRACKET
+    lit_altype_literal_constructor { AlTypeLiteral($3, $5) }
 
 literal:
   LITERAL { $1 }
@@ -42,12 +53,16 @@ literal:
                    PT_Tuple(List.length (match $1 with
                          VTuple(ws) -> ws
                        | _ -> [])))])} }
+| lit_altype_literal { {value_id = 1;
+                        value_content = VAlTypeLiteral($1);
+                        value_type = TypeDef([TDPrimitiveType(PT_Any)])} }
 
 backquote:
   literal BQUOTE { BQValue($1) }
 | name BQUOTE { BQName($1) }
 | sequence BQUOTE { BQSeq($1) }
 | backquote BQUOTE { BQBackquote($1) }
+| LBRACE list(word) RBRACE { BQSeq(SharedSequence($2)) }
 
 type_def:
   LPAREN nonempty_list(name) RPAREN {
@@ -242,7 +257,6 @@ restricted_word:
 | backquote { WBackquote($1) }
 | literal { WLiteral($1) }
 | sequence { WSequence($1) }
-| LBRACE list(word) RBRACE { WSequence(SharedSequence($2)) }
 
 function_:
   FUNCTION list(arg_def) COMMA word { Function($2, $4) }
@@ -285,9 +299,10 @@ altype_case_def_item:
 | NAME altype_parameter { AlTypeCaseDefItemNameWithParameter($1, $2) }
 
 altype_case_def:
-  LBRACKET SLASH list(altype_case_def_item) RBRACKET ATOM {
+  LBRACKET AT list(altype_case_def_item) RBRACKET ATOM {
     AlTypeCaseDef($3, $5)
   }
+| ATOM { AlTypeCaseDef([], $1) }
 
 altype_def:
   NAME separated_nonempty_list(COMMA, altype_case_def) {
