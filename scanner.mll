@@ -36,7 +36,7 @@ let reserved_char = [',' ';' '.' '\'' '\\' '`' '@'
                      ' ' '\t' '\n' '\r']
 let common_valid_char = ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '='
                          '|' ':' '<' '>' '?' '/' 'a'-'z' 'A'-'Z' '0'-'9']
-let valid_upper_char = ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '='
+let valid_upper_char = ['~' '!' '#' '$' '%' '^' '&' '*' '_' '+' '='
                         '|' ':' '<' '>' '?' '/' 'A'-'Z']
 
 let name = valid_upper_char common_valid_char*
