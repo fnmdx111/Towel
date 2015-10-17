@@ -68,7 +68,7 @@ More formally,
 
   digit ::= ['0'-'9']
   lc_chars ::= ['a'-'z']
-  NAME ::= [^ reserved_punct digit lc_chars] [^ reserved_punct]*
+  NAME ::= [^ '-' reserved_punct digit lc_chars] [^ reserved_punct]*
 \end{verbatim}
 
 \subsection{Literals}
@@ -110,6 +110,7 @@ A Towel program is basically a \texttt{sentence} consisting a series of \texttt{
 \end{verbatim}
 
 \subsection{Words}
+\label{ssec:words}
 
 A \texttt{word} (or form) is a basic element of Towel programs:
 \begin{verbatim}
@@ -304,7 +305,8 @@ Towel provides to the user the following primitive built-in types:
 \end{itemize}
 
 \subsection{Atoms}
-Atoms are names uniquely bound to constants. Any word starts with lowercased letter and does not contain reserved punctuations. Atoms are good for pattern matching.\footnote{This idea is from Erlang.}
+Atoms are names uniquely bound to constants. They are of type \texttt{atom}.
+
 
 \subsection{\texttt{FixedInt}s, \texttt{Int}s, \texttt{Float}s}
 Fixed integers and floats are simply OCaml integers and floats. \texttt{Int}s are integers with arbitrary precision (like those \texttt{int}s in Python). These types are subclass of the class \texttt{Number}. A lot of arithmetic functions take \texttt{Number}s as their arguments. However, bitwise functions will take \texttt{FixedInt}s as arguments.
@@ -323,6 +325,84 @@ Users can use the \texttt{type} special form to define custom algebraic data typ
 
 \subsection{Functions}
 The type of functions is a list of types, which consists of the types of input arguments along with the return type. When applying arguments to functions, if the arguments are not enough, a partial applied function is returned.\footnote{Maybe we could call this as partial Currying?}
+
+\chapter{Elements of Programs}
+\label{chap:forms}
+
+\section{Basic Concepts}
+
+A Towel program consists of one or multiple so-called \textbf{words} and one terminator. A terminator can be a period (dot) or the end-of-file character.
+
+When encountered multiple words, they are always evaluated one by one in the order they appear.
+
+A word, as is said in \autoref{ssec:words}, can be one of the following:
+\begin{itemize}
+\item literal
+\item name
+\item sequence
+\item backquote
+\item \texttt{match} and \texttt{if} forms
+\item function form
+\item bind form
+\item type declaring form
+\item at special infix form
+\end{itemize}
+
+\section{Literal}
+
+A literal is a literal value whose type is of the data types we have talked about in \autoref{chap:data-types}.
+
+\subsection{Atoms}
+
+You can create atoms by writing any lowercased letter followed by arbitrary length of characters that are not reserved punctuations and keywords.
+
+Note that bool types are implemented as atoms (\texttt{true\Bool} and \texttt{false\Bool}).
+
+Atoms are good for pattern matching.\footnote{This idea is from Erlang.}
+
+\subsection{Numbers and Strings}
+
+You can create number and string literals by writing like this:
+\begin{verbatim}
+  1 -1 2 -3 5 -8 13 -21
+  1.1e1 -0.1 'don\'t panic'
+\end{verbatim}
+
+\subsection{Lists}
+
+When creating a list literal, you must write a list of words separated with spaces in a pair of brackets, like the following code:
+\begin{verbatim}
+  [arthur-dent ford-prefect betelgeuse]
+  [Spam Spam Spam]
+  [Spam ifne (More Spam)`, (Less Spam)`]
+\end{verbatim}
+
+Note that in the last list literal, there exists an \texttt{ifne} form. This
+is totally valid, because \texttt{if} forms are also words, so as long as the \textbf{type} of the value the \texttt{ifne} form evaluates to match, you are good. And you should be aware that \texttt{if} forms always test against the top element of current data stack, so the name \texttt{Spam} before \texttt{ifne} has nothing to do with the value the \texttt{ifne} form evaluates to.
+
+\subsection{Tuples}
+
+1 Hint: tuples are fixed length lists, whereas you can append new items to lists to create new lists.
+
+\section{Sequence}
+
+\section{Backquote}
+
+\section{\texttt{match} and \texttt{if} forms}
+
+1
+
+\section{Function form}
+
+1
+
+\section{Bind form}
+
+1
+
+\section{Algebraic Type Declaring Form}
+
+1
 
 \chapter{Examples}
 \label{chap:examples}
