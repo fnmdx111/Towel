@@ -249,7 +249,7 @@ In order to support\footnote{Implementation for algebraic data types won't be ar
   altype_case_def_item: ATOM
                       | NAME
                       | NAME altype_param
-  altype_case_def: LBRACKET AT altype_case_def_item* RBRACKET ATOM
+  altype_case_def: (LBRACKET AT altype_case_def_item* RBRACKET)? ATOM
   altype_def: NAME altype_case_def (COMMA altype_case_def)*
   altype_sform: TYPE altype_def (ALSO altype_def)* THEN word
 \end{verbatim}
