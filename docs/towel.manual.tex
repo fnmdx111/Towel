@@ -356,7 +356,7 @@ A literal is a literal value whose type is of the data types we have talked abou
 
 You can create atoms by writing any lowercased letter followed by arbitrary length of characters that are not reserved punctuations and keywords.
 
-Note that bool types are implemented as atoms (\texttt{true\Bool} and \texttt{false\Bool}).
+Note that bool types are implemented as atoms (\texttt{true\\Bool} and \texttt{false\\Bool}).
 
 Atoms are good for pattern matching.\footnote{This idea is from Erlang.}
 
@@ -384,9 +384,43 @@ is totally valid, because \texttt{if} forms are also words, so as long as the \t
 
 1 Hint: tuples are fixed length lists, whereas you can append new items to lists to create new lists.
 
+\subsection{Literal of Algebraic Type}
+
+You can create literals of algebraic type by listing the required parameters in a pair of backet with an at symbol followed by the left bracket. And creating constructors by concatenating the constructor atom and the type name with a slash. For instance\footnote{I know this seems ridiculous. But they are (and was) great comedians.}:
+\begin{verbatim}
+  [@ chapman
+    [@ cleese
+      [@ gilliam
+        [@ idle
+          [@ jones
+            [@ palin nil\List]
+             cons\List]
+           cons\List]
+         cons\List]
+       cons\List]
+     cons\List]
+   cons\List
+\end{verbatim}
+
 \section{Sequence}
 
+Sequences are short-hand forms for creating anonymous functions with no arguments. You can create a sequence by writing the function body between a pair of parenthesis.
+
+Towel also provides another kind of sequences, the shared sequences. These kind of sequences share the same stack with the caller. When creating such sequences, you add an at symbol right after the left parenthesis.
+
 \section{Backquote}
+
+Because Towel evaluates and pushes everything it encounters, you can use backquotes the values to prevent Towel from evaluating them so that Towel pushes them directly onto the data stack. Backquotes are created by appending a backquote to the values you want to backquote.
+
+You can backquote only limit types of values:
+\begin{itemize}
+\item literals
+\item names
+\item sequences
+\item backquotes
+\end{itemize}
+
+You can create backquoted shared sequence by replacing the parentheses with braces and dropping the at symbol.
 
 \section{\texttt{match} and \texttt{if} forms}
 
