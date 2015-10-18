@@ -25,14 +25,6 @@ _build/
 setup.data
 setup.log
 
-# towels
-
-*.t
-*.o
-*.w
-*.e
-*.l
-
 # latex files
 
 *.out
