@@ -24,7 +24,7 @@ let _LBRACE = '{'
 let _RBRACE = '}'
 
 let string_char = [^ '\\' '\'']
-let string_esc_charseq = '\\' string_char
+let string_esc_charseq = '\\' ['\'' '\\' 'n' 'r' 'b' ' ' 't']
 let string_item = string_char | string_esc_charseq
 let string_lit = _SQUOTE string_item* _SQUOTE
 (* From python lexical analysis
