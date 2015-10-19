@@ -59,7 +59,7 @@
                    push-name Quicksort
                    make-list
                    push-name Head
-                   push-list 1
+                   push-list
                    push-name Tail
                    push-seq :fv1-seq1-seq2
 :fv1-seq1-seq2-st  push-scope
@@ -83,7 +83,7 @@
                    push-int 3
                    push-int 2
                    push-int 1
-                   push-list 5
+                   push-list
                    push-name Quicksort
                    push-name Print-list
                    ret-seq
