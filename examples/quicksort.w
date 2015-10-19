@@ -9,25 +9,35 @@
 
                    push-scope
                      "pushing a new scope onto the scope stack, see scoping.ml"
-                   push-fun :fv1
                    bind Quicksort
-                     "bind TOS to the name Quicksort"
+                     “bind Quicksort to the value created by next instruction"
+                   make-fun :fv1
+                     "because we are binding a name to a value here"
+                     "so we use make-* rather than push-*"
+                     "TVM creates this function value in the object table"
+                     "after this instruction, IP jumps to the instruction right"
+                     "after :fv1-end"
+:fv1-st            push-scope
+                     "when a function is called, IP points to here"
                    fun-arg L
+                     "pop the TOS of parent stack and bind it to name L,"
                      "see also gcd.w"
-:fv1-st            copy-from-parent-stack 1
-                   push-scope
+                   push-name L
                    mchpush-list 0
-                   match :fv1-m1
+                     "push a empty list in the mchstack for pattern matching"
+                   match :fv1-m1-p1
+                     "if matching suceeds, jump to :fv1-m1 otherwise :fv1-m1!"
                      "vm is responsible for popping mchstack"
-:fv1-m1            push-list 0
-:fv1-end1          ret
-                     "ret is responsible for cleaning up, for example, copying TOS to"
-                     "parent stack, popping scope, popping data stack, etc."
-:fv1-m1!           mchpush-name Head
+:fv1-m1-p1         push-list 0
+                   mchend
+                     "jump to the end of this match form"
+:fv1-m1-p1!        mchpush-name Head
                    mchpush-name Tail
                    mchpush-name ::
-                   match :fv1-m2
-:fv1-m2            push-seq :fv1-seq1
+                   match :fv1-m1-p2
+:fv1-m1-p2         push-seq :fv1-seq1
+                     "evaluate a nullary anonymous function whose body"
+                     "starts at :fv1-seq1-st"
 :fv1-seq1-st       push-scope
                    push-name Tail
                    push-seq :fv1-seq1-seq1
@@ -39,6 +49,7 @@
                    push-name Head
                    push-name <
 :fv1-seq1-seq1-end ret-seq
+                     "some clean-ups for anonymous functions"
                    push-name Filter Std
                    push-name Quicksort
                    push-name Head
@@ -52,7 +63,10 @@
                    push-name Filter Std
                    push-name Quicksort
 :fv1-seq1-end      ret-seq
-:fv1-m2! :fv1-end2 ret
+                   mchend
+:fv1-m1-p2! :fv1-m1-end :fv1-end ret
+                     "ret is responsible for cleaning up, for example, copying TOS to"
+                     "parent stack, popping scope, popping data stack, etc."
                    push-seq :seq1
 :seq1-st           push-scope
                    push-int 5
