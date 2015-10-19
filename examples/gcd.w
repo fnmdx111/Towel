@@ -20,7 +20,7 @@
                               "remember that this seq shares the same stack"
                               "with its caller"
 :fv1-seq1-st                push-scope
-                            push-stack
+                              "shared sequences do not push new data stack"
                             push-name -
                             jez :fv1-seq1-j1
                               "if TOS is equal to zero, jump to :fv1-seq1-j1,"
