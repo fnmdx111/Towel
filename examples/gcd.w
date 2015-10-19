@@ -6,9 +6,11 @@
 
 
                             push-scope
+			    push-stack
                             bind Greatest-common-divisor
                             make-fun :fv1
 :fv1-st                     push-scope
+                            push-stack
                             fun-arg Y
                               "note the order is different here"
                             fun-arg X
@@ -18,6 +20,7 @@
                               "remember that this seq shares the same stack"
                               "with its caller"
 :fv1-seq1-st                push-scope
+                            push-stack
                             push-name -
                             jez :fv1-seq1-j1
                               "if TOS is equal to zero, jump to :fv1-seq1-j1,"
@@ -29,6 +32,7 @@
 :fv1-seq1-j1!               jgz :fv1-seq1-j2
 :fv1-seq1-j2                push-seq :fv1-seq1-seq1
 :fv1-seq1-seq1-st           push-scope
+                            push-stack
                             push-name Y
                             push-name X
                             push-name -
@@ -38,6 +42,7 @@
                             jend
 :fv1-seq1-j2!               push-seq :fv1-seq1-seq2
 :fv1-seq1-seq2-st           push-scope
+                            push-stack
                             push-name X
                             push-name X
                             push-name Y
@@ -49,6 +54,7 @@
 :fv1-end3                   ret
                             push-seq :seq1
 :seq1-st                    push-scope
+                            push-stack
                             push-int 42
                             push-int 24
                             push-name Greatest-common-divisor

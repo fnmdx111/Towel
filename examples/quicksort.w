@@ -9,6 +9,7 @@
 
                    push-scope
                      "pushing a new scope onto the scope stack, see scoping.ml"
+		   push-stack
                    bind Quicksort
                      “bind Quicksort to the value created by next instruction"
                    make-fun :fv1
@@ -19,6 +20,7 @@
                      "after :fv1-end"
 :fv1-st            push-scope
                      "when a function is called, IP points to here"
+                   push-stack
                    fun-arg L
                      "pop the TOS of parent stack and bind it to name L,"
                      "see also gcd.w"
@@ -28,7 +30,8 @@
                    match :fv1-m1-p1
                      "if matching suceeds, jump to :fv1-m1-p1 otherwise :fv1-m1-p1!"
                      "vm is responsible for popping mchstack"
-:fv1-m1-p1         push-list 0
+:fv1-m1-p1         make-list
+                   push-list 0
                    mchend
                      "jump to the end of this match form"
 :fv1-m1-p1!        mchpush-name Head
@@ -39,6 +42,7 @@
                      "evaluate a nullary anonymous function whose body"
                      "starts at :fv1-seq1-st"
 :fv1-seq1-st       push-scope
+                   push-stack
                    push-name Tail
                    push-seq :fv1-seq1-seq1
                      "it's written push-seq, but it's actually eval-seq at :fv1-seq1-seq1,"
@@ -46,6 +50,7 @@
 :fv1-seq1-seq1-st  push-scope
                      "sequences might be called recursively, because they are also functions,"
                      "so it's vital that we also push scopes when evaluating them"
+                   push-stack
                    push-name Head
                    push-name <
 :fv1-seq1-seq1-end ret-seq
@@ -57,6 +62,7 @@
                    push-name Tail
                    push-seq :fv1-seq1-seq2
 :fv1-seq1-seq2-st  push-scope
+                   push-stack
                    push-name Head
                    push-name >=
 :fv1-seq1-seq2-end ret-seq
@@ -69,6 +75,8 @@
                      "parent stack, popping scope, popping data stack, etc."
                    push-seq :seq1
 :seq1-st           push-scope
+                   push-stack
+                   make-list
                    push-int 5
                    push-int 4
                    push-int 3
