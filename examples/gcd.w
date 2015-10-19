@@ -49,8 +49,8 @@
 :fv1-end3                   ret
                             push-seq :seq1
 :seq1-st                    push-scope
-                            push-lit-int 42
-                            push-lit-int 24
+                            push-int 42
+                            push-int 24
                             push-name Greatest-common-divisor
 :seq1-end                   ret-seq
                             terminate
