@@ -57,6 +57,7 @@
                      "some clean-ups for anonymous functions"
                    push-name Filter Std
                    push-name Quicksort
+                   make-list
                    push-name Head
                    push-list 1
                    push-name Tail
