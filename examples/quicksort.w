@@ -26,7 +26,7 @@
                    mchpush-list 0
                      "push a empty list in the mchstack for pattern matching"
                    match :fv1-m1-p1
-                     "if matching suceeds, jump to :fv1-m1 otherwise :fv1-m1!"
+                     "if matching suceeds, jump to :fv1-m1-p1 otherwise :fv1-m1-p1!"
                      "vm is responsible for popping mchstack"
 :fv1-m1-p1         push-list 0
                    mchend
