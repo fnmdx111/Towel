@@ -1,0 +1,3 @@
+* do name/atom counting and identifying correctly in parser; basically with a `Map'
+
+* manual for vm asmlang
