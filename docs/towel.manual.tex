@@ -9,10 +9,8 @@
 \maketitle
 \tableofcontents
 
-\chapter{Grammar Definition}\label{chap:grammar}
-\section{Lexical Elements}
-
-\subsection{Keywords}
+\chapter{Lexical Elements}\label{chap:grammar}
+\section{Keywords}
 
 Keywords in the Towel programming language is as follows:
 \begin{verbatim}
@@ -26,7 +24,7 @@ IFGEZ IFGZ IFLEZ IFLZ IFNEZ IFEZ IFT IFF IFE IFNE
 MATCH FUNCTION BIND TYPE ALSO THEN
 \end{verbatim}
 
-\subsection{Punctuations}
+\section{Punctuations}
 
 Punctuations used in the Towel programming language are as follows:
 
@@ -41,7 +39,7 @@ Specially,
   TERMINATOR ::= ['.' '\n' '\r' '\r\n' eof]
 \end{verbatim}
 
-\subsection{Names}
+\section{Names}
 
 Names are used for naming (or referencing to) values. Valid names should not start with reserved punctuations, lowercased letters, and numbers.
 
@@ -71,27 +69,7 @@ More formally,
   NAME ::= [^ '-' reserved_punct digit lc_chars] [^ reserved_punct]*
 \end{verbatim}
 
-\subsection{Literals}
-
-Most easy-to-use languages support a wide variety of literals (Python is a good example and Java is not). The Towel programming language supports literals for atoms, integers (fixed), floats, strings, and lists. They are defined as follows (rule for list literals will be revealed later):
-\begin{verbatim}
-  ATOM ::= lc_chars [^ reserved_punct]*
-
-  signed ::= ['+' '-']
-  INT ::= signed? digit+
-
-  frac ::= '.' digit+
-  FLOAT ::= signed? digit+ frac? ('e' digit+)?
-
-  string_char ::= [^ '\' ''']
-  string_esc_seq ::= '\' string_char
-  string_item ::= string_char | string_esc_seq
-  STRING ::= ''' string_item* '''
-  (Rules for strings is from the lexical parsing section of the Python
-   language reference manual.)
-\end{verbatim}
-
-\subsection{Comments}
+\section{Comments}
 
 Comments are defined as follows:
 \begin{verbatim}
@@ -100,197 +78,10 @@ Comments are defined as follows:
 
 When the scanner encounters any other character not mentioned above, it will raise a \texttt{LexicalError} exception.
 
-\section{Syntactic definition}
-
-\texttt{menhir} compiles the grammar below without complaining about shift/reduce conflicts.
-
-A Towel program is basically a \texttt{sentence} consisting a series of \texttt{word}s and a \texttt{TERMINATOR} token.
-\begin{verbatim}
-  sentence: word* TERMINATOR
-\end{verbatim}
-
-\subsection{Words}
-\label{ssec:words}
-
-A \texttt{word} (or form) is a basic element of Towel programs:
-\begin{verbatim}
-  word: literal
-      | name
-      | sequence
-      | backquote
-      | control_sequence
-      | function
-      | bind_sform
-      | type_decl_sform
-      | at_sform
-\end{verbatim}
-
-\subsection{Literals}
-
-Although list literals are, like strings, delimited by delimiters (single quotes for strings, brackets for lists). However, string items are simply characters that can be handled by scanner, while list items are much more complicated than characters. Thus list literals must be parsed by parser:
-\begin{verbatim}
-  list_literal: LBRACKET word* RBRACKET
-  tuple_literal: LBRACKET SLASH word* RBRACKET
-
-  altype_literal_constructor: ATOM SLASH name
-  altype_literal_item: word
-                     | altype_literal_constructor
-  altype_literal: LBRACKET AT altype_literal_item BRACKET
-
-  literal: LITERAL (* LITERAL tokens from scanner *)
-         | ATOM (* ATOM tokens from scanner *)
-         | list_literal
-         | tuple_literal
-         | altype_literal
-\end{verbatim}
-
-\subsection{Names}
-
-Referencing to names in other namespaces (or modules) is allowed with the following rule:
-\begin{verbatim}
-  name: NAME SLASH name
-      | NAME
-\end{verbatim}
-
-\subsection{Sequences}
-
-A sequence is a series of words delimited by a pair of parentheses. They are basically anonymous functions that use the same stack along with the current function. See example section for detailed use cases. The rule for parsing sequences is as follows:
-\begin{verbatim}
-  sequence: LPAREN word* RPAREN
-          | LPAREN AT word* RPAREN
-\end{verbatim}
-
-The second rule parses sequences as shared sequences (they share the same stack with the caller, useful when implementing macros).
-
-\subsection{Backquotes}
-
-A \texttt{backquote} is a special form that defers the evaluation of names and values. You can backquote any value and name. You can quote sequences as well.
-\begin{verbatim}
-  backquote: literal BQUOTE
-           | name BQUOTE
-           | sequence BQUOTE
-           | backquote BQUOTE
-           | LBRACE word* RBRACE
-\end{verbatim}
-
-Note that \texttt{{ word* }} will create a backquoted shared sequenced, which is extremely useful when creating (runtime) macros.
-
-\subsection{Control sequences}
-
-Control sequences consists of \texttt{if} special forms and \texttt{match} speical form:
-\begin{verbatim}
-  control_sequence: if_sform
-                  | match_sform
-
-  if_sform: IFGEZ word COMMA word
-          | IFGZ word COMMA word
-          | IFLEZ word COMMA word
-          | IFLZ word COMMA word
-          | IFE word COMMA word
-          | IFNE word COMMA word
-          | IFEZ word COMMA word
-          | IFNEZ word COMMA word
-          | IFT word COMMA word
-          | IFF word COMMA word
-
-  match_sform: MATCH (pattern SEMICOLON)* pattern
-  (* e.g. "match pattern1, form1; pattern2, form2" *)
-
-  pattern: word* COMMA restricted_word (* e.g. "pattern, form" *)
-
-  restricted_word: name
-                 | backquote
-                 | literal
-                 | sequence
-  (* this rule is to avoid some shift/reduce conflicts *)
-\end{verbatim}
-
-The rationale of providing so many \texttt{if} forms is to support chained \texttt{if} forms naturally, like this:
-\begin{verbatim}
-  A if>0 Something,
-    if<0 (Some other things),
-    if=0 (Some more other things),
-      Impossible.
-\end{verbatim}
-
-rather than:
-\begin{verbatim}
-  0 A > ift Something,
- (0 A < ift (Some other things),
- (0 A = ift (Some more other things),
-          Impossible)).
-\end{verbatim}
-
-\subsection{Functions}
-
-Function forms are used to define functions:
-\begin{verbatim}
-  function: FUNCTION arg_def* COMMA word
-
-  arg_def: NAME
-         | NAME type_def
-
-  type_def: LPAREN name+ RPAREN
-\end{verbatim}
-
-\subsection{Bind-Then forms}
-
-Bind-Then forms are special forms about name scoping. They are defined as follows:
-\begin{verbatim}
-  bind_sform: BIND NAME word (ALSO NAME word)* THEN word
-\end{verbatim}
-
-With token \texttt{ALSO}, you can bind multiple values to multiple names simultaneous, enabling you to cross-reference these names.
-
-\subsection{Type Declaration Forms}\label{ssec:tdsf}
-
-In order to support\footnote{Implementation for algebraic data types won't be around until later versions.} custom type declaration, a kind of special form is provided as follows:
-\begin{verbatim}
-  altype_param: LBRACE ATOM+ RBRACE
-  altype_case_def_item: ATOM
-                      | NAME
-                      | NAME altype_param
-  altype_case_def: (LBRACKET AT altype_case_def_item* RBRACKET)? ATOM
-  altype_def: NAME altype_case_def (COMMA altype_case_def)*
-  altype_sform: TYPE altype_def (ALSO altype_def)* THEN word
-\end{verbatim}
-
-See \autoref{chap:examples} for examples on type declaration.
-
-\subsection{At special form}
-
-This special form is provided as an infix operator\footnote{It is probably the only operator throughout this language.} despite the postfix syntax fashion of Towel. It is mainly used as a syntactic sugar (such as referencing items on stack by indices). It is defined as follows:
-\begin{verbatim}
-  at_sform: restricted_word AT word
-\end{verbatim}
-
-\section{Rules for evaluation}
-
-When evaluating a Towel program, you must evaluate each form:
-\begin{itemize}
-\item For integer, float, string, and atom literals, return them directly;
-\item For each list literal, return the list after you have evaluated each item of it;
-\item For a backqoute, you return whatever is quoted (without evaluating);
-\item For a sequence, you create a new function out of the sequence and evaluate that function (i.e. evaluate the sequence on a new stack) and return the evaluated value;
-\item For a function, you apply\footnote{A stack is always created along with a function invocation, this is to avoid the potential corruption of shared stacks.} required arguments to it (if not, a backquoted partial applied function will be returned), then you evaluate the return value of the function and return the evaluated value;
-\item For a name, you look up the value it references to, evaluated that value and return the evaluated value.
-\end{itemize}
-
-After evaluating the forms, you push the result onto the stack.
-
-To show this in pseudocode:
-\begin{verbatim}
-  eval t = match t with
-      List(l) -> List(map eval l)
-    | Backquote(bq) -> bq
-    | Sequence(seq) -> eval (apply (create_fun seq) [])
-    | Function(f) -> eval (apply f current_stack)
-    | Name(n) -> eval (lookup n scope)
-    | _ -> _
-\end{verbatim}
-
 \chapter{Data Types}
 \label{chap:data-types}
+
+Types are important and inferred in Towel. If the type check fails, the compiler will refuse to compile the program.
 
 \section{Primitive Types}
 Towel provides to the user the following primitive built-in types:
@@ -305,26 +96,25 @@ Towel provides to the user the following primitive built-in types:
 \end{itemize}
 
 \subsection{Atoms}
-Atoms are names uniquely bound to constants. They are of type \texttt{atom}.
-
+Atoms are special names uniquely bound to constants. They are of type \texttt{atom}.
 
 \subsection{\texttt{FixedInt}s, \texttt{Int}s, \texttt{Float}s}
-Fixed integers and floats are simply OCaml integers and floats. \texttt{Int}s are integers with arbitrary precision (like those \texttt{int}s in Python). These types are subclass of the class \texttt{Number}. A lot of arithmetic functions take \texttt{Number}s as their arguments. However, bitwise functions will take \texttt{FixedInt}s as arguments.
+Fixed integers and floats are simply OCaml integers and floats. \texttt{Int}s are integers of arbitrary precision (like those \texttt{int}s in Python). These types are subclass of the class \texttt{Number}. A lot of arithmetic functions take \texttt{Number}s as their arguments. However, bitwise functions will take \texttt{FixedInt}s as arguments.
 
 \subsection{Strings}
 Strings are implemented as OCaml ones. String items are surrended by single quote, rather than double quote.\footnote{Because you don't have to hit the \textit{shift} key when inputing single quotes. Same goes for brackets.}
 
 \subsection{Lists and Tuples}
-Lists and tuples are implemented as OCaml lists. Types of tuples, for instance, \texttt{PT\_Tuple\-1} for 1-element tuples, are decided at compile time, and cannot be changed later, while the lengths of lists are not fixed.
+Lists and tuples are implemented as OCaml lists. Types of tuples, for instance, \texttt{PT\_Tuple\-1} for 1-element tuples, are decided at compile time, and cannot be changed later, whereas the lengths of lists are not fixed.
 
-\subsection{\texttt{PT\_Any}}
+\section{\texttt{PT\_Any}}
 In current version, without generic typing and algebraic types implemented, \texttt{PT\_Any} is the superclass of the type of every value in Towel.
 
-\subsection{Algebraic Data Types}
-Users can use the \texttt{type} special form to define custom algebraic data types, see also \autoref{ssec:tdsf} and \autoref{chap:examples}.
+\section{Algebraic Data Types}
+Users can use the \texttt{type} special form to define custom algebraic data types, see also \autoref{ssec:atdf} and \autoref{chap:examples}.
 
-\subsection{Functions}
-The type of functions is a list of types, which consists of the types of input arguments along with the return type. When applying arguments to functions, if the arguments are not enough, a partial applied function is returned.\footnote{Maybe we could call this as partial Currying?}
+\section{Functions}
+The type of functions is a list of types, which consists of the types of input arguments along with the return type. When applying arguments to functions, if the arguments are not enough (i.e. the caller's stack exhausts before all the arguments are satisfied), a partial applied function is returned.\footnote{Maybe we could call this as partial Currying?}
 
 \chapter{Elements of Programs}
 \label{chap:forms}
@@ -335,7 +125,7 @@ A Towel program consists of one or multiple so-called \textbf{words} and one ter
 
 When encountered multiple words, they are always evaluated one by one in the order they appear.
 
-A word, as is said in \autoref{ssec:words}, can be one of the following:
+A word, can be one of the following:
 \begin{itemize}
 \item literal
 \item name
@@ -348,6 +138,22 @@ A word, as is said in \autoref{ssec:words}, can be one of the following:
 \item at special infix form
 \end{itemize}
 
+\section{Rules for evaluation}
+
+When evaluating a Towel program, each word is evaluated in the original order:
+\begin{itemize}
+\item For integer, float, string, and atom literals, return references to them directly;
+\item For each list literal, return a reference to the list after you have evaluated each item of the list;
+\item For a backqoute, return whatever is quoted (without evaluating);
+\item For a sequence, create a new function out of the sequence and evaluate that function (i.e. evaluate the sequence on a new stack) and return the TOS of the new stack;
+\item For a function, apply\footnote{A stack is always created along with a function invocation, this is to avoid the potential corruption of shared stacks.} required arguments to it (if not, a backquoted partial applied function will be returned), then evaluate the return value of the function with the caller's stack and return the evaluated value;
+\item For a name, look up the value it references to, evaluated that value and return the evaluated value.
+\item For \texttt{match} and \texttt{if} forms, match or test against the TOS and evaluate the word in the matched branch;
+\item For bind-then form, evaluate the value that gets bound and bind the value evaluated to the name, then evaluate the then section with current scope.
+\end{itemize}
+
+After evaluating the words, you push the result onto the stack.
+
 \section{Literal}
 
 A literal is a literal value whose type is of the data types we have talked about in \autoref{chap:data-types}.
@@ -356,9 +162,10 @@ A literal is a literal value whose type is of the data types we have talked abou
 
 You can create atoms by writing any lowercased letter followed by arbitrary length of characters that are not reserved punctuations and keywords.
 
-Note that bool types are implemented as atoms (\texttt{true\textbackslash Bool} and \texttt{false\textbackslash Bool}).
+Atoms are unique across the entire program. Because atoms are assigned with a unique integer, so you can have no more than $2^{31}$ of them in your program.
 
-Atoms are good for pattern matching.\footnote{This idea is from Erlang.}
+
+Atoms are good for pattern matching.\footnote{This idea is from Erlang.} Note that bool types are implemented as atoms (\texttt{true\textbackslash Bool} and \texttt{false\textbackslash Bool}).
 
 \subsection{Numbers and Strings}
 
@@ -382,7 +189,17 @@ is totally valid, because \texttt{if} forms are also words, so as long as the \t
 
 \subsection{Tuples}
 
-1 Hint: tuples are fixed length lists, whereas you can append new items to lists to create new lists.
+Tuples are fixed length lists, whereas you can append new items to lists to create new lists. Create tuples like this:
+\begin{verbatim}
+  [\ arthur-dent ford-prefect betelgeuse] "a 3-tuple of type PT_Tuple-3"
+  [\] "a 0-tuple of type PT_Tuple-0"
+\end{verbatim}
+
+You can use tuple in match forms like this:
+\begin{verbatim}
+  match [\ a b A], A
+\end{verbatim}
+This match form matches a 3-tuple and if the first and second element are atom \texttt{a} and \texttt{b} respectively, it binds the third element to the name \texttt{A}. More on match, see also TODO:ref:match.
 
 \subsection{Literal of Algebraic Type}
 
@@ -406,7 +223,11 @@ You can create literals of algebraic type by listing the required parameters in 
 
 Sequences are short-hand forms for creating anonymous functions with no arguments. You can create a sequence by writing the function body between a pair of parenthesis.
 
-Towel also provides another kind of sequences, the shared sequences. These kind of sequences share the same stack with the caller. When creating such sequences, you add an at symbol right after the left parenthesis.
+Towel also provides another kind of sequences, the shared sequences. These kind of sequences share the same stack with the caller. When creating such sequences, you add an at symbol right after the left parenthesis. For example,
+\begin{verbatim}
+  ((A B - if>0 1, 0) (A B + if<0 2, 3) Bitand) "non-shared regular sequences"
+  (A B - (@ if>0, 1, 0) Println) "prints 1 or 0"
+\end{verbatim}
 
 \section{Backquote}
 
@@ -420,7 +241,7 @@ You can backquote only limit types of values:
 \item backquotes
 \end{itemize}
 
-You can create backquoted shared sequence by replacing the parentheses with braces and dropping the at symbol.
+You can create backquoted shared sequence by replacing the parentheses with braces and dropping the at symbol. See also \autoref{ssec:backquote} and \autoref{ssec:macro}.
 
 \section{\texttt{match} and \texttt{if} forms}
 
@@ -434,9 +255,17 @@ You can create backquoted shared sequence by replacing the parentheses with brac
 
 1
 
-\section{Algebraic Type Declaring Form}
+\section{Algebraic Data Type Declaration}
+\label{ssec:atdf}
 
-1
+Algebraic data types will be basically the same with that of OCaml except the syntax is different. The syntax here in Towel is designed in a postfix fashion. First, use \texttt{type NAME} to bind the type you are declaring to the name \texttt{NAME}. Then declare constructors using atoms. Before the constructor, put the types of parameters in a list with an at symbol in the beginning. If the types of parameters are parameterized, put the parameters in a pair of braces before the type, like this:
+\begin{verbatim}
+  type Option [@ a] some, none
+  type List [@ a {a}List] cons, nil
+  type BinTree [@ {a}BinTree {a}BinTree] tree, [@ a] leaf
+\end{verbatim}
+
+You can only put atoms, parameterized names (potential namespaced) into the parameter list. See also \autoref{ssec:adt-example}.
 
 \chapter{Examples}
 \label{chap:examples}
@@ -480,6 +309,7 @@ Note that \texttt{X} and \texttt{Y} are already in the stack by default (because
 \end{verbatim}
 
 \subsection{Something about backquotes}
+\label{ssec:backquote}
 \begin{verbatim}
   bind SomeFun fun A,
     if~0 +`, -`
@@ -496,6 +326,7 @@ And because we are evaluating return values of functions, \texttt{+} and \texttt
 
 \section{Advanced examples}
 \subsection{Macro}
+\label{ssec:macro}
 \begin{verbatim}
   bind A-Macro fun,
     (@ if~0 +, -)`
@@ -503,6 +334,7 @@ And because we are evaluating return values of functions, \texttt{+} and \texttt
     {if~0 +, -}
   then bind AnotherFun fun A B,
     (A B A-Macro)
+  then (1 2 AnotherFun).
 \end{verbatim}
 
 A quick explanation: \texttt{(@ if~0 +, -)} is returned as we want, so a sequence (which is essentially an anonymous function that test whether the value on top of the stack is zero), and by adding a \texttt{@} we define the sequence to be a shared sequence which shares the same stack with the caller, so the overall effect is like we have done a code replacement.
@@ -510,10 +342,11 @@ A quick explanation: \texttt{(@ if~0 +, -)} is returned as we want, so a sequenc
 \texttt{B-Macro} is a short-hand version of \texttt{A-Macro}
 
 \subsection{Algebraic Data Type}
+\label{ssec:adt-example}
 \begin{verbatim}
-  type BinTree [@ BinTree{a} BinTree{a}] tree,
+  type BinTree [@ {a}BinTree {a}BinTree] tree,
                [@ a] leaf
-  also MyList [@ a MyList{a}] cons,
+  also MyList [@ a {a}MyList] cons,
               nil
   then bind A [@ [@ [@ 42 nil\MyList] cons\MyList] leaf\BinTree
                  [@ [@ 42 nil\MyList] cons\MyList] leaf\BinTree]
