@@ -296,7 +296,7 @@ altype_parameter:
 altype_case_def_item:
   ATOM { AlTypeCaseDefItemAtom($1) }
 | NAME { AlTypeCaseDefItemName($1) }
-| NAME altype_parameter { AlTypeCaseDefItemNameWithParameter($1, $2) }
+| altype_parameter NAME { AlTypeCaseDefItemNameWithParameter($2, $1) }
 
 altype_case_def:
   LBRACKET AT list(altype_case_def_item) RBRACKET ATOM {
