@@ -69,6 +69,26 @@ More formally,
   NAME ::= [^ '-' reserved_punct digit lc_chars] [^ reserved_punct]*
 \end{verbatim}
 
+\section{Literals}
+
+Most easy-to-use languages support a wide variety of literals (Python is a good example and Java is not). The Towel programming language supports literals for atoms, integers (fixed), floats, strings, and lists. They are defined as follows (rule for list literals will be revealed later):
+\begin{verbatim}
+  ATOM ::= lc_chars [^ reserved_punct]*
+
+  signed ::= ['+' '-']
+  INT ::= signed? digit+
+
+  frac ::= '.' digit+
+  FLOAT ::= signed? digit+ frac? ('e' digit+)?
+
+  string_char ::= [^ '\' ''']
+  string_esc_seq ::= '\' string_char
+  string_item ::= string_char | string_esc_seq
+  STRING ::= ''' string_item* '''
+  (Rules for strings is from the lexical parsing section of the Python
+   language reference manual.)
+\end{verbatim}
+
 \section{Comments}
 
 Comments are defined as follows:
@@ -135,7 +155,6 @@ A word, can be one of the following:
 \item function form
 \item bind form
 \item type declaring form
-\item at special infix form
 \end{itemize}
 
 \section{Rules for Evaluation}
@@ -199,7 +218,7 @@ You can use tuple in match forms like this:
 \begin{verbatim}
   match [\ a b A], A
 \end{verbatim}
-This match form matches a 3-tuple and if the first and second element are atom \texttt{a} and \texttt{b} respectively, it binds the third element to the name \texttt{A}. More on match, see also TODO:ref:match.
+This match form matches a 3-tuple and if the first and second element are atom \texttt{a} and \texttt{b} respectively, it binds the third element to the name \texttt{A}. See also \autoref{ssec:match} for more details on \texttt{match} form.
 
 \subsection{Literal of Algebraic Type}
 
@@ -258,20 +277,21 @@ An \texttt{if} form contains two words separated by a comma. When evaluating an 
 The predicates used by \texttt{if} forms are as follows:
 \begin{itemize}
 \item \texttt{if>0}, if TOS is a number and greater than 0
-\item \texttt{if>=0}, if TOS is a number and greater than or equals to 0
+\item \texttt{if>=0}, if TOS is a number and greater than or equal to 0
 \item \texttt{if<0}, if TOS is a number and less than 0
-\item \texttt{if<=0}, if TOS is a number and less than or equals to 0
-\item \texttt{if=0}, if TOS is a number and equals to 0
-\item \texttt{if\textasciitilde 0}, if TOS is a number and doesn't equal to 0
+\item \texttt{if<=0}, if TOS is a number and less than or equal to 0
+\item \texttt{if=0}, if TOS is a number and equal to 0
+\item \texttt{if\textasciitilde 0}, if TOS is a number and not equal to 0
 \item \texttt{ife}, if the stack is empty
 \item \texttt{ifne}, if the stack is not empty
-\item \texttt{ift}, if TOS is an atom and equals to \texttt{true}
-\item \texttt{iff}, if TOS is an atom and equals to \texttt{false}
+\item \texttt{ift}, if TOS is an atom and equal to \texttt{true}
+\item \texttt{iff}, if TOS is an atom and equal to \texttt{false}
 \end{itemize}
 
 See \autoref{chap:examples} for examples on \texttt{if} forms.
 
 \subsection{\texttt{match} Form}
+\label{ssec:match}
 
 A \texttt{match} form is a type of advanced condition branching, which uses instead of simple predicates like greater than or less than but more complicated ones, for example, whether a value can be deconstructed as a single element and the rest of the list (like pattern matching \texttt{x::xs} in Haskell). As what \texttt{if} forms do, \texttt{match} forms also match against TOS.
 
@@ -285,17 +305,18 @@ To use \texttt{match} form, you write the \texttt{match} keyword followed by the
 
 Each pattern can be a literal, or a list of words. The rules of \texttt{match} form are:
 \begin{itemize}
-\item If a pattern is a literal, it matches if TOS strictly equals to
+\item If a pattern is a simple literal, it matches if TOS is strictly equal to
   this literal.
-\item In the case of a list of words, the last word of the word list
+\item If a pattern is a list or tuple literal, it matches if TOS is a list or tuple respectively, and if corresponding items are strictly equal; if so, items that are names in pattern will be bound to respective value in TOS.
+\item In case of a list of words, the last word of the word list
   is called a pattern engine.
 \item If the pattern engine is a name, the name is invoked with the argument of L (note that
   this does not pop L off the caller's stack), then the function bound
   to the name will return a tuple of values, and for the rest of
   words:
   \begin{itemize}
-  \item if the word is a value, the word matches if the value strictly
-    equals to the corresponding value in the returned tuple
+  \item if the word is a value, the word matches if the value is strictly
+    equal to the corresponding value in the returned tuple
   \item if the word is a name, the name is bound to the corresponding
     value in the returned tuple
   \end{itemize}
@@ -324,6 +345,10 @@ Because function form creates function in place, the following code is valid\foo
 \end{verbatim}
 
 See \autoref{chap:examples} for concrete examples.
+
+\subsection{Tail Recursive Function Calls}
+
+Any practical functional programming language provides tail recursion optimization. So does Towel. However, Towel is unable to identify\footnote{I admit that it's not very difficult to implement this, but we are undermanned.} whether a function call is tail recursive, so users are responsible for tagging the tail recursive calls with an at symbol at the end of the name of the function.
 
 \section{Bind Form}
 
@@ -417,8 +442,8 @@ Note that \texttt{++3} is a trinary version of function \texttt{++} (list concat
 \begin{verbatim}
   bind Greatest-common-divisor fun X(Int) Y,
     (- if=0 X,
-       if>0 (X Y - Y Greatest-common-divisor),
-            (X Y X - Greatest-common-divisor))
+       if>0 (X Y - Y Greatest-common-divisor@),
+            (X Y X - Greatest-common-divisor@))
   then (42 24 Greatest-common-divisor).
 \end{verbatim}
 
@@ -427,9 +452,11 @@ Note that \texttt{X} and \texttt{Y} are already in the stack by default (because
 \subsection{Fibonacci Numbers}
 \begin{verbatim}
   bind Fib fun A B N,
-    if=0 A, (A B + A 1 N - Fib)
+    if=0 A, (A B + A 1 N - Fib@)
   then (1 1 10 Fib).
 \end{verbatim}
+
+Note how tail recursive calls are done by add an at symbol at the end of \texttt{Fib}.
 
 \section{Advanced Examples}
 

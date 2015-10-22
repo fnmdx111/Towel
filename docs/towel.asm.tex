@@ -1,0 +1,214 @@
+\documentclass{article}
+
+\usepackage[left=1in, right=1in, top=1in, bottom=1in]{geometry}
+\usepackage{hyperref}
+
+\title{Towel Virtual Machine and Towel Assembly Language Manual}
+
+\author{zc2324}
+
+\newcommand{\inst}[1] {\texttt{inst:#1}}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section{An Overview on the Towel Virtual Machine}
+
+The Towel virtual machine is basically a stack-based state machine. But for the sake of convenience, it keeps track of the TOS (like any other stack machines do) and the element next to TOS. It reads instructions sequently from instruction buffer and does its computation on stacks. It has three important stacks:
+\begin{itemize}
+\item execution stack
+\item data stack stack
+\item scope stack
+\end{itemize}
+
+\subsection{Execution Stack}
+
+Execution stack is where context of function calls are stored. A context of a function call is, for example, the return address of the function call, the function name of the function being called and so on.
+
+When a new function call is made, the context of this call is pushed onto the execution stack, followed by the instruction pointer jumping to the start position of the function. When the instruction \texttt{ret} is met, the function returns. TVM pops the TOS on execution stack and jumps to the return address stored in this TOS.
+
+Execution stack has one element in it initially. This context has no return address and the name of it is \texttt{TVM-MAIN}.
+
+\subsection{Data Stack Stack}
+
+Every function has a stack for itself to do its computation. This avoids stack corruptions along all the function executions. Data stack is essentially an important part of the context of the function call, but it is so important, we would like to operate them manually so that we could be more flexible.
+
+When a new function call is made, a new data stack (just a classic stack data structure, nothing special) is pushed onto the data stack stack. When the function returns, TVM pops the TOS from the TOS of data stack stack (i.e. the return value of this function is the TOS of current function's data stack), pushes it onto the caller's stack (next to the TOS of data stack stack). Then this data stack gets popped, thus the caller's data stack is now the TOS of the data stack stack. TVM now pops and evaluates the TOS of the caller's data stack (this is a vital step) and pushes back the evaluated value.
+
+Data stack stack has one element (i.e. a data stack) in it initially, whereas the data stack has no elements whatsoever.
+
+\subsection{Scope Stack}
+
+Scopes are separated from execution contexts for the same reason as data stack stack. And the mechanism is basically the same as data stacks on data stack stack.
+
+Scope stack has one element (i.e. a global scope) in it initially, whereas the scope has no name bindings at all.
+
+\subsection{Some Concepts}
+
+\subsubsection{Object Reference Table}
+
+In TVM, instead of values getting to be pushed onto data stack directly, they are stored in a hashtable called the object reference table. The key of this hashtable is an integer called object index. When pushing a new value onto data stacks, TVM pushes the reference (a simple data structure containing the object index) onto the stack instead for the sake of performance.
+
+This table also keeps track of the newest created table for the \inst{bind} to bind a name to.
+
+\subsubsection{Auxiliary Stack for Pattern Matching}
+
+There exists in every context a special auxiliary stack particularly for pattern matching. The pattern is deconstructed into single items and pushed onto this stack to accomplish pattern matching in a simpler way.
+
+\subsubsection{Calling a Function}
+
+TVM records the instruction next to the one which currently the instruction pointer is pointing at as the return address in a new context, then pushes this context onto the execution stack. And jumps to the label \texttt{:fv*-st}, where \texttt{*} stands for the identifier of the function. In the case of tail recursive calls, TVM jumps to \texttt{:fv*-st-tail}.
+
+\section{Towel Assembly Language and Its Instructions}
+
+\subsection{Overview}
+
+Towel Assembly Language has the same (or less) lexical elements as the Towel programming language. And it's grammar is very simple: each line has either or not a label, has an instruction, and has an argument or not according to the instruction's arity, i.e. \texttt{label? inst arg?}.
+
+\subsection{Scope Related Instructions}
+
+\subsubsection{\inst{push-scope}}
+
+Pushes a new scope onto the scope stack.
+
+\subsubsection{\inst{pop-scope}}
+
+Pops the TOS of the scope stack.
+
+\subsubsection{\inst{share-scope}}
+
+Does absolutely nothing. Just a place-holder to indicate that this new context shares the same scope with its parent.
+
+\subsubsection{\inst{bind}}
+
+\inst{bind} instruction takes one argument, the ID of the name that something will bind to. Then TVM looks ahead to the next instruction. If the next instruction is a member of \inst{make-*} family, TVM binds the value created by this next instruction to the name in current scope (i.e. the TOS of the scope stack).
+
+\subsubsection{\inst{fun-arg}}
+
+\inst{fun-arg} is a compound instruction\footnote{A compound instruction is an instruction with multiple side-effects.} which takes one argument. It pops from the caller's data stack and binds the value to name indicated by the argument.
+
+\subsection{\inst{make-*} instruction family}
+
+\subsubsection{\inst{make-fun}}
+
+Makes a new function value in the object reference table. It takes one argument as the identifier of the function to be created. This identifier is used in every label inside the function body.
+
+\subsubsection{\inst{make-list} and \inst{make-tuple}}
+
+Makes a new list or tuple on top of the current data stack, i.e. a reference to a \texttt{Nil} value created in the object reference table. When encountered this instruction, TVM shifts itself to another state, in which it interprets instructions of the \inst{push-*} family as \texttt{cons}'ing the pushed values to the list instead of pushing the value to stacks, until it reaches \inst{end-list} or \inst{end-tuple}.
+
+For example:
+\begin{verbatim}
+    "instruction buffer"    "obj ref table"
+  make-list               Nil
+  push-int 1              1::Nil
+  push-int 2              2::(1::Nil)
+  push-int 3              3::(2::Nil)
+  end-list                3::(2::Nil) and locked
+\end{verbatim}
+
+\subsubsection{\inst{make-*literal}}
+
+The \inst{make-*literal} instructions essentially do the same thing: make a literal with the value given by the argument in the object reference table. \texttt{*literal} can be one of the following:
+\begin{itemize}
+\item int
+\item string
+\item float
+\item fint (fixed integer)
+\item atom
+\end{itemize}
+
+\subsubsection{\inst{make-ref}}
+
+This instruction take one argument as the object index of the reference to make. Widely used in optimizations to reduce the object reference table look-up time for singleton values (such as integers and strings). Because both the compiler and the virtual machine uses the same indexing function, there won't be a problem.
+
+\subsection{Stack Related Instructions}
+
+\subsubsection{\inst{push-name}}
+
+Takes one argument as the identifier of the name and evaluates the value, then pushes it onto the stack. Probably the most used instruction.
+
+\subsubsection{\inst{pop}}
+
+Pops the TOS of current data stack.
+
+\subsubsection{\inst{push-*literal}}
+
+Takes one argument as the object index of the literal value to be pushed onto the stack.
+
+\subsubsection{\inst{push-fun}}
+
+Takes one argument as the object index\footnote{This index is also the identifier of the function with the colon stripped off.} of the function value to be evaluated and its return value pushed onto the stack.
+
+\subsection{Function Related Instructions}
+
+\subsubsection{\inst{push-stack}}
+
+Pushes a new data stack onto the data stack stack.
+
+\subsubsection{\inst{share-stack}}
+
+Same as \inst{share-scope}.
+
+\subsubsection{\inst{pop-stack}}
+
+Pops the current data stack.
+
+\subsubsection{\inst{push-name-tail}}
+
+Takes one argument as the ID of the name that references to a function which is to be called in a tail recursive manner.
+
+\subsubsection{\inst{ret}}
+
+Take care of the return value of the function. Pops the execution stack. And jumps to the return address.
+
+\subsection{Conditional Branching Instructions}
+
+\subsubsection{\inst{jump}}
+
+Takes a label as its argument and unconditionally jumps to that label.
+
+\subsubsection{\inst{j*}}
+
+Takes a label as its argument and tests against the TOS on the data stack. If the result is true, TVM jumps to the label, otherwise, TVM jumps to \texttt{label!}.
+
+\inst{j*} instruction family consists of the following instructions:
+\begin{itemize}
+\item \inst{jgz}, \inst{jgez}
+\item \inst{jlz}, \inst{jlez}
+\item \inst{jez}, \inst{jnez}
+\item \inst{jt}, \inst{jf}
+\end{itemize}
+
+\subsubsection{\inst{hj*}}
+
+Hungry versions of \inst{j*} instruction family, which consume the TOS they test against.
+
+\subsubsection{\inst{je}, \inst{jne}}
+
+Each one of them takes a label as its argument, and tests if the data stack is empty. If it is, \inst{je} jumps to the label whereas \inst{jne} jumps to the \texttt{label!}, and vice versa.
+
+\subsubsection{\inst{patpush-*}}
+
+Pushes the argument onto the auxiliary stack for pattern matching.
+
+\subsubsection{\inst{match}}
+
+Matches against the TOS using the pattern from the auxiliary stack. If the pattern matches, TVM clears the auxiliary stack and jumps to the label given by the argument, otherwise it jumps to \texttt{label!}.
+
+\subsubsection{\inst{hmatch}}
+
+Hungry version of \inst{match}. When the pattern matches, TVM pops TOS.
+
+\subsection{Miscellaneous Instructions}
+
+\subsubsection{\inst{print-*}}
+
+Prints the TOS to standard output.
+
+\subsubsection{\inst{terminate}}
+
+Terminate the Towel Virtual Machine.
+
+\end{document}
