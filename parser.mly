@@ -214,8 +214,8 @@ if_sform:
   }
 
 pattern:
-  list(restricted_word) COMMA restricted_word { PatternAndMatch($1, $3) }
-| list(restricted_word) COMMA error {
+  list(word) COMMA restricted_word { PatternAndMatch($1, $3) }
+| list(word) COMMA error {
     err "unexpected action clause form"
       $startpos($3) $startofs($1) $endofs($3)
   }

@@ -123,7 +123,7 @@ The type of functions is a list of types, which consists of the types of input a
 
 A Towel program consists of one or multiple so-called \textbf{words} and one terminator. A terminator can be a period (dot) or the end-of-file character.
 
-When encountered multiple words, they are always evaluated one by one in the order they appear.
+When encountered multiple words, they are always evaluated one by one in the order they appear. Although in most times, Towel remains in a postfix fashion, but for the sake of convenience, some parts of the grammar is of prefix or infix style (e.g. the bind form and namespaced name invocation).
 
 A word, can be one of the following:
 \begin{itemize}
@@ -138,7 +138,7 @@ A word, can be one of the following:
 \item at special infix form
 \end{itemize}
 
-\section{Rules for evaluation}
+\section{Rules for Evaluation}
 
 When evaluating a Towel program, each word is evaluated in the original order:
 \begin{itemize}
@@ -223,17 +223,19 @@ You can create literals of algebraic type by listing the required parameters in 
 
 Sequences are short-hand forms for creating anonymous functions with no arguments. You can create a sequence by writing the function body between a pair of parenthesis.
 
-Towel also provides another kind of sequences, the shared sequences. These kind of sequences share the same stack with the caller. When creating such sequences, you add an at symbol right after the left parenthesis. For example,
+Towel also provides another kind of sequences, the shared sequences. These kind of sequences share the same context (such as stack and scope) with the caller. When creating such sequences, you add an at symbol right after the left parenthesis. For example,
 \begin{verbatim}
   ((A B - if>0 1, 0) (A B + if<0 2, 3) Bitand) "non-shared regular sequences"
   (A B - (@ if>0, 1, 0) Println) "prints 1 or 0"
 \end{verbatim}
 
+You may want to create a shared sequence when defining tail-recursive functions, otherwise, you lose the advantage of not stacking up contexts.
+
 \section{Backquote}
 
-Because Towel evaluates and pushes everything it encounters, you can use backquotes the values to prevent Towel from evaluating them so that Towel pushes them directly onto the data stack. Backquotes are created by appending a backquote to the values you want to backquote.
+Towel evaluates and pushes everything it encounters, you can use backquotes the values to prevent Towel from evaluating them so that Towel pushes them directly onto the data stack. Backquotes are created by appending a backquote to the values you want to backquote.
 
-You can backquote only limit types of values:
+You can backquote only limit types of words:
 \begin{itemize}
 \item literals
 \item names
@@ -243,17 +245,115 @@ You can backquote only limit types of values:
 
 You can create backquoted shared sequence by replacing the parentheses with braces and dropping the at symbol. See also \autoref{ssec:backquote} and \autoref{ssec:macro}.
 
-\section{\texttt{match} and \texttt{if} forms}
+\section{\texttt{match} and \texttt{if} Forms}
 
-1
+In order to be a Turing-complete language, one must provide condition branching mechanisms. They are called \texttt{if} and match forms here in Towel.
 
-\section{Function form}
+\subsection{\texttt{if} Forms}
 
-1
+Towel has 10 kinds of \texttt{if} forms for the sake of readability and convenience. They are of the same form, while differing in the predicate they use.
 
-\section{Bind form}
+An \texttt{if} form contains two words separated by a comma. When evaluating an \texttt{if} form, Towel tests the TOS and see if it satisfies the condition. If the condition is satisfied, the first word (called true branch) is evaluated and the second word is ignored\footnote{This is basically why you want a designated condition form}, and vice versa. By default, \texttt{if} forms does not consume TOS, see \autoref{sec:switches} for more detail.
 
-1
+The predicates used by \texttt{if} forms are as follows:
+\begin{itemize}
+\item \texttt{if>0}, if TOS is a number and greater than 0
+\item \texttt{if>=0}, if TOS is a number and greater than or equals to 0
+\item \texttt{if<0}, if TOS is a number and less than 0
+\item \texttt{if<=0}, if TOS is a number and less than or equals to 0
+\item \texttt{if=0}, if TOS is a number and equals to 0
+\item \texttt{if\textasciitilde 0}, if TOS is a number and doesn't equal to 0
+\item \texttt{ife}, if the stack is empty
+\item \texttt{ifne}, if the stack is not empty
+\item \texttt{ift}, if TOS is an atom and equals to \texttt{true}
+\item \texttt{iff}, if TOS is an atom and equals to \texttt{false}
+\end{itemize}
+
+See \autoref{chap:examples} for examples on \texttt{if} forms.
+
+\subsection{\texttt{match} Form}
+
+A \texttt{match} form is a type of advanced condition branching, which uses instead of simple predicates like greater than or less than but more complicated ones, for example, whether a value can be deconstructed as a single element and the rest of the list (like pattern matching \texttt{x::xs} in Haskell). As what \texttt{if} forms do, \texttt{match} forms also match against TOS.
+
+To use \texttt{match} form, you write the \texttt{match} keyword followed by the pattern-action pairs separated by semicolons, while patterns and actions are interleaved by commas. To be more intuitive:
+\begin{verbatim}
+  match pattern-1, action-1;
+        pattern-2, action-2;
+        ...
+        pattern-n, action-n
+\end{verbatim}
+
+Each pattern can be a literal, or a list of words. The rules of \texttt{match} form are:
+\begin{itemize}
+\item If a pattern is a literal, it matches if TOS strictly equals to
+  this literal.
+\item In the case of a list of words, the last word of the word list
+  is called a pattern engine.
+\item If the pattern engine is a name, the name is invoked with the argument of L (note that
+  this does not pop L off the caller's stack), then the function bound
+  to the name will return a tuple of values, and for the rest of
+  words:
+  \begin{itemize}
+  \item if the word is a value, the word matches if the value strictly
+    equals to the corresponding value in the returned tuple
+  \item if the word is a name, the name is bound to the corresponding
+    value in the returned tuple
+  \end{itemize}
+  If all words match, this pattern matches.
+\item If the pattern engine is an algebraic data type constructor, the values in the parameter are tested to see if they are equal (pattern matches if this is true), while the names are bound to the respective values. This is called \textbf{deconstruction}.
+\end{itemize}
+
+If a pattern matches, the respective action is evaluated. See \autoref{chap:examples} for a concrete example on pattern matching in Towel.
+
+Note that actions can only contain certain types of words for the sake of unambiguous grammar:
+\begin{itemize}
+\item name
+\item backquote
+\item literal
+\item sequence
+\end{itemize}
+
+\section{Function Form}
+
+You use function forms to define anonymous functions, you may want to use bind forms jointly to create recursive functions. To define a function, first type the keyword \texttt{fun}, and a list of argument declarations and finally a word for the body of the function. You can optionally tag a type to the argument by enclosing the type in a pair of parentheses after the name of the argument. If not, types will be inferred. If not enough information was provided and the type cannot be inferred, an error will occur.
+
+Because function form creates function in place, the following code is valid\footnote{But not semantically correct.}:
+\begin{verbatim}
+  fun A B,
+    (A B fun X, (3 X +))
+\end{verbatim}
+
+See \autoref{chap:examples} for concrete examples.
+
+\section{Bind Form}
+
+Use bind forms to add new name bindings in current scope. Names can be bound to any kind of values such as functions, atoms, and all kinds of literals. Simply type \texttt{bind} followed by the name and the value. Bind forms have a compulsory \texttt{then} clause, which is followed by a word. You can do your computation under the name scope after this name binding in the \texttt{then} clause. Top-level name bindings, i.e. names bound by the outmost bind form, are visible across modules, you may want to take advantage of this behavior.
+
+If you encountered a situation where names bindings must be done in a cross referencing manner, use \texttt{also} clause. For example:
+\begin{verbatim}
+  bind A 5
+  then bind A (B 4 -)
+       also B (A 5 +)
+       then (A B -)
+\end{verbatim}
+
+\subsection{Namespace}
+
+Namespace\footnote{Namespace won't be implement until later versions.} or module in Towel, is a set of names. Mechanisms like this prevent names of various files from colliding into each other.
+
+To open and close a namespace (in other words, import and unimport a module), use \texttt{Import} and \texttt{Unimport} function. To invoke a name in a certain namespace, interleave the names with a backslash. You can invoke a namespace from another namespace, resulting in a chained list of names.
+
+For instance:
+\begin{verbatim}
+  bind Library ("library" Import)
+  then bind Towel Towel\The-guide\Library
+    "bind the name Towel from namespace The-guide from namespace Library"
+  then (Towel Println
+        Library Unimport)
+
+  ... some more code ...
+\end{verbatim}
+
 
 \section{Algebraic Data Type Declaration}
 \label{ssec:atdf}
@@ -267,12 +367,37 @@ Algebraic data types will be basically the same with that of OCaml except the sy
 
 You can only put atoms, parameterized names (potential namespaced) into the parameter list. See also \autoref{ssec:adt-example}.
 
+\section{Switches}
+\label{sec:switches}
+
+Towel provides some switches to change the default behavior of the compiler or the virtual machine:
+\begin{itemize}
+\item \texttt{hungry}
+\item \texttt{share-stack}
+\item \texttt{optimize-seq}, on by default
+\end{itemize}
+
+If you want to turn on/off these switches, enter the switch names on first line followed by the word \texttt{on} and a period, leave an empty line next to it, then go on with your code, like this.
+
+\begin{verbatim}
+  hungry share-stack on.
+
+  bind Something-new (1 2 -)
+  then Something-new.
+\end{verbatim}
+
+If \texttt{hungry} is turned on, \texttt{if} and \texttt{match} forms will consume the TOS they test against. This is useful when you want to thrifty about stack spaces.
+
+When \texttt{share-stack} is on, every function (including sequence) uses the same stack, you get more classic stack-based language programming experience\footnote{And probably faster execution, because the context switching is done a lot faster without data stacks pushing and popping.} out of this switch, but you may want to make sure functions don't leave extra elements on the stack, so you'd better turn on \texttt{hungry} switch along with this.
+
+If you turn on \texttt{optimize-seq} switch, when you create a sequence as the body of a function, \texttt{if} or \texttt{match} form, this sequence is optimized to disappear, leaving the body of it as the body of the form, because the point of putting a sequence here as the form body is purely syntactic: a list of words must be quoted by a pair of parentheses so that Towel knows where the function body ends.\footnote{Not knowing where to end is called ambiguity in compiler jargon.} However, by doing so, you may risk polluting the name scopes and this may not be what you want.
+
 \chapter{Examples}
 \label{chap:examples}
 
-The \texttt{traverse} tool produces correct syntax tree with these examples.
+The \texttt{traverse} tool produces correct syntax tree with these examples. And be aware that these examples are not guaranteed to run properly with switch \texttt{hungry} and \texttt{shared-stack} turned on.
 
-\section{Concrete examples}
+\section{Concrete Examples}
 \subsection{Quicksort}
 \begin{verbatim}
   bind Quicksort fun L,
@@ -286,29 +411,29 @@ The \texttt{traverse} tool produces correct syntax tree with these examples.
   then ([5 4 3 2 1] Quicksort).
 \end{verbatim}
 
-\footnote{In order to eliminate the shift/reduce conflicts, I have to import a lot of parentheses (sequences).}Note that \texttt{++3} is a trinary version of function \texttt{++} (list concatenation).
+Note that \texttt{++3} is a trinary version of function \texttt{++} (list concatenation), you can always replace \texttt{++3} with two \texttt{++}s. Also the second pattern action is written as a sequence, which creates an anonymous function whose body is the forms in the sequence, then the anonymous function is evaluted.
 
-Also The second pattern action is written as a sequence, which creates an anonymous function whose body is the forms in the sequence, then the anonymous function is evaluted. The scope is shared between these functions, so \texttt{Head} and \texttt{Tail} are still visible to the anonymous function.
-
-\subsection{Greatest common divisor}
+\subsection{Greatest Common Divisor}
 \begin{verbatim}
   bind Greatest-common-divisor fun X(Int) Y,
     (- if=0 X,
-       if>0 (Y X - Y Greatest-common-divisor),
-            (X X Y - Greatest-common-divisor))
+       if>0 (X Y - Y Greatest-common-divisor),
+            (X Y X - Greatest-common-divisor))
   then (42 24 Greatest-common-divisor).
 \end{verbatim}
 
 Note that \texttt{X} and \texttt{Y} are already in the stack by default (because Towel pushes arguments onto stack), so we can immediately evaluate function \texttt{-}.
 
-\subsection{Fibonacci numbers}
+\subsection{Fibonacci Numbers}
 \begin{verbatim}
   bind Fib fun A B N,
     if=0 A, (A B + A 1 N - Fib)
   then (1 1 10 Fib).
 \end{verbatim}
 
-\subsection{Something about backquotes}
+\section{Advanced Examples}
+
+\subsection{Backquotes}
 \label{ssec:backquote}
 \begin{verbatim}
   bind SomeFun fun A,
@@ -324,7 +449,6 @@ What the \textbf{returning} actually does is that it cleans up the current funct
 
 And because we are evaluating return values of functions, \texttt{+} and \texttt{-} are evaluated (derefenced to) some function values, for example \texttt{fv1:0x0001} and \texttt{fv2:0x0002}. And again because we are evaluating values that the names are pointing to, one of \texttt{fv1:0x0001} and \texttt{fv2:0x0002} is called\footnote{It is worth mentioning that because we have exited \texttt{SomeFun}, we are now evaluating the function value with the stack of \texttt{AnotherFun}} with \texttt{A} and \texttt{B}, thus resulting in either adding or substracting \texttt{A} and \texttt{B}.
 
-\section{Advanced examples}
 \subsection{Macro}
 \label{ssec:macro}
 \begin{verbatim}
@@ -337,9 +461,15 @@ And because we are evaluating return values of functions, \texttt{+} and \texttt
   then (1 2 AnotherFun).
 \end{verbatim}
 
-A quick explanation: \texttt{(@ if~0 +, -)} is returned as we want, so a sequence (which is essentially an anonymous function that test whether the value on top of the stack is zero), and by adding a \texttt{@} we define the sequence to be a shared sequence which shares the same stack with the caller, so the overall effect is like we have done a code replacement.
+A quick explanation: \texttt{(@ if\textasciitilde 0 +, -)} is returned as we want, so a sequence (which is essentially an anonymous function that test whether the value on top of the stack is zero), and by adding a \texttt{@} we define the sequence to be a shared sequence which shares the same stack with the caller, so the overall effect is like we have done a code replacement.
 
-\texttt{B-Macro} is a short-hand version of \texttt{A-Macro}
+\texttt{B-Macro} is a short-hand version of \texttt{A-Macro}.
+
+You can define \texttt{++3} we talked about before as follows:
+\begin{verbatim}
+  bind ++3 fun, {++ ++}
+  then ([1 2 3] [2 3 4] [3 4 5] ++3).
+\end{verbatim}
 
 \subsection{Algebraic Data Type}
 \label{ssec:adt-example}
