@@ -2,7 +2,8 @@ TARFILES = Makefile scanner.mll parser.mly ast.mli exc.mli common.ml traverse.ml
 
 OBJS = exc.cmo scoping.ml common.cmo parser.cmo scanner.cmo
 
-TEXS = docs/towel.grammar.def.tex docs/towel.proposal.1.tex
+TEXS = docs/towel.grammar.def.tex docs/towel.proposal.1.tex \
+docs/towel.manual.tex docs/towel.asm.tex
 
 all: traverse tokens
 
