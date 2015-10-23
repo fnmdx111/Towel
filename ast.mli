@@ -20,19 +20,15 @@ type type_def =
 
 and type_def_item = TDName of name | TDPrimitiveType of primitive_type
 
-and _module = {
-  mutable module_name: name;
-  mutable module_path: string;
-}
-
-and module_ = SomeModule of _module | MetaModule
-
-and name = {
+and pname = {
   name_ref_key: int;
   name_repr: string;
-  mutable name_domain: module_;
   mutable name_type: type_def
-};;
+}
+
+and name =
+    NRegular of pname list
+  | NTailCall of pname list
 
 type pvalue = {value_id: int;
                value_content: pvalue_content;
@@ -88,23 +84,23 @@ and control_sequence =
   | CtrlSeqMatchForm of match_sform
 
 and arg_def =
-    ArgDef of name
-  | ArgDefWithType of name * type_def
+    ArgDef of pname
+  | ArgDefWithType of pname * type_def
 
 and function_sform =
     Function of arg_def list * word
 
-and bind_body = BindBody of name * word
+and bind_body = BindBody of pname * word
 
 and bind_sform = BindThen of bind_body list * word
 
 and altype_parameter = AlTypeParameter of atom list
 and altype_case_def_item =
     AlTypeCaseDefItemAtom of atom
-  | AlTypeCaseDefItemName of name
-  | AlTypeCaseDefItemNameWithParameter of name * altype_parameter
+  | AlTypeCaseDefItemName of pname
+  | AlTypeCaseDefItemNameWithParameter of pname * altype_parameter
 and altype_case_def = AlTypeCaseDef of altype_case_def_item list * atom
-and altype_def = AlTypeDef of name * altype_case_def list
+and altype_def = AlTypeDef of pname * altype_case_def list
 and altype_sform = AlType of altype_def list * word
 
 and altype_lit_constructor = AlTypeLiteralConstructor of atom * name

@@ -9,7 +9,7 @@ let _ =
       let token = Scanner.token lexbuf in
       (match token with
          LITERAL(l) -> accum ("some literal"::acc)
-       | NAME(n) -> accum ((name_stringify n)::acc)
+       | NAME(n) -> accum ((pname_stringify n)::acc)
        | BQUOTE -> accum ("`"::acc)
        | COMMA -> accum ("COMMA,"::acc)
        | SEMICOLON -> accum (";"::acc)

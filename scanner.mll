@@ -86,11 +86,9 @@ rule token = parse
 | _DQUOTE [^ '"' '\n' '\r']* _DQUOTE { token lexbuf } (* comments *)
 
 | name as n {
-    let path = lexbuf.lex_buffer in
     NAME({name_ref_key = name_counter ();
           name_repr = n;
-          name_type = TypeDef([TDPrimitiveType(PT_Any)]);
-          name_domain = SomeModule(module_from_path path)})
+          name_type = TypeDef([TDPrimitiveType(PT_Any)])})
   }
 
               (* literals start here *)

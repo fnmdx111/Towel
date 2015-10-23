@@ -12,7 +12,7 @@ open Exc
 
 %token <Ast.atom> ATOM
 %token <Ast.pvalue> LITERAL
-%token <Ast.name> NAME
+%token <Ast.pname> NAME
 %token <Ast.terminator> TERMINATOR
 
 %start sentence
@@ -241,12 +241,11 @@ control_sequence:
 | match_sform { CtrlSeqMatchForm($1) }
 
 name:
-  NAME SLASH name {
-    promote_name_to_module_name $3;
-    $1.name_domain <- SomeModule({module_name = $3;
-                                  module_path = ""});
-    $1 }
-| NAME { $1 }
+  separated_nonempty_list(SLASH, NAME) { NRegular($1) }
+| name AT { match $1 with
+      NRegular(x) -> NTailCall(x)
+    | NTailCall(_) as y -> y
+  }
 | NAME SLASH error {
     err "expected a name (possibly with a namespace reference)"
     $startpos($3) $startofs($1) $endofs($3)
@@ -284,11 +283,13 @@ bind_sform:
     err "expected a name" $startpos($2) $startofs($1) $endofs($2)
   }
 
+(*
 at_sform:
   restricted_word AT word { At($1, $3) }
 | restricted_word AT error {
     err "unexpected form" $startpos($1) $startofs($1) $endofs($1)
   }
+*)
 
 altype_parameter:
   LBRACE nonempty_list(ATOM) RBRACE { AlTypeParameter($2) }
@@ -321,7 +322,7 @@ word:
 | control_sequence { WControl($1) }
 | function_ { WFunction($1) }
 | bind_sform { WBind($1) }
-| at_sform { WAt($1) }
+(* | at_sform { WAt($1) } *)
 | name { WName($1) }
 | altype_sform { WAlType($1) }
 
