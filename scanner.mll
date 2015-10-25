@@ -43,10 +43,21 @@ let name = valid_upper_char common_valid_char*
 let atom_lit = alpha common_valid_char*
 
 let digit = ['0'-'9']
+let hexdigit = ['0'-'9' 'a'-'f' 'A'-'F']
+let bindigit = ['0' '1']
 let signed = ['+' '-']
-let int_lit = signed? digit+
-let frac = '.' digit+
-let float_lit = signed? digit+ frac? ('e' digit+)?
+let int_lit = signed? (
+              ("0d"? digit+)
+            | ("0x" hexdigit+)
+            | ("0b" bindigit+))
+
+let dot = '.'
+let int = digit+
+let frac = digit+
+let exp = 'e' signed? int
+let dot_float = ((int dot) | (dot frac) | (int dot frac)) exp?
+let exp_float = int (dot frac)? exp
+let float_lit = signed? (dot_float | exp_float)
 
 rule token = parse
 | _WHITESPACE+ { token lexbuf }
