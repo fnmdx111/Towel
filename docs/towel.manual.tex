@@ -84,7 +84,7 @@ Most easy-to-use languages support a wide variety of literals (Python is a good 
   int ::= digit+
   frac ::= digit+
   exp = 'e' signed? int
-  dot_float = ((int dot) | (dot frac) | (int dot frac)) exp?
+  dot_float = ((dot frac) | (int dot frac)) exp?
   exp_float = int (dot frac)? exp
   FLOAT ::= signed? (dot_float | exp_float)
 
@@ -95,6 +95,8 @@ Most easy-to-use languages support a wide variety of literals (Python is a good 
   (Rules for strings is from the lexical parsing section of the Python
    language reference manual.)
 \end{verbatim}
+
+Note that because terminator is also a dot, a float number literal cannot be written as \texttt{int dot}, otherwise any integer before a period terminator will be scanned as a float. Although it's feasible to handle this case, but that involves some more parser rules for integer literals alone.
 
 \section{Comments}
 

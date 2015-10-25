@@ -55,7 +55,7 @@ let dot = '.'
 let int = digit+
 let frac = digit+
 let exp = 'e' signed? int
-let dot_float = ((int dot) | (dot frac) | (int dot frac)) exp?
+let dot_float = ((dot frac) | (int dot frac)) exp?
 let exp_float = int (dot frac)? exp
 let float_lit = signed? (dot_float | exp_float)
 
