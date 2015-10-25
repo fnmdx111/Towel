@@ -1,0 +1,74 @@
+#! /usr/bin/env python3
+
+from waflib.Task import Task
+
+def j(l, ext):
+    return ' '.join('%s.%s' % (it, ext) for it in l)
+
+mlj = lambda l: j(l, 'ml')
+mlij = lambda l: j(l, 'mli')
+cmij = lambda l: j(l, 'cmi')
+cmoj = lambda l: j(l, 'cmo')
+cmxj = lambda l: j(l, 'cmx')
+
+def _c(n, ext):
+    return '%s.%s' % (n, ext)
+
+mln = lambda n: _c(n, 'ml')
+mlin = lambda n: _c(n, 'mli')
+cmin = lambda n: _c(n, 'cmi')
+cmon = lambda n: _c(n, 'cmo')
+cmxn = lambda n: _c(n, 'cmx')
+
+
+def build(ctx):
+    mlis = ['ast']
+    lib_mls = ['exc', 'common', 'scoping']
+    aff_mlis = ['parser']
+    non_exec_mls = ['parser', 'scanner']
+    target_mls = ['traverse', 'tokens']
+
+    ctx.add_group('parser')
+    ctx(rule='${MENHIR} --base %s/src/compiler/parser ${SRC}' % ctx.out_dir,
+        source='parser.mly',
+        target='parser.ml parser.mli')
+
+    ctx(rule='${OCAMLLEX} ${SRC} -o ${TGT}',
+        source='scanner.mll',
+        target='scanner.ml')
+
+    oc_rule = '${OCAMLC} -I %s/src/compiler/ -c -o ${TGT} ${SRC}' %\
+              ctx.out_dir
+    def cpl_oc(n, src_ext_f, tgt_ext_f):
+        ctx(rule=oc_rule,
+            source=src_ext_f(n),
+            target=tgt_ext_f(n))
+
+    ctx(rule=oc_rule,
+        source='ast.mli',
+        target='ast.cmi')
+
+    ctx.add_group('lib')
+    for it in lib_mls:
+        cpl_oc(it, mln, cmon)
+
+    for it in aff_mlis:
+        cpl_oc(it, mlin, cmin)
+
+    ctx.add_group('non_exec')
+    for it in non_exec_mls:
+        cpl_oc(it, mln, cmon)
+
+    def cpl_tgt(n):
+        ctx(rule=oc_rule,
+            source=mln(n),
+            target=cmon(n))
+        ctx(rule='${OCAMLC} -I %s/src/compiler/ -o ${TGT} str.cma ${SRC}' %\
+                 ctx.out_dir,
+            source=cmoj(lib_mls + non_exec_mls + [n]),
+            target=n)
+
+    ctx.add_group('tgt')
+    for n in target_mls:
+        cpl_tgt(n)
+
