@@ -15,7 +15,7 @@
 
 \section{An Overview on the Towel Virtual Machine}
 
-The Towel virtual machine is basically a stack-based state machine. But for the sake of convenience, it keeps track of the TOS (like any other stack machines do) and the element next to TOS. It reads instructions sequently from instruction buffer and does its computation on stacks. It has three important stacks:
+The Towel virtual machine is basically a stack-based state machine that accepts and executes Towel Assembly Language. But for the sake of convenience, it keeps track of the TOS (like any other stack machines do) and the element next to TOS. It reads instructions sequently from instruction buffer and does its computation on stacks. It has three important stacks:
 \begin{itemize}
 \item execution stack
 \item data stack stack
@@ -50,7 +50,7 @@ Scope stack has one element (i.e. a global scope) in it initially, whereas the s
 
 In TVM, instead of values getting to be pushed onto data stack directly, they are stored in a hashtable called the object reference table. The key of this hashtable is an integer called object index. When pushing a new value onto data stacks, TVM pushes the reference (a simple data structure containing the object index) onto the stack instead for the sake of performance.
 
-This table also keeps track of the newest created table for the \inst{bind} to bind a name to.
+This table also keeps track of the newest created entry for the \inst{bind} to bind a name to.
 
 \subsubsection{Auxiliary Stack for Pattern Matching}
 
@@ -59,6 +59,10 @@ There exists in every context a special auxiliary stack particularly for pattern
 \subsubsection{Calling a Function}
 
 TVM records the instruction next to the one which currently the instruction pointer is pointing at as the return address in a new context, then pushes this context onto the execution stack. And jumps to the label \texttt{:fv*-st}, where \texttt{*} stands for the identifier of the function. In the case of tail recursive calls, TVM jumps to \texttt{:fv*-st-tail}.
+
+\subsubsection{Exception}
+
+For now, when never an exception is about to be raised, TVM prints out the exception message and exits instantly.
 
 \section{Towel Assembly Language and Its Instructions}
 
@@ -112,11 +116,11 @@ For example:
 
 The \inst{make-*literal} instructions essentially do the same thing: make a literal with the value given by the argument in the object reference table. \texttt{*literal} can be one of the following:
 \begin{itemize}
-\item int
-\item string
-\item float
-\item fint (fixed integer)
-\item atom
+\item \texttt{int}
+\item \texttt{string}
+\item \texttt{float}
+\item \texttt{fint} (fixed integer)
+\item \texttt{atom}
 \end{itemize}
 
 \subsubsection{\inst{make-ref}}
@@ -201,11 +205,67 @@ Matches against the TOS using the pattern from the auxiliary stack. If the patte
 
 Hungry version of \inst{match}. When the pattern matches, TVM pops TOS.
 
+\subsection{Arithmetic Instructions}
+
+\subsubsection{\inst{fint-*}, \inst{uint-*}, \inst{int-*}, \inst{float-*}}
+
+These three instruction families are for arithmetic operations between fixed integers, integers of arbitrary precision and float numbers respectively.
+
+The supported arithmetic operations are listed as follows:
+family supports almost the same arithmetic operations as follows, except that \inst{fint-*} is for fixed integer, \inst{uint-*} for unsigned fixed integer, \inst{int-*} is for integer of arbitrary precision and does not support the bitwise operations:
+\begin{itemize}
+\item Addtion, \texttt{+}
+\item Substraction, \texttt{-}
+\item Multiplication, \texttt{*}
+\item Division, \texttt{/}
+\item Exponentiation, \texttt{**}
+\item Equal, \texttt{=}
+\end{itemize}
+
+\subsubsection{Bitwise Instructions}
+
+In addition to integer operations of \inst{fint-*} and \inst{uint-*} instruction families, they support the following bitwise arithmetic operations:
+\begin{itemize}
+\item Bitwise and, \texttt{and}
+\item Bitwise or, \texttt{or}
+\item Bitwise xor, \texttt{xor}
+\item Bitwise not, \texttt{not}
+\item Bitwise shift left, \texttt{shl}
+\item Bitwise shift right, \texttt{shr}
+\item Bitwise logical shift right, \texttt{shll}
+\end{itemize}
+
 \subsection{Miscellaneous Instructions}
 
 \subsubsection{\inst{print-*}}
 
 Prints the TOS to standard output.
+
+\subsubsection{\inst{unpack}}
+
+Assumes the TOS is a list or tuple, then unpacks it onto the stack. For example,
+\begin{verbatim}
+  dsck: [ ... | [1 2 3]]
+  after unpack: [ ... | 1 | 2 | 3]
+\end{verbatim}
+
+\subsubsection{\inst{pack}}
+
+Takes one integer as the quantity of items to pack into a tuple. For example,
+\begin{verbatim}
+  dsck: [ ... | 1 | 2 | 3]
+  after pack 3: [ ... | [1 2 3]]
+\end{verbatim}
+
+If there were insufficient number of stack items, TVM throws an exception and terminates.
+
+\subsubsection{\inst{backquote}}
+
+Backquote the newest created value along with the copy of current scope and pushes the backquoted value onto the stack.
+
+\subsubsection{\inst{dbg-int}}
+
+Invokes the debug interrupt handler. See also \url{https://github.com/qwert42/ketivm/blob/master/vm/keti.py#L164}, which is an implementation of a similar instruction.
 
 \subsubsection{\inst{terminate}}
 

@@ -15,41 +15,17 @@ let name_counter =
     in fun () -> cnt.(0) <- cnt.(0) + 1; cnt.(0);;
 
 (* =======================================
-     Build canonical module names out of paths
-   ======================================= *)
-let module_name_from_path p =
-  let path_delim = if Sys.os_type = "Win32" then "\\" else "/" in
-  let full_fn = List.hd (List.rev (Str.split (Str.regexp path_delim) p)) in
-  let file_name = List.hd (Str.split (Str.regexp ".") full_fn) in
-  Printf.sprintf "module__%s" file_name;;
-
-let promote_name_to_module_name n =
-  n.name_type <- TypeDef([TDPrimitiveType(PT_Module)]);
-  n.name_domain <- Ast.MetaModule;;
-
-let module_from_path p =
-  let module_name = module_name_from_path p in
-  { module_name = { name_repr = module_name;
-                    name_type = TypeDef([TDPrimitiveType(PT_Module)]);
-                    name_ref_key = -42;
-                    name_domain = Ast.MetaModule };
-    module_path = p };;
-
-(* ==========================================
-   Utilities for types defined in AST
-   ========================================== *)
-
-
-(* =======================================
      AST stringifiers
    ======================================= *)
 module P = Printf;;
 
 let rec atom_stringify a = P.sprintf "(atom %s %d)" a.atom_name a.atom_repr
-and name_stringify a = P.sprintf "(name %s of %s %d)"
-    a.name_repr (match a.name_domain with
-          MetaModule -> "-META-MODULE"
-        | SomeModule(x) -> x.module_name.name_repr) a.name_ref_key
+and pname_stringify pn = P.sprintf "(name %s %d)"
+    pn.name_repr pn.name_ref_key
+and name_stringify name = let a = match name with
+      NRegular(ns) -> ns
+    | NTailCall(ns) -> ns
+  in String.concat " of " (List.map pname_stringify a)
 and int_stringify a = P.sprintf "(int-lit %d)" a
 and float_stringify a = P.sprintf "(float-lit %f)" a
 and string_stringify a = P.sprintf "(str-lit %s)" a
@@ -62,6 +38,7 @@ and lit_stringify = function
 | VList(l) -> list_stringify l
 | VString(ss) -> string_stringify ss
 | VTuple(ws) -> tuple_stringify ws
+| VAlTypeLiteral(alt) -> "(ADT not implemented)"
 
 and seq_stringify seq =
   match seq with
@@ -128,13 +105,13 @@ and type_def_stringify d =
     
 and arg_def_stringify d =
     match d with
-      ArgDef(n) -> name_stringify n
+      ArgDef(n) -> pname_stringify n
     | ArgDefWithType(n, td) ->
-      P.sprintf "(%s: %s)" (name_stringify n) (type_def_stringify td)
+      P.sprintf "(%s: %s)" (pname_stringify n) (type_def_stringify td)
 
 and bind_body_stringify = function
     BindBody(n, w) ->
-    P.sprintf "%s = %s" (name_stringify n) (word_stringify w)
+    P.sprintf "%s = %s" (pname_stringify n) (word_stringify w)
 
 and bind_stringify = function
     BindThen(bodies, w) ->
@@ -160,11 +137,11 @@ and altype_parameter_stringify = function
 
 and altype_case_def_item_stringify = function
     AlTypeCaseDefItemAtom(a) -> (atom_stringify a)
-  | AlTypeCaseDefItemName(n) -> (name_stringify n)
+  | AlTypeCaseDefItemName(n) -> (pname_stringify n)
   | AlTypeCaseDefItemNameWithParameter(n, aps) ->
     P.sprintf "(%s %s)"
       (altype_parameter_stringify aps)
-      (name_stringify n)
+      (pname_stringify n)
 
 and altype_case_def_stringify = function
     AlTypeCaseDef(its, a) ->
@@ -175,7 +152,7 @@ and altype_case_def_stringify = function
 and altype_def_stringify = function
     AlTypeDef(n, acds) ->
     P.sprintf "(%s: %s)"
-      (name_stringify n)
+      (pname_stringify n)
       (String.concat " | " (List.map altype_case_def_stringify acds))
 
 and altype_stringify = function

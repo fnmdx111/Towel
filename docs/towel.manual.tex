@@ -65,21 +65,28 @@ More formally,
   RBRACE ::= '}'
 
   digit ::= ['0'-'9']
+  hexdigit ::= ['0'-'9' 'a'-'f' 'A'-'F']
+  bindigit ::= ['0'-'1']
   lc_chars ::= ['a'-'z']
   NAME ::= [^ '-' reserved_punct digit lc_chars] [^ reserved_punct]*
 \end{verbatim}
 
 \section{Literals}
 
-Most easy-to-use languages support a wide variety of literals (Python is a good example and Java is not). The Towel programming language supports literals for atoms, integers (fixed), floats, strings, and lists. They are defined as follows (rule for list literals will be revealed later):
+Most easy-to-use languages support a wide variety of literals (Python is a good example and Java is not). The Towel programming language supports literals for atoms, integers (fixed)\footnote{Fixed integers are interpreted as signed integers. To get an unsigned fixed integer, use \texttt{UFInt}}, floats, strings, and lists. They are defined as follows (rule for list literals will be revealed later):
 \begin{verbatim}
   ATOM ::= lc_chars [^ reserved_punct]*
 
   signed ::= ['+' '-']
-  INT ::= signed? digit+
+  INT ::= signed? (("0d"? digit+) | ("0x" hexdigit+) | ("0b" bindigit+))
 
-  frac ::= '.' digit+
-  FLOAT ::= signed? digit+ frac? ('e' digit+)?
+  dot ::= '.'
+  int ::= digit+
+  frac ::= digit+
+  exp = 'e' signed? int
+  dot_float = ((dot frac) | (int dot frac)) exp?
+  exp_float = int (dot frac)? exp
+  FLOAT ::= signed? (dot_float | exp_float)
 
   string_char ::= [^ '\' ''']
   string_esc_seq ::= '\' string_char
@@ -88,6 +95,8 @@ Most easy-to-use languages support a wide variety of literals (Python is a good 
   (Rules for strings is from the lexical parsing section of the Python
    language reference manual.)
 \end{verbatim}
+
+Note that because terminator is also a dot, a float number literal cannot be written as \texttt{int dot}, otherwise any integer before a period terminator will be scanned as a float. Although it's feasible to handle this case, but that involves some more parser rules for integer literals alone.
 
 \section{Comments}
 
@@ -108,6 +117,7 @@ Towel provides to the user the following primitive built-in types:
 \begin{itemize}
 \item Atom
 \item FixedInt
+\item Unsigned FixedInt
 \item Int (won't be implemented until later versions)
 \item String
 \item Float
@@ -119,7 +129,9 @@ Towel provides to the user the following primitive built-in types:
 Atoms are special names uniquely bound to constants. They are of type \texttt{atom}.
 
 \subsection{\texttt{FixedInt}s, \texttt{Int}s, \texttt{Float}s}
-Fixed integers and floats are simply OCaml integers and floats. \texttt{Int}s are integers of arbitrary precision (like those \texttt{int}s in Python). These types are subclass of the class \texttt{Number}. A lot of arithmetic functions take \texttt{Number}s as their arguments. However, bitwise functions will take \texttt{FixedInt}s as arguments.
+Fixed integers and floats are simply OCaml integers and floats. \texttt{Int}s are signed integers of arbitrary precision (like those \texttt{int}s in Python). These types are subclass of the class \texttt{Number}. A lot of arithmetic functions take \texttt{Number}s as their arguments. However, bitwise functions will take \texttt{FixedInt}s as arguments.
+
+There is also an unsigned version of \texttt{FixedInt}. It will be internally interpreted as a \texttt{Stdint.Uint32} of library \texttt{ocaml-stdint}.
 
 \subsection{Strings}
 Strings are implemented as OCaml ones. String items are surrended by single quote, rather than double quote.\footnote{Because you don't have to hit the \textit{shift} key when inputing single quotes. Same goes for brackets.}

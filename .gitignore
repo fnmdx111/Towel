@@ -40,3 +40,9 @@ setup.log
 *~
 \#*\#
 .#*
+
+# waf library
+.waf*/*
+build/*
+
+.DS_Store
