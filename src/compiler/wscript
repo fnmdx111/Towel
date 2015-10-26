@@ -26,7 +26,7 @@ def build(ctx):
     lib_mls = ['exc', 'common', 'scoping']
     aff_mlis = ['parser']
     non_exec_mls = ['parser', 'scanner']
-    target_mls = ['traverse', 'tokens']
+    target_mls = ['traverse', 'tokens', 'asm']
 
     ctx.add_group('parser')
     ctx(rule='${MENHIR} --base %s/src/compiler/parser ${SRC}' % ctx.out_dir,
