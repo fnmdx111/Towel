@@ -21,7 +21,6 @@ type type_def =
 and type_def_item = TDName of name | TDPrimitiveType of primitive_type
 
 and pname = {
-  name_ref_key: int;
   name_repr: string;
   mutable name_type: type_def
 }
@@ -30,8 +29,7 @@ and name =
     NRegular of pname list
   | NTailCall of pname list
 
-type pvalue = {value_id: int;
-               value_content: pvalue_content;
+type pvalue = {value_content: pvalue_content;
                value_type: type_def}
 and pvalue_content =
     VAtom of atom

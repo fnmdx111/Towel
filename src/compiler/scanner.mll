@@ -97,8 +97,7 @@ rule token = parse
 | _DQUOTE [^ '"' '\n' '\r']* _DQUOTE { token lexbuf } (* comments *)
 
 | name as n {
-    NAME({name_ref_key = name_counter ();
-          name_repr = n;
+    NAME({name_repr = n;
           name_type = TypeDef([TDPrimitiveType(PT_Any)])})
   }
 
@@ -108,18 +107,15 @@ rule token = parse
           atom_repr = value_counter ()});
   }
 | string_lit as str {
-    LITERAL({value_id = value_counter ();
-             value_content = VString(String.sub str 1 (String.length str - 2));
+    LITERAL({value_content = VString(String.sub str 1 (String.length str - 2));
              value_type = TypeDef([TDPrimitiveType(PT_String)])})
   }
 | int_lit as i {
-    LITERAL({value_id = value_counter ();
-             value_content = VFixedInt(int_of_string i);
+    LITERAL({value_content = VFixedInt(int_of_string i);
              value_type = TypeDef([TDPrimitiveType(PT_FixedInt)])})
   }
 | float_lit as f {
-    LITERAL({value_id = value_counter ();
-             value_content = VFloat(float_of_string f);
+    LITERAL({value_content = VFloat(float_of_string f);
              value_type = TypeDef([TDPrimitiveType(PT_Float)])})
   }
 

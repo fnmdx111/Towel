@@ -11,7 +11,7 @@ open Ast
      looking up names, and maybe some metaprogramming infrastructures.
    ========================================== *)
 
-type scope = Scope of (string, pvalue) Hashtbl.t * string;;
+type scope = Scope of (string, int) Hashtbl.t * string;;
 
 let name_of_scope = function
     Scope(_, n) -> n;;

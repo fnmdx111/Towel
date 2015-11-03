@@ -42,19 +42,16 @@ lit_altype_literal:
 
 literal:
   LITERAL { $1 }
-| ATOM { {value_id = 1; value_content = VAtom($1);
+| ATOM { {value_content = VAtom($1);
           value_type = TypeDef([TDPrimitiveType(PT_Atom)])} }
-| lit_list { {value_id = 1;
-              value_content = $1;
+| lit_list { {value_content = $1;
               value_type = TypeDef([TDPrimitiveType(PT_List)])} }
-| lit_tuple { {value_id = 1;
-               value_content = $1;
+| lit_tuple { {value_content = $1;
                value_type = TypeDef([TDPrimitiveType(
                    PT_Tuple(List.length (match $1 with
                          VTuple(ws) -> ws
                        | _ -> [])))])} }
-| lit_altype_literal { {value_id = 1;
-                        value_content = VAlTypeLiteral($1);
+| lit_altype_literal { {value_content = VAlTypeLiteral($1);
                         value_type = TypeDef([TDPrimitiveType(PT_Any)])} }
 
 backquote:

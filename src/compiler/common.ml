@@ -1,18 +1,11 @@
 open Ast
 
 (* =======================================
-     Counters
-
-     I think they might be useful, but I still am not able to find out
-    even one of them :(
+     Counter
    ======================================= *)
-let value_counter =
-    let cnt = Array.of_list [-1]
-    in fun () -> cnt.(0) <- cnt.(0) + 1; cnt.(0);;
-
-let name_counter =
-    let cnt = Array.of_list [-1]
-    in fun () -> cnt.(0) <- cnt.(0) + 1; cnt.(0);;
+let counter = fun () ->
+  let cnt = Array.of_list [-1]
+  in fun () -> cnt.(0) <- cnt.(0) + 1; cnt.(0);;
 
 (* =======================================
      AST stringifiers
