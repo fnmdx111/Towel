@@ -4,7 +4,7 @@ exception SyntacticError of (string * int * int * int);;
 exception NameNotFoundError of string;;
 exception CorruptedScope of string;;
 
-exception TAC_ConcatenateToCodeOneliner;;
+exception TypeError;;
 
 let err s loc stofs eofs = raise (SyntacticError(s,
                                                  loc.Lexing.pos_lnum,

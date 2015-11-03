@@ -35,3 +35,38 @@ let (|~~|) cs ocs = match cs, ocs with
   | CodeOneliner(_), LabeledCodeSegment(_, _, _)
     -> CodeSegment([cs; ocs]);;
 
+let (|>>) x y =
+  if x = "" then y
+  else if y = "" then x
+  else x ^ "\n" ^ y;;
+
+let (|=>) x y =
+  if x = "" then y
+  else if y = "" then x
+  else x ^ " " ^ y;;
+
+let rec comp =
+  let comp_cs = function
+      CodeSegment(cs) -> List.fold_left
+                           (fun acc x -> acc |>> comp x) "" cs
+    |_ -> ""
+
+  in let unpack = function
+        Some(x) -> x
+      | None -> ""
+
+  in function
+    CodeOneliner(c) -> c
+  | CodeSegment(_) as cs -> comp_cs cs
+  | LabeledCodeSegment(st, end_, []) -> unpack st |=> unpack end_
+  | LabeledCodeSegment(st, end_, c::[]) ->
+    unpack st |=> unpack end_ |=> comp c
+  | LabeledCodeSegment(st, end_, c::cs) ->
+    let first = c
+    in let last = List.hd @@ List.rev cs
+    in let cs_body = List.rev @@ List.tl @@ List.rev cs
+    in ""
+       |>> unpack st |=> comp first
+       |>> List.fold_left (|>>) "" @@ List.map comp_cs cs_body
+       |>> unpack end_ |=> comp last
+

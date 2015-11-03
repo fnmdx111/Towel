@@ -23,9 +23,9 @@ cmxn = lambda n: _c(n, 'cmx')
 
 def build(ctx):
     mlis = ['ast']
-    lib_mls = ['exc', 'common', 'scoping']
+    lib_mls = ['exc', 'common', 'scoping', 'vcounter', 'cseg']
     aff_mlis = ['parser']
-    non_exec_mls = ['parser', 'scanner']
+    non_exec_mls = ['parser', 'scanner', 'swparser']
     target_mls = ['traverse', 'tokens', 'asm']
 
     ctx.add_group('parser')
@@ -37,8 +37,10 @@ def build(ctx):
         source='scanner.mll',
         target='scanner.ml')
 
-    oc_rule = '${OCAMLC} -I %s/src/compiler/ -c -o ${TGT} ${SRC}' %\
-              ctx.out_dir
+    # oc_rule = '${OCAMLC} -I %s/src/compiler/ -c -o ${TGT} ${SRC}' %\
+    #           ctx.out_dir
+    oc_rule = 'ocamlfind ocamlc -package batteries -linkpkg -I %s/src/compiler/ -c -o ${TGT} ${SRC}'\
+              % ctx.out_dir
     def cpl_oc(n, src_ext_f, tgt_ext_f):
         ctx(rule=oc_rule,
             source=src_ext_f(n),

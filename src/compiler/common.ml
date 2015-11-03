@@ -1,11 +1,12 @@
+open Batteries
 open Ast
 
 (* =======================================
      Counter
    ======================================= *)
 let counter = fun () ->
-  let cnt = Array.of_list [-1]
-  in fun () -> cnt.(0) <- cnt.(0) + 1; cnt.(0);;
+  let cnt = Array.of_list [BatInt64.minus_one]
+  in fun () -> cnt.(0) <- BatInt64.succ cnt.(0); cnt.(0);;
 
 (* =======================================
      AST stringifiers
