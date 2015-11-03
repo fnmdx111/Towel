@@ -13,8 +13,7 @@ let counter = fun () ->
 module P = Printf;;
 
 let rec atom_stringify a = P.sprintf "(atom %s %d)" a.atom_name a.atom_repr
-and pname_stringify pn = P.sprintf "(name %s %d)"
-    pn.name_repr pn.name_ref_key
+and pname_stringify pn = P.sprintf "(name %s)" pn.name_repr
 and name_stringify name = let a = match name with
       NRegular(ns) -> ns
     | NTailCall(ns) -> ns
