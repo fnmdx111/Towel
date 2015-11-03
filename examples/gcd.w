@@ -6,7 +6,7 @@
 
 
                             push-scope
-			    push-stack
+			                push-stack
                             bind Greatest-common-divisor
                             make-fun :fv1
 :fv1-st                     push-scope
@@ -22,11 +22,11 @@
                             push-shared-seq :fv1-seq1
                               "remember that this seq shares the same stack"
                               "with its caller"
-			      "and because it has no arguments, it does not"
-			      "jump to other places (just next to the push"
-			      "instruction), this instruction does absolutely"
-			      "nothing, but things may be different for"
-			      "make-shared-seq"
+			                  "and because it has no arguments, it does not"
+			                  "jump to other places (just next to the push"
+			                  "instruction), this instruction does absolutely"
+			                  "nothing, but things may be different for"
+			                  "make-shared-seq"
 :fv1-seq1-st                share-scope
                               "shared sequences do not push new data stack"
                             push-name -

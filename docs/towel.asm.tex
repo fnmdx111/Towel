@@ -56,6 +56,10 @@ This table also keeps track of the newest created entry for the \inst{bind} to b
 
 There exists in every context a special auxiliary stack particularly for pattern matching. The pattern is deconstructed into single items and pushed onto this stack to accomplish pattern matching in a simpler way.
 
+\subsubsection{Scopes}
+
+In Towel virtual machine, scopes are mappings from a name (i.e. integer identifier) to an object index. Every time a name maps to an object index, the corresponding reference counter increments. Every time a scope is popped, the reference counters that correspond to the object indices mapped by the names in this scope decrement. When the reference counter of an object is zero, the very object gets eliminated from memory.
+
 \subsubsection{Calling a Function}
 
 TVM records the instruction next to the one which currently the instruction pointer is pointing at as the return address in a new context, then pushes this context onto the execution stack. And jumps to the label \texttt{:fv*-st}, where \texttt{*} stands for the identifier of the function. In the case of tail recursive calls, TVM jumps to \texttt{:fv*-st-tail}.
@@ -86,7 +90,7 @@ Does absolutely nothing. Just a place-holder to indicate that this new context s
 
 \subsubsection{\inst{bind}}
 
-\inst{bind} instruction takes one argument, the ID of the name that something will bind to. Then TVM looks ahead to the next instruction. If the next instruction is a member of \inst{make-*} family, TVM binds the value created by this next instruction to the name in current scope (i.e. the TOS of the scope stack).
+\inst{bind} instruction takes one argument, the ID of the name that something will bind to. Then TVM binds the newest created value to that name in current scope (i.e. the TOS of the scope stack).
 
 \subsubsection{\inst{fun-arg}}
 
@@ -123,15 +127,15 @@ The \inst{make-*literal} instructions essentially do the same thing: make a lite
 \item \texttt{atom}
 \end{itemize}
 
-\subsubsection{\inst{make-ref}}
+\subsubsection{\inst{make-ref} (deprecated)}
 
-This instruction take one argument as the object index of the reference to make. Widely used in optimizations to reduce the object reference table look-up time for singleton values (such as integers and strings). Because both the compiler and the virtual machine uses the same indexing function, there won't be a problem.
+This instruction takes one argument as the object index of the reference to make. Widely used in optimizations to reduce the object reference table look-up time for singleton values (such as integers and strings). Because both the compiler and the virtual machine uses the same indexing function, there won't be a problem.
 
 \subsection{Stack Related Instructions}
 
 \subsubsection{\inst{push-name}}
 
-Takes one argument as the identifier of the name and evaluates the value, then pushes it onto the stack. Probably the most used instruction.
+Takes a sequence of arguments as the identifiers of the name and the namespaces it belongs to, and evaluates the value, then pushes it onto the stack. Probably the most used instruction.
 
 \subsubsection{\inst{pop}}
 
@@ -197,6 +201,10 @@ Each one of them takes a label as its argument, and tests if the data stack is e
 
 Pushes the argument onto the auxiliary stack for pattern matching.
 
+\subsubsection{\inst{patbackquote}}
+
+Backquote the TOS of the auxiliary stack, useful for Erlang style pattern matching, i.e. if backquoted names are bound and are bound to the same value, the matching succeeds.
+
 \subsubsection{\inst{match}}
 
 Matches against the TOS using the pattern from the auxiliary stack. If the pattern matches, TVM clears the auxiliary stack and jumps to the label given by the argument, otherwise it jumps to \texttt{label!}.
@@ -259,13 +267,31 @@ Takes one integer as the quantity of items to pack into a tuple. For example,
 
 If there were insufficient number of stack items, TVM throws an exception and terminates.
 
-\subsubsection{\inst{backquote}}
+\subsubsection{\inst{make-backquote}}
 
 Backquote the newest created value along with the copy of current scope and pushes the backquoted value onto the stack.
+
+Some notes on the copied scope: right after the backquoted thing is evaluated, the copied scope should be destroyed immediately so that GC would work correctly.
+
+\subsubsection{\inst{backquote}}
+
+Backquote the TOS along with the copy of current scope and pushes the backquoted value back onto the stack.
+
+\subsubsection{\inst{backquote-name}}
+
+Backquote the name given by the \inst{push-name} instruction right after \inst{backquote-name} along with the copy of current scope and pushes the backquoted value back onto the stack.
 
 \subsubsection{\inst{dbg-int}}
 
 Invokes the debug interrupt handler. See also \url{https://github.com/qwert42/ketivm/blob/master/vm/keti.py#L164}, which is an implementation of a similar instruction.
+
+\subsubsection{\inst{unimplemented}}
+
+Prints an error message stating that an unimplemented instruction was found and the virtual machine has to exit.
+
+\subsubsection{\inst{idle}}
+
+Does absolutely nothing. Used to align code with labels.
 
 \subsubsection{\inst{terminate}}
 
