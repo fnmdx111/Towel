@@ -2,11 +2,20 @@
 
 \usepackage[left=1in, right=1in, top=1in, bottom=1in]{geometry}
 \usepackage{hyperref}
+\usepackage{graphicx}
 
 \title{Towel Reference Manual}
+\author{Zihang Chen (zc2324) Baochan Zheng (bz2269) Guanlin Chen (gc2666)}
 
 \begin{document}
 \maketitle
+
+\vspace{10cm}
+\begin{figure}
+\centerline{\includegraphics[scale=0.75]{images.jpg}}
+\end{figure}
+\newpage
+
 \tableofcontents
 
 \chapter{Lexical Elements}\label{chap:grammar}
@@ -30,7 +39,7 @@ Punctuations used in the Towel programming language are as follows:
 
 \begin{itemize}
 \item Whitespace characters are simply ignored.
-\item These characters have special meanings in the Towel programming language: \texttt{` ' `` , ; . ( ) [ ] { } \ @ eof}. This means that you cannot use these characters in names and atoms. \footnote{In other words, you can use any other punctuation characters in names and atoms.}
+\item These characters have special meanings in the Towel programming language: \texttt{` ' `` , ; . ( ) [ ] { } \char`\\ ~  @ eof}. This means that you cannot use these characters in names and atoms. \footnote{In other words, you can use any other punctuation characters in names and atoms.}
 \item Any unprintable character is reserved and won't be used.
 \end{itemize}
 
@@ -41,12 +50,14 @@ Specially,
 
 \section{Names}
 
-Names are used for naming (or referencing to) values. Valid names should not start with reserved punctuations, lowercased letters, and numbers.
+Names are used for naming (or to be more precise, referencing to) values. Valid names should not start with reserved punctuations, lowercased letters, and numbers.
 
 More formally,
 \begin{verbatim}
+  unprintable ::= [all the unprintable ASCII characters]
+  whitespace ::= ['\n' '\t' ' ' '\r']
   reserved_punct ::= ['`' ''' '"' ',' ';' '.' '\' '@' 
-                      '(' ')' '[' ']' '{' '}' '\n' '\r' ' ' '\t']
+                      '(' ')' '[' ']' '{' '}' whitespaces unprintables]
   valid_punct ::= ['!' '~' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '|'
                    ':' '<' '>' '?' '/']
   BQUOTE ::= '`'
@@ -73,7 +84,7 @@ More formally,
 
 \section{Literals}
 
-Most easy-to-use languages support a wide variety of literals (Python is a good example and Java is not). The Towel programming language supports literals for atoms, integers (fixed)\footnote{Fixed integers are interpreted as signed integers. To get an unsigned fixed integer, use \texttt{UFInt}}, floats, strings, and lists. They are defined as follows (rule for list literals will be revealed later):
+Most easy-to-use languages support a wide variety of literals (Python is a good example and Java is not). The Towel programming language supports literals for atoms, integers (fixed)\footnote{Fixed integers are interpreted as signed integers. There is no literal provided for unsigned fixed integers for now.}, floats, strings, and lists. They are defined as follows (rule for list literals will be revealed later):
 \begin{verbatim}
   ATOM ::= lc_chars [^ reserved_punct]*
 
@@ -105,14 +116,19 @@ Comments are defined as follows:
   __COMMENTS ::= '"' [^ '"']* '"'
 \end{verbatim}
 
+\section{Lexical Error}
+
 When the scanner encounters any other character not mentioned above, it will raise a \texttt{LexicalError} exception.
 
 \chapter{Data Types}
 \label{chap:data-types}
 
-Types are important and inferred in Towel. If the type check fails, the compiler will refuse to compile the program.
+Types are important and inferred in Towel. If the type check fails, the compiler will refuse to compile the program. However, when compilation finishes, all the type information is thrown away.
+
+This chapter covers the basics on types in Towel.
 
 \section{Primitive Types}
+
 Towel provides to the user the following primitive built-in types:
 \begin{itemize}
 \item Atom
@@ -125,28 +141,56 @@ Towel provides to the user the following primitive built-in types:
 \item Tuple
 \end{itemize}
 
+Internally, these types are phony type values bound to names above. For example, \texttt{Atom} binds to the value \texttt{type-value:atom} so that you can reference to types in Towel.
+
 \subsection{Atoms}
-Atoms are special names uniquely bound to constants. They are of type \texttt{atom}.
+
+Atoms are special names uniquely bound to integer constants. But they are not comparable to integers.
 
 \subsection{\texttt{FixedInt}s, \texttt{Int}s, \texttt{Float}s}
+
 Fixed integers and floats are simply OCaml integers and floats. \texttt{Int}s are signed integers of arbitrary precision (like those \texttt{int}s in Python). These types are subclass of the class \texttt{Number}. A lot of arithmetic functions take \texttt{Number}s as their arguments. However, bitwise functions will take \texttt{FixedInt}s as arguments.
 
 There is also an unsigned version of \texttt{FixedInt}. It will be internally interpreted as a \texttt{Stdint.Uint32} of library \texttt{ocaml-stdint}.
 
 \subsection{Strings}
-Strings are implemented as OCaml ones. String items are surrended by single quote, rather than double quote.\footnote{Because you don't have to hit the \textit{shift} key when inputing single quotes. Same goes for brackets.}
+
+Strings are implemented as OCaml strings. String items are surrended by single quote, rather than double quote.\footnote{Because you don't have to hit the \textit{shift} key when inputing single quotes. Same goes for brackets.}
 
 \subsection{Lists and Tuples}
+
 Lists and tuples are implemented as OCaml lists. Types of tuples, for instance, \texttt{PT\_Tuple\-1} for 1-element tuples, are decided at compile time, and cannot be changed later, whereas the lengths of lists are not fixed.
 
 \section{\texttt{PT\_Any}}
+
 In current version, without generic typing and algebraic types implemented, \texttt{PT\_Any} is the superclass of the type of every value in Towel.
 
 \section{Algebraic Data Types}
-Users can use the \texttt{type} special form to define custom algebraic data types, see also \autoref{ssec:atdf} and \autoref{chap:examples}.
+
+Users can use the \texttt{type} special form to define custom algebraic data types, see also \autoref{ssec:atdf} and \autoref{chap:examples}. However, type hierarchy between algebraic data types hasn't been designed yet.
 
 \section{Functions}
-The type of functions is a list of types, which consists of the types of input arguments along with the return type. When applying arguments to functions, if the arguments are not enough (i.e. the caller's stack exhausts before all the arguments are satisfied), a partial applied function is returned.\footnote{Maybe we could call this as partial Currying?}
+
+The type of functions is a list of types, which consists of the types of input arguments along with the return type. When applying arguments to functions, if the arguments are not enough (i.e. the caller's stack exhausts before all the arguments are satisfied), a partial applied function is returned.
+
+\section{Type Checking}
+
+Type checking is an operation done between two types, and is not commutative. When we say type A is checked against type B, type checking succeeds under the following circumstances:
+\begin{itemize}
+\item The two type being exactly the same,
+\item Or, type A is a subclass of type B,
+\item Or, check the type of each item of type A and type B, if any of the type checkings succeeds, the whole type checking between type A and type B succeeds.
+\end{itemize}
+
+For a program, each name or value is type checked against the respective argument type of a function that is applied with the names or values. For example, in the following program:
+\begin{verbatim}
+  bind B 'string'
+  also A fun,
+    (2.0 B +)
+  then A.
+\end{verbatim}
+
+\texttt{2.0} and \texttt{B} are applied to \texttt{+}. Because \texttt{+} is of \texttt{Number -> Number -> Number}, so \texttt{2.0} is type checked against the first argument \texttt{Number} type and succeeds, \texttt{B}, a string, is type checked against the second argument \texttt{Number}, which fails. So the type check of the program fails. Compiler complains about this and exits.
 
 \chapter{Elements of Programs}
 \label{chap:forms}
@@ -350,7 +394,7 @@ Note that actions can only contain certain types of words for the sake of unambi
 
 You use function forms to define anonymous functions, you may want to use bind forms jointly to create recursive functions. To define a function, first type the keyword \texttt{fun}, and a list of argument declarations and finally a word for the body of the function. You can optionally tag a type to the argument by enclosing the type in a pair of parentheses after the name of the argument. If not, types will be inferred. If not enough information was provided and the type cannot be inferred, an error will occur.
 
-Because function form creates function in place, the following code is valid\footnote{But not semantically correct.}:
+Because function form creates and evaluates function in place, the following code is valid\footnote{But not semantically correct.}:
 \begin{verbatim}
   fun A B,
     (A B fun X, (3 X +))
@@ -360,7 +404,13 @@ See \autoref{chap:examples} for concrete examples.
 
 \subsection{Tail Recursive Function Calls}
 
-Any practical functional programming language provides tail recursion optimization. So does Towel. However, Towel is unable to identify\footnote{I admit that it's not very difficult to implement this, but we are undermanned.} whether a function call is tail recursive, so users are responsible for tagging the tail recursive calls with an at symbol at the end of the name of the function.
+Any practical functional programming language provides tail recursion optimization. So does Towel. However, Towel is unable to identify\footnote{I admit that it's not very difficult to implement this, but we are undermanned.} whether a function call is tail recursive, so users are responsible for tagging tail recursive calls with an at symbol at the end of the name of the function, like this:
+\begin{verbatim}
+  bind Loop fun F It End,
+    (@ - if=0 (It F),
+              (@ It F F It 1 + End Loop@))
+  then (("looping" Println) 1 10 Loop).
+\end{verbatim}
 
 \section{Bind Form}
 
@@ -376,7 +426,7 @@ If you encountered a situation where names bindings must be done in a cross refe
 
 \subsection{Namespace}
 
-Namespace\footnote{Namespace won't be implement until later versions.} or module in Towel, is a set of names. Mechanisms like this prevent names of various files from colliding into each other.
+Namespace\footnote{Namespace won't be implement until later versions.}, or module, in Towel, is a set of names. Mechanisms like this prevent names of various files from colliding into each other.
 
 To open and close a namespace (in other words, import and unimport a module), use \texttt{Import} and \texttt{Unimport} function. To invoke a name in a certain namespace, interleave the names with a backslash. You can invoke a namespace from another namespace, resulting in a chained list of names.
 
@@ -423,7 +473,7 @@ If you want to turn on/off these switches, enter the switch names on first line 
   then Something-new.
 \end{verbatim}
 
-If \texttt{hungry} is turned on, \texttt{if} and \texttt{match} forms will consume the TOS they test against. This is useful when you want to thrifty about stack spaces.
+If \texttt{hungry} is turned on, \texttt{if} and \texttt{match} forms will consume the TOS they test against when the test finishes, i.e. immediately after falling in particular branches or after failing to fall in any of the branches. This is useful when you want to be thrifty about stack spaces.
 
 When \texttt{share-stack} is on, every function (including sequence) uses the same stack, you get more classic stack-based language programming experience\footnote{And probably faster execution, because the context switching is done a lot faster without data stacks pushing and popping.} out of this switch, but you may want to make sure functions don't leave extra elements on the stack, so you'd better turn on \texttt{hungry} switch along with this.
 
@@ -437,7 +487,7 @@ The \texttt{traverse} tool produces correct syntax tree with these examples. And
 \section{Concrete Examples}
 \subsection{Quicksort}
 \begin{verbatim}
-  bind Quicksort fun L,
+  bind Quicksort fun _,
     match
       [], [];
       Head Tail ::,
@@ -461,6 +511,8 @@ Note that \texttt{++3} is a trinary version of function \texttt{++} (list concat
 
 Note that \texttt{X} and \texttt{Y} are already in the stack by default (because Towel pushes arguments onto stack), so we can immediately evaluate function \texttt{-}.
 
+Pay attention to the tail recursive call here. And because \texttt{optimize-seq} is on by default, we can use regular sequence here as the body of the function form and \texttt{if>0} form.
+
 \subsection{Fibonacci Numbers}
 \begin{verbatim}
   bind Fib fun A B N,
@@ -468,7 +520,7 @@ Note that \texttt{X} and \texttt{Y} are already in the stack by default (because
   then (1 1 10 Fib).
 \end{verbatim}
 
-Note how tail recursive calls are done by add an at symbol at the end of \texttt{Fib}.
+Note how tail recursive calls are done by adding an at symbol at the end of \texttt{Fib}.
 
 \section{Advanced Examples}
 
