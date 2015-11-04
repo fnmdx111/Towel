@@ -89,7 +89,10 @@ Most easy-to-use languages support a wide variety of literals (Python is a good 
   ATOM ::= lc_chars [^ reserved_punct]*
 
   signed ::= ['+' '-']
-  INT ::= signed? (("0d"? digit+) | ("0x" hexdigit+) | ("0b" bindigit+))
+  fint_body ::= (("0d"? digit+) | ("0x" hexdigit+) | ("0b" bindigit+))
+  FINT ::= signed? fint_body
+  INT ::= signed? digit+ ['L' 'l']
+  UFINT ::= '+'? fint_body ['U' 'u']
 
   dot ::= '.'
   int ::= digit+
@@ -134,7 +137,7 @@ Towel provides to the user the following primitive built-in types:
 \item Atom
 \item FixedInt
 \item Unsigned FixedInt
-\item Int (won't be implemented until later versions)
+\item Int
 \item String
 \item Float
 \item List
@@ -147,11 +150,11 @@ Internally, these types are phony type values bound to names above. For example,
 
 Atoms are special names uniquely bound to integer constants. But they are not comparable to integers.
 
-\subsection{\texttt{FixedInt}s, \texttt{Int}s, \texttt{Float}s}
+\subsection{\texttt{(U)FixedInt}s, \texttt{Int}s, \texttt{Float}s}
 
-Fixed integers and floats are simply OCaml integers and floats. \texttt{Int}s are signed integers of arbitrary precision (like those \texttt{int}s in Python). These types are subclass of the class \texttt{Number}. A lot of arithmetic functions take \texttt{Number}s as their arguments. However, bitwise functions will take \texttt{FixedInt}s as arguments.
+(U)Fixed integers and floats are 64bit integers and floats. \texttt{Int}s are signed integers of arbitrary precision (like those \texttt{int}s in Python). These types are subclass of the class \texttt{Number}. A lot of arithmetic functions take \texttt{Number}s as their arguments. However, bitwise functions will take \texttt{FixedInt}s as arguments.
 
-There is also an unsigned version of \texttt{FixedInt}. It will be internally interpreted as a \texttt{Stdint.Uint32} of library \texttt{ocaml-stdint}.
+The unsigned version of \texttt{FixedInt} will be internally interpreted as a \texttt{Stdint.Uint64} of library \texttt{ocaml-stdint}.
 
 \subsection{Strings}
 
@@ -247,6 +250,9 @@ Atoms are good for pattern matching.\footnote{This idea is from Erlang.} Note th
 You can create number and string literals by writing like this:
 \begin{verbatim}
   1 -1 2 -3 5 -8 13 -21
+  +4242424242424242424242424242424242424242424242424242424242L
+  -6666666666666666666666666666666666666666666666666666666666l
+  3U +0x4579u 0b11101 0d1234
   1.1e1 -0.1 'don\'t panic'
 \end{verbatim}
 
