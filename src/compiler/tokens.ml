@@ -1,6 +1,8 @@
 open Common
 open Parser
 open Exc
+open Stdint
+open Ast
 
 let _ =
   let lexbuf = Lexing.from_channel stdin in
@@ -8,7 +10,12 @@ let _ =
     let rec accum acc =
       let token = Scanner.token lexbuf in
       (match token with
-         LITERAL(l) -> accum ("some literal"::acc)
+         LITERAL(l) -> let s = match l.value_content with
+             VFixedInt(i) -> "some fixed int"
+           | VUFixedInt(i) -> "some unsigned fixed int"
+           | VInt(i) -> "some int"
+           | _ -> "some literal"
+             in accum (s::acc)
        | NAME(n) -> accum ((pname_stringify n)::acc)
        | BQUOTE -> accum ("`"::acc)
        | COMMA -> accum ("COMMA,"::acc)

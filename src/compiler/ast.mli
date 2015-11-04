@@ -1,7 +1,10 @@
+open Stdint
+
 type primitive_type =
     PT_Atom
-  | PT_Int
   | PT_FixedInt
+  | PT_Int
+  | PT_UFixedInt
   | PT_Float
   | PT_String
   | PT_List
@@ -33,7 +36,9 @@ type pvalue = {value_content: pvalue_content;
                value_type: type_def}
 and pvalue_content =
     VAtom of atom
-  | VFixedInt of int
+  | VFixedInt of int64
+  | VInt of Big_int.big_int
+  | VUFixedInt of uint64
   | VFloat of float
   | VList of word list
   | VString of string

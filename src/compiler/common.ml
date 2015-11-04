@@ -19,7 +19,7 @@ and name_stringify name = let a = match name with
       NRegular(ns) -> ns
     | NTailCall(ns) -> ns
   in String.concat " of " (List.map pname_stringify a)
-and int_stringify a = P.sprintf "(int-lit %d)" a
+and int_stringify a = P.sprintf "(int-lit %s)" @@ Int64.to_string a
 and float_stringify a = P.sprintf "(float-lit %f)" a
 and string_stringify a = P.sprintf "(str-lit %s)" a
 and tuple_stringify a = P.sprintf "(tuple-lit %s)"
@@ -32,6 +32,7 @@ and lit_stringify = function
 | VString(ss) -> string_stringify ss
 | VTuple(ws) -> tuple_stringify ws
 | VAlTypeLiteral(alt) -> "(ADT not implemented)"
+| _ -> "i'm just too lazy"
 
 and seq_stringify seq =
   match seq with
@@ -89,6 +90,7 @@ and type_def_item_stringify i =
      | PT_Number -> "PT_Number"
      | PT_Tuple(x) -> P.sprintf "PT_Tuple-%d" x
      | PT_Int -> "PT_Int"
+     | PT_UFixedInt -> "PT_UFixedInt"
      | PT_FixedInt -> "PT_FixedInt")
 
 and type_def_stringify d =

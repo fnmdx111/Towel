@@ -4,6 +4,18 @@ open Parser
 open Common
 open Lexing
 open Exc
+open Stdint
+
+let strip_mod s =
+  let len = String.length s
+  in String.sub s 0 (len - 1)
+
+let strip_sign s =
+  let len = String.length s
+  in let first = String.sub s 0 1
+  in if (first = "+") || (first = "-")
+  then String.sub s 1 @@ len - 1
+  else s
 }
 
 let _WHITESPACE = [' ' '\t']
@@ -36,20 +48,23 @@ let reserved_char = [',' ';' '.' '\'' '\\' '`' '@'
                      ' ' '\t' '\n' '\r']
 let common_valid_char = ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '='
                          '|' ':' '<' '>' '?' '/' 'a'-'z' 'A'-'Z' '0'-'9']
-let valid_upper_char = ['~' '!' '#' '$' '%' '^' '&' '*' '_' '+' '='
+let common_valid_char_no_digits =
+  ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '='
+   '|' ':' '<' '>' '?' '/' 'a'-'z' 'A'-'Z']
+                        
+let valid_upper_char = ['~' '!' '#' '$' '%' '^' '&' '*' '_' '='
                         '|' ':' '<' '>' '?' '/' 'A'-'Z']
-
-let name = valid_upper_char common_valid_char*
-let atom_lit = alpha common_valid_char*
 
 let digit = ['0'-'9']
 let hexdigit = ['0'-'9' 'a'-'f' 'A'-'F']
 let bindigit = ['0' '1']
 let signed = ['+' '-']
-let int_lit = signed? (
-              ("0d"? digit+)
-            | ("0x" hexdigit+)
-            | ("0b" bindigit+))
+let _int_lit = (("0d"? digit+)
+              | ("0x" hexdigit+)
+              | ("0b" bindigit+))
+let fint_lit = signed? _int_lit
+let int_lit = signed? digit+ ['L' 'l']
+let ufint_lit = '+'? _int_lit ['U' 'u']
 
 let dot = '.'
 let int = digit+
@@ -58,6 +73,14 @@ let exp = 'e' signed? int
 let dot_float = ((dot frac) | (int dot frac)) exp?
 let exp_float = int (dot frac)? exp
 let float_lit = signed? (dot_float | exp_float)
+
+let name = (valid_upper_char common_valid_char*)
+         | ('+' common_valid_char_no_digits?)
+         | ('+' common_valid_char_no_digits common_valid_char*)
+         | ('-' common_valid_char_no_digits?)
+         | ('-' common_valid_char_no_digits common_valid_char*)
+let atom_lit = alpha common_valid_char*
+
 
 rule token = parse
 | _WHITESPACE+ { token lexbuf }
@@ -111,9 +134,18 @@ rule token = parse
     LITERAL({value_content = VString(String.sub str 1 (String.length str - 2));
              value_type = TypeDef([TDPrimitiveType(PT_String)])})
   }
-| int_lit as i {
-    LITERAL({value_content = VFixedInt(int_of_string i);
+| fint_lit as i {
+    LITERAL({value_content = VFixedInt(Int64.of_string i);
              value_type = TypeDef([TDPrimitiveType(PT_FixedInt)])})
+  }
+| int_lit as i {
+    LITERAL({value_content = VInt(Big_int.big_int_of_string @@ strip_mod i);
+             value_type = TypeDef([TDPrimitiveType(PT_Int)])})
+  }
+| ufint_lit as i {
+    LITERAL({value_content = VUFixedInt(Uint64.of_string
+                                        (i |> strip_sign |> strip_mod));
+             value_type = TypeDef([TDPrimitiveType(PT_UFixedInt)])})
   }
 | float_lit as f {
     LITERAL({value_content = VFloat(float_of_string f);

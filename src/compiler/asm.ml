@@ -4,6 +4,7 @@ open Batteries
 open Vcounter
 open Switches
 open Cseg
+open Stdint
 
 type word_builder_mode =
     MakeOnly
@@ -60,7 +61,13 @@ let rec g_lit
     in cone1 (inst "atom") @@ Int64.to_string repr
 
   | VFixedInt(i) ->
-    cone1 (inst "fint") @@ string_of_int i
+    cone1 (inst "fint") @@ Int64.to_string i
+
+  | VUFixedInt(u) ->
+    cone1 (inst "ufint") @@ Uint64.to_string u
+
+  | VInt(i) ->
+    cone1 (inst "int") @@ Printf.sprintf "%sl" @@ Big_int.string_of_big_int i
 
   | VFloat(f) ->
     cone1 (inst "float") @@ string_of_float f

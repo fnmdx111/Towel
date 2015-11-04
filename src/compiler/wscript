@@ -26,9 +26,9 @@ def build(ctx):
     lib_mls = ['exc', 'common', 'scoping', 'vcounter', 'cseg', 'switches']
     aff_mlis = ['parser']
     non_exec_mls = ['parser', 'scanner', 'asm']
-    target_mls = ['towel']
+    target_mls = ['tokens', 'towel']
 
-    external_libs = ','.join(['Batteries', 'Extlib'])
+    external_libs = ','.join(['Batteries', 'Extlib', 'Stdint'])
     incl_folder = '%s/src/compiler/' % ctx.out_dir
     build_prefix = '%s/' % ctx.out_dir
     # stupid waf!!
