@@ -13,6 +13,19 @@ def options(opt):
 def configure(ctx):
     ctx.load('ocaml')
 
+    ctx.find_program('ocamlfind', var="OCAMLFIND")
+    ret = ctx.exec_command(['ocamlfind', 'query', 'Batteries'])
+    if ret:
+        ctx.fatal('Cannot find library \'Batteries\'.')
+    else:
+        ctx.msg('Checking for library \'Batteries\'', 'ok')
+
+    ret = ctx.exec_command([ctx.env.OCAMLFIND[0], 'query', 'Extlib'])
+    if ret:
+        ctx.fatal('Cannot find library \'Extlib\'.')
+    else:
+        ctx.msg('Checking for library \'Extlib\'', 'ok')
+
     if ctx.options.compile_docs:
         ctx.load('tex')
 

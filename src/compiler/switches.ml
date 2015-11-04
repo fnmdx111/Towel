@@ -1,5 +1,4 @@
 open Batteries;;
-open Extlib;;
 
 type switches =
     CompilerSwitches of bool * (* hungry *)
@@ -13,7 +12,8 @@ let sw_opt_seq = function CompilerSwitches(_, _, b) -> b;;
 let _default = CompilerSwitches(false, false, true);;
 
 let parse src =
-  let in_ = input_string src
+  let in_ = IO.input_string src
+
   in let first_line = input_line in_
   in let second_line = input_line in_
 

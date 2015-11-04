@@ -11,7 +11,9 @@ open Ast
      looking up names, and maybe some metaprogramming infrastructures.
    ========================================== *)
 
-type scope = Scope of (string, int) Hashtbl.t * string;;
+let is_DEBUG = ref true;
+
+type scope = Scope of (string, int64) Hashtbl.t * string;;
 
 let name_of_scope = function
     Scope(_, n) -> n;;
@@ -34,7 +36,9 @@ let push_name scp_stk name value =
 
 let rec lookup_name scp_stk name =
   match scp_stk with
-    [] -> raise (Exc.NameNotFoundError
+    [] -> if !is_DEBUG then -1L
+    else
+    raise (Exc.NameNotFoundError
                    (Printf.sprintf
                       "requested name `%s' not found" name.name_repr))
   | scp::rest ->

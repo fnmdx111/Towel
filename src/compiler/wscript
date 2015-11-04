@@ -23,32 +23,37 @@ cmxn = lambda n: _c(n, 'cmx')
 
 def build(ctx):
     mlis = ['ast']
-    lib_mls = ['exc', 'common', 'scoping', 'vcounter', 'cseg']
+    lib_mls = ['exc', 'common', 'scoping', 'vcounter', 'cseg', 'switches']
     aff_mlis = ['parser']
-    non_exec_mls = ['parser', 'scanner', 'swparser']
-    target_mls = ['traverse', 'tokens', 'asm']
+    non_exec_mls = ['parser', 'scanner', 'asm']
+    target_mls = ['towel']
+
+    external_libs = ','.join(['Batteries', 'Extlib'])
+    incl_folder = '%s/src/compiler/' % ctx.out_dir
+    build_prefix = '%s/' % ctx.out_dir
+    # stupid waf!!
+
+    oc_rule = '${OCAMLFIND} ocamlc -package %s'\
+              ' -I %s -c -o %s${TGT} ${SRC}'\
+              % (external_libs, incl_folder, build_prefix)
 
     ctx.add_group('parser')
     ctx(rule='${MENHIR} --base %s/src/compiler/parser ${SRC}' % ctx.out_dir,
         source='parser.mly',
         target='parser.ml parser.mli')
 
-    ctx(rule='${OCAMLLEX} ${SRC} -o ${TGT}',
+    ctx(rule='${OCAMLLEX} ${SRC} -o %s${TGT}' % build_prefix,
         source='scanner.mll',
         target='scanner.ml')
-
-    # oc_rule = '${OCAMLC} -I %s/src/compiler/ -c -o ${TGT} ${SRC}' %\
-    #           ctx.out_dir
-    oc_rule = 'ocamlfind ocamlc -package batteries -linkpkg -I %s/src/compiler/ -c -o ${TGT} ${SRC}'\
-              % ctx.out_dir
-    def cpl_oc(n, src_ext_f, tgt_ext_f):
-        ctx(rule=oc_rule,
-            source=src_ext_f(n),
-            target=tgt_ext_f(n))
 
     ctx(rule=oc_rule,
         source='ast.mli',
         target='ast.cmi')
+
+    def cpl_oc(n, src_ext_f, tgt_ext_f):
+        ctx(rule=oc_rule,
+            source=src_ext_f(n),
+            target=tgt_ext_f(n))
 
     ctx.add_group('lib')
     for it in lib_mls:
@@ -65,8 +70,9 @@ def build(ctx):
         ctx(rule=oc_rule,
             source=mln(n),
             target=cmon(n))
-        ctx(rule='${OCAMLC} -I %s/src/compiler/ -o ${TGT} str.cma ${SRC}' %\
-                 ctx.out_dir,
+        ctx(rule='${OCAMLFIND} ocamlc -package %s -linkpkg'
+                 ' -o %s${TGT} ${SRC}' %\
+                 (external_libs, build_prefix),
             source=cmoj(lib_mls + non_exec_mls + [n]),
             target=n)
 

@@ -24,7 +24,7 @@
 Keywords in the Towel programming language is as follows:
 \begin{verbatim}
 if>=0 if>0 if<=0 if<0 if~0 if=0 ift iff ife ifne
-match fun bind type also then
+match fun bind type also then export
 \end{verbatim}
 
 The corresponding tokens are:
@@ -454,6 +454,19 @@ Algebraic data types will be basically the same with that of OCaml except the sy
 
 You can only put atoms, parameterized names (potential namespaced) into the parameter list. See also \autoref{ssec:adt-example}.
 
+\section{Exports}
+
+After the main sentence, you can export some of the names you bound previously so that they are visible to other modules by using \texttt{export} like this:
+
+\begin{verbatim}
+  bind A 1
+  also B 2
+  also C 3
+  then Idle.
+
+  export A B C.
+\end{verbatim}
+
 \section{Switches}
 \label{sec:switches}
 
@@ -572,7 +585,9 @@ You can define \texttt{++3} we talked about before as follows:
   then bind A [@ [@ [@ 42 nil\MyList] cons\MyList] leaf\BinTree
                  [@ [@ 42 nil\MyList] cons\MyList] leaf\BinTree]
               tree\BinTree
-  then (A export).
+  then Idle.
+
+  export A.
 \end{verbatim}
 
 This is equivalent to the following OCaml code:

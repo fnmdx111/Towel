@@ -1,5 +1,4 @@
 open Batteries;;
-open Extlib;;
 open Exc;;
 
 let src_file_r = ref "";;
@@ -20,19 +19,24 @@ let () = Arg.parse commands (fun fn -> src_file_r := fn)
        "The Towel Compiler at your service. Don't panic!";;
 
 let src_file = !src_file_r;;
+let src_inchan = Pervasives.open_in src_file;;
+let src_content = String.concat "\n" @@ input_list src_inchan;;
+
+Pervasives.close_in src_inchan;;
+
 let in_files = List.rev !in_files_r;;
 let out_file = !out_file_r;;
 
-let in_chans = List.map (fun fn -> open_in fn, fn) in_files;;
+let in_chans = List.map (fun fn -> Pervasives.open_in fn, fn) in_files;;
 let in_srcs = List.map (fun (inc, fn) -> input_list inc, fn) in_chans;;
 
-List.iter close_in @@ List.map fst in_chans;;
+List.iter Pervasives.close_in @@ List.map fst in_chans;;
 
-let compile src =
-  let in_src, fn = in_srcs
+let asm =
+  let in_src, fn = src_content, src_file
 
-  in let sw, has_sw_preamble = CompilerSwitches.parse(in_src)
-  in let in_src_memchan = input_string in_src
+  in let sw, has_sw_preamble = Switches.parse(in_src)
+  in let in_src_memchan = IO.input_string in_src
   in let () = if has_sw_preamble
        then (ignore (input_line in_src_memchan);
              ignore (input_line in_src_memchan))
@@ -45,14 +49,23 @@ let compile src =
     let cst = Parser.sentence Scanner.token lexbuf
 
     in if (* type checking *) true
-    then assemble cst fn sw
+    then Asm.assemble cst fn sw
     else raise TypeError
 
   with
   | LexicalError(s, ln, b) ->
-    Printf.printf "(%d,%d) Lexical error: %s.\n" ln b s
+    Printf.printf "(%d,%d) Lexical error: %s.\n" ln b s; exit 0
   | SyntacticError(s, ln, st, e) ->
     Printf.printf "(%d,%d-%d) Syntactic error: %s.\n"
-      ln st e s
+      ln st e s; exit 0
   | TypeError ->
-    Printf.printf "type error\n"
+    Printf.printf "type error\n"; exit 0
+
+in let ochan =
+     if out_file = "-"
+     then Pervasives.stdout
+     else Pervasives.open_out out_file
+in Pervasives.output_string ochan asm; Pervasives.flush ochan;
+if out_file = "-"
+then () else Pervasives.close_out ochan
+

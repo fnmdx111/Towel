@@ -6,7 +6,7 @@ open Exc
 %}
 
 %token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
-%token MATCH FUNCTION BIND ALSO THEN AT TYPE
+%token MATCH FUNCTION BIND ALSO THEN AT TYPE EXPORT
 %token SLASH BQUOTE COMMA SEMICOLON
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 
@@ -336,7 +336,8 @@ sequence:
   }
 
 sentence:
-  list(word) TERMINATOR { Sentence($1, $2) }
+  list(word) TERMINATOR { Sentence($1) }
+| EXPORT list(NAME) TERMINATOR { Export($2) }
 | list(word) error {
     err "expected a terminator"
     $startpos($2) $startofs($2) $endofs($2)

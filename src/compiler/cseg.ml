@@ -68,5 +68,7 @@ let rec comp =
     in ""
        |>> unpack st |=> comp first
        |>> List.fold_left (|>>) "" @@ List.map comp_cs cs_body
-       |>> unpack end_ |=> comp last
+       |>> unpack end_ |=> comp last;;
+
+let rec composite = comp;;
 

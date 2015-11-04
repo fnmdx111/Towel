@@ -91,6 +91,7 @@ rule token = parse
 | "then" { THEN }
 | "fun" { FUNCTION }
 | "type" { TYPE }
+| "export" { EXPORT }
 
 | eof { TERMINATOR(Ast.EOF) }
 
@@ -104,7 +105,7 @@ rule token = parse
               (* literals start here *)
 | atom_lit as a {
     ATOM({atom_name = a;
-          atom_repr = value_counter ()});
+          atom_repr = 1});
   }
 | string_lit as str {
     LITERAL({value_content = VString(String.sub str 1 (String.length str - 2));

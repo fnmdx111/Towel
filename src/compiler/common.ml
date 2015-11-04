@@ -166,6 +166,7 @@ and word_stringify w =
   | WAt(a) -> _w (at_stringify a) "@"
   | WBind(b) -> _w (bind_stringify b) "bind"
   | WAlType(alt) -> _w (altype_stringify alt) "al-type"
+  | WIdle -> "idle"
 
 and words_stringify ws =
   String.concat "/" (List.map word_stringify ws)

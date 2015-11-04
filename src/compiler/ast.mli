@@ -56,6 +56,7 @@ and word =
   | WAt of at_sform
   | WBind of bind_sform
   | WAlType of altype_sform
+  | WIdle
 
 and sequence =
     SharedSequence of word list
@@ -110,6 +111,9 @@ and altype_lit =
 and at_sform =
     At of word * word
 
-and terminator = Period | EOF;;
+and terminator = Period | EOF
 
-type sentence = Sentence of word list * terminator;;
+and export = Export of pname list;;
+
+type sentence = Sentence of word list
+              | Export of pname list;;
