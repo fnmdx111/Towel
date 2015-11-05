@@ -1,9 +1,7 @@
 
 type code_segment =
-    LabeledCodeSegment of string option * (* start label *)
-                          string option * (* end label *)
+    LabeledCodeSegment of string list * (* start labels *)
                           code_segment list (* code *)
-  | CodeSegment of code_segment list
   | CodeOneliner of string;;
 
 let cone1 inst arg =
@@ -12,28 +10,9 @@ let cone1 inst arg =
 let cone0 inst =
   CodeOneliner(inst);;
 
-let cnil = CodeSegment([]);;
+let csnl cs = LabeledCodeSegment([], cs);;
 
-let (|~~|) cs ocs = match cs, ocs with
-    LabeledCodeSegment(st_label, end_label, csl),
-    LabeledCodeSegment(_, _, other_csl)
-    -> LabeledCodeSegment(st_label, end_label, csl @ other_csl)
-  | LabeledCodeSegment(st_label, end_label, csl),
-    CodeSegment(other_csl)
-    -> LabeledCodeSegment(st_label, end_label, csl @ other_csl)
-  | LabeledCodeSegment(st_label, end_label, csl),
-    CodeOneliner(_)
-    -> LabeledCodeSegment(st_label, end_label, csl @ [ocs])
-  | CodeSegment([]), _
-    -> ocs
-  | CodeSegment(csl), _
-    -> CodeSegment(csl @ [ocs])
-  | CodeOneliner(_), CodeOneliner(_)
-    -> CodeSegment(cs::[ocs])
-  | CodeOneliner(_), CodeSegment(cs_)
-    -> CodeSegment(cs::cs_)
-  | CodeOneliner(_), LabeledCodeSegment(_, _, _)
-    -> CodeSegment([cs; ocs]);;
+let cnil = csnl [];;
 
 let (|>>) x y =
   if x = "" then y
@@ -45,30 +24,77 @@ let (|=>) x y =
   else if y = "" then x
   else x ^ " " ^ y;;
 
-let rec comp =
-  let comp_cs = function
-      CodeSegment(cs) -> List.fold_left
-                           (fun acc x -> acc |>> comp x) "" cs
-    |_ -> ""
+let assemble_labels = List.fold_left (|=>) "";;
 
-  in let unpack = function
-        Some(x) -> x
-      | None -> ""
+let (|~~|) cs ocs = match cs, ocs with
+    LabeledCodeSegment([], []), _
+    -> ocs
+  | LabeledCodeSegment(st1, []),
+    LabeledCodeSegment(st2, csl)
+    -> LabeledCodeSegment(st1 @ st2, csl)
+  | LabeledCodeSegment(st1, csl1),
+    LabeledCodeSegment([], csl2)
+    -> let rrest = List.rev @@ List.tl @@ List.rev csl1
+    in let rfirst = List.hd @@ List.rev csl1
+    in (match rfirst with
+          LabeledCodeSegment(l_st, []) ->
+          LabeledCodeSegment(st1, rrest @ [LabeledCodeSegment(l_st, csl2)])
+        | LabeledCodeSegment(l_st, l_csl) ->
+          LabeledCodeSegment(st1, rrest @ [LabeledCodeSegment(l_st,
+                                                              l_csl @ csl2)])
+        | CodeOneliner(_) ->
+          LabeledCodeSegment(st1, csl1 @ csl2))
+  | LabeledCodeSegment(st1, csl1),
+    LabeledCodeSegment(st2, csl2)
+    -> let rrest = List.rev @@ List.tl @@ List.rev csl1
+    in let rfirst = List.hd @@ List.rev csl1
+    in (match rfirst with
+          LabeledCodeSegment(l_st, []) ->
+          LabeledCodeSegment(st1, rrest
+                                  @ [LabeledCodeSegment(l_st @ st2, csl2)])
+        | LabeledCodeSegment(_, _)
+        | CodeOneliner(_) ->
+          LabeledCodeSegment(st1, csl1 @ [ocs]))
+  | LabeledCodeSegment(st1, []),
+    CodeOneliner(co)
+    -> LabeledCodeSegment(st1, [ocs])
+  | LabeledCodeSegment(st1, csl1),
+    CodeOneliner(co)
+    -> let rrest = List.rev @@ List.tl @@ List.rev csl1
+    in let rfirst = List.hd @@ List.rev csl1
+    in (match rfirst with
+          LabeledCodeSegment(l_st, l_cs) ->
+          LabeledCodeSegment(st1, rrest
+                                  @ [LabeledCodeSegment(l_st,
+                                                        l_cs @ [ocs])])
+        | CodeOneliner(_) as lco ->
+          LabeledCodeSegment(st1, rrest @ [lco; ocs]))
+  | CodeOneliner(_), CodeOneliner(_)
+    -> csnl @@ cs::[ocs]
+  | CodeOneliner(_), LabeledCodeSegment([], [])
+    -> cs
+  | CodeOneliner(_), LabeledCodeSegment([], csl)
+    -> csnl ([cs] @ csl)
+  | CodeOneliner(_), LabeledCodeSegment(_, _)
+    -> csnl [cs; ocs]
 
-  in function
+let aggregate = List.fold_left (|~~|) cnil
+
+let rec comp = function
     CodeOneliner(c) -> c
-  | CodeSegment(_) as cs -> comp_cs cs
-  | LabeledCodeSegment(st, end_, []) -> unpack st |=> unpack end_
-  | LabeledCodeSegment(st, end_, c::[]) ->
-    unpack st |=> unpack end_ |=> comp c
-  | LabeledCodeSegment(st, end_, c::cs) ->
-    let first = c
-    in let last = List.hd @@ List.rev cs
-    in let cs_body = List.rev @@ List.tl @@ List.rev cs
-    in ""
-       |>> unpack st |=> comp first
-       |>> List.fold_left (|>>) "" @@ List.map comp_cs cs_body
-       |>> unpack end_ |=> comp last;;
+  | LabeledCodeSegment(st, [])
+    -> assemble_labels st
+  | LabeledCodeSegment(st, c::cs) ->
+    ""
+    |>> assemble_labels st |=> comp c
+    |>> List.fold_left (|>>) "" @@ List.map comp cs
 
 let rec composite = comp;;
+
+let rec dump_cs = function
+    LabeledCodeSegment(ss, css)
+    -> Printf.sprintf "start: %s -> [\n%s] dump ends here\n" (assemble_labels ss)
+         (String.concat "\n" @@ List.map dump_cs css)
+  | CodeOneliner(c)
+    -> Printf.sprintf "co: %s" c
 

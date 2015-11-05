@@ -72,7 +72,9 @@ For now, when never an exception is about to be raised, TVM prints out the excep
 
 \subsection{Overview}
 
-Towel Assembly Language has the same (or less) lexical elements as the Towel programming language. And it's grammar is very simple: each line has either or not a label, has an instruction, and has an argument or not according to the instruction's arity, i.e. \texttt{label? inst arg?}.
+Towel Assembly Language has the same (or less) lexical elements as the Towel programming language. And it's grammar is very simple: each line has either or not a label, has an instruction, and has an argument or not according to the instruction's arity, i.e. \texttt{label* inst arg?}.
+
+TAL has an optimized version, in which labels preceding a line are eliminated, and labels as arguments are replaced with their absolute position (i.e. the line number relative to the starting of the TAL source file, of the line where they appear as line labels).
 
 \subsection{Scope Related Instructions}
 
@@ -124,6 +126,7 @@ The \inst{make-*literal} instructions essentially do the same thing: make a lite
 \item \texttt{string}
 \item \texttt{float}
 \item \texttt{fint} (fixed integer)
+\item \texttt{ufint}
 \item \texttt{atom}
 \end{itemize}
 
@@ -140,6 +143,24 @@ Takes a sequence of arguments as the identifiers of the name and the namespaces 
 \subsubsection{\inst{pop}}
 
 Pops the TOS of current data stack.
+
+\subsubsection{\inst{unpack}}
+
+Assumes the TOS is a list or tuple, then unpacks it onto the stack. For example,
+\begin{verbatim}
+  dsck: [ ... | [1 2 3]]
+  after unpack: [ ... | 1 | 2 | 3]
+\end{verbatim}
+
+\subsubsection{\inst{pack}}
+
+Takes one integer as the quantity of items to pack into a tuple. For example,
+\begin{verbatim}
+  dsck: [ ... | 1 | 2 | 3]
+  after pack 3: [ ... | [1 2 3]]
+\end{verbatim}
+
+If there were insufficient number of stack items, TVM throws an exception and terminates.
 
 \subsubsection{\inst{push-*literal}}
 
@@ -207,7 +228,7 @@ Backquote the TOS of the auxiliary stack, useful for Erlang style pattern matchi
 
 \subsubsection{\inst{match}}
 
-Matches against the TOS using the pattern from the auxiliary stack. If the pattern matches, TVM clears the auxiliary stack and jumps to the label given by the argument, otherwise it jumps to \texttt{label!}.
+Matches against the TOS using the pattern from the auxiliary stack. If the pattern \textbf{does not} match, TVM clears the auxiliary stack and jumps to the label given by the argument, otherwise it clears the auxiliary stack and continue executing the next instruction.
 
 \subsubsection{\inst{hmatch}}
 
@@ -215,7 +236,7 @@ Hungry version of \inst{match}. When the pattern matches, TVM pops TOS.
 
 \subsection{Arithmetic Instructions}
 
-\subsubsection{\inst{fint-*}, \inst{uint-*}, \inst{int-*}, \inst{float-*}}
+\subsubsection{\inst{fint-*}, \inst{ufint-*}, \inst{int-*}, \inst{float-*}}
 
 These three instruction families are for arithmetic operations between fixed integers, integers of arbitrary precision and float numbers respectively.
 
@@ -243,29 +264,7 @@ In addition to integer operations of \inst{fint-*} and \inst{uint-*} instruction
 \item Bitwise logical shift right, \texttt{shll}
 \end{itemize}
 
-\subsection{Miscellaneous Instructions}
-
-\subsubsection{\inst{print-*}}
-
-Prints the TOS to standard output.
-
-\subsubsection{\inst{unpack}}
-
-Assumes the TOS is a list or tuple, then unpacks it onto the stack. For example,
-\begin{verbatim}
-  dsck: [ ... | [1 2 3]]
-  after unpack: [ ... | 1 | 2 | 3]
-\end{verbatim}
-
-\subsubsection{\inst{pack}}
-
-Takes one integer as the quantity of items to pack into a tuple. For example,
-\begin{verbatim}
-  dsck: [ ... | 1 | 2 | 3]
-  after pack 3: [ ... | [1 2 3]]
-\end{verbatim}
-
-If there were insufficient number of stack items, TVM throws an exception and terminates.
+\subsection{Backquote Instructions}
 
 \subsubsection{\inst{make-backquote}}
 
@@ -281,7 +280,19 @@ Backquote the TOS along with the copy of current scope and pushes the backquoted
 
 Backquote the name given by the \inst{push-name} instruction right after \inst{backquote-name} along with the copy of current scope and pushes the backquoted value back onto the stack.
 
-\subsubsection{\inst{dbg-int}}
+\subsection{I/O Instructions}
+
+\subsubsection{\inst{show}}
+
+Prints the TOS to standard output.
+
+\subsubsection{\inst{read}}
+
+Reads a string from standard input.
+
+\subsection{Miscellaneous Instructions}
+
+\subsubsection{\inst{dint}}
 
 Invokes the debug interrupt handler. See also \url{https://github.com/qwert42/ketivm/blob/master/vm/keti.py#L164}, which is an implementation of a similar instruction.
 

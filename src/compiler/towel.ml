@@ -48,8 +48,13 @@ let asm =
 
     let cst = Parser.sentence Scanner.token lexbuf
 
+    in let fn_digest = src_content
+                       |> Sha1.string
+                       |> Sha1.to_hex
+                       |> fun x -> String.sub x 0 9
+
     in if (* type checking *) true
-    then Asm.assemble cst fn sw
+    then Asm.assemble cst fn_digest sw
     else raise TypeError
 
   with
