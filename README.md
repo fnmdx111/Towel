@@ -11,13 +11,20 @@ scheduled.
 Build
 ----
 
-We threw away the make building system and changed to Waf. Run
-
-    waf configure --docs build
-
-or if you don't want the documentations,
+We threw away the old Make building system and changed to Waf. Run
 
     waf configure build
+
+to build for Towel compiler executable `towel` for now.
+
+If you want some documentations, e.g. manuals, run
+
+    waf configure build --docs
+
+If you want to build native executable instead of the one of OCaml bytecodes,
+run
+
+    waf configure build --native
 
 
 License

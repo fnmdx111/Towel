@@ -33,8 +33,8 @@ def build(ctx):
     build_prefix = '%s/' % ctx.out_dir
     # stupid waf!!
 
-    obj_ext = cmxn if ctx.env.NATIVE else cmon
-    obj_j = cmxj if ctx.env.NATIVE else cmoj
+    obj_ext = cmxn if ctx.options.compile_natively else cmon
+    obj_j = cmxj if ctx.options.compile_natively else cmoj
 
     oc_rule = '${OCAMLFIND} ${OC} -package %s'\
               ' -I %s -c -o %s${TGT} ${SRC}'\
