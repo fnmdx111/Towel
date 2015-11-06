@@ -241,19 +241,19 @@ Hungry version of \inst{match}. When the pattern matches, TVM pops TOS.
 These three instruction families are for arithmetic operations between fixed integers, integers of arbitrary precision and float numbers respectively.
 
 The supported arithmetic operations are listed as follows:
-family supports almost the same arithmetic operations as follows, except that \inst{fint-*} is for fixed integer, \inst{uint-*} for unsigned fixed integer, \inst{int-*} is for integer of arbitrary precision and does not support the bitwise operations:
+family supports almost the same arithmetic operations as follows, except that \inst{fint-*} is for fixed integer, \inst{ufint-*} for unsigned fixed integer, \inst{int-*} is for integer of arbitrary precision and does not support the bitwise operations:
 \begin{itemize}
-\item Addtion, \texttt{+}
-\item Substraction, \texttt{-}
-\item Multiplication, \texttt{*}
-\item Division, \texttt{/}
-\item Exponentiation, \texttt{**}
-\item Equal, \texttt{=}
+\item Addtion, \texttt{add}
+\item Substraction, \texttt{sub}
+\item Multiplication, \texttt{mul}
+\item Division, \texttt{div}
+\item Exponentiation, \texttt{pow}
+\item Equal, \texttt{equ}
 \end{itemize}
 
 \subsubsection{Bitwise Instructions}
 
-In addition to integer operations of \inst{fint-*} and \inst{uint-*} instruction families, they support the following bitwise arithmetic operations:
+In addition to integer operations of \inst{fint-*} and \inst{ufint-*} instruction families, they support the following bitwise arithmetic operations:
 \begin{itemize}
 \item Bitwise and, \texttt{and}
 \item Bitwise or, \texttt{or}
@@ -288,7 +288,7 @@ Prints the TOS to standard output.
 
 \subsubsection{\inst{read}}
 
-Reads a string from standard input.
+Reads a string from standard input and store that string in ORT.
 
 \subsection{Miscellaneous Instructions}
 

@@ -102,7 +102,7 @@ let rec g_lit
 and g_name mode scp_stk pn =
   let to_name_id_string ns =
     String.concat " "
-    @@ List.map (fun x -> Printf.sprintf "0x%sL" @@ Int64.to_string x)
+    @@ List.map (fun x -> Printf.sprintf "%sL" @@ Int64.to_string x)
     @@ List.map (lookup_name scp_stk) ns
   in let prefix = match mode with
         PushMake -> ""

@@ -21,6 +21,7 @@ def configure(ctx):
         ctx.load('ocaml')
 
         ctx.find_program('ocamlfind', var="OCAMLFIND")
+        ctx.find_program('python3', var='PY3K')
         ret = ctx.exec_command(['ocamlfind', 'query', 'Batteries'])
 
         def find_lib(l):
@@ -30,8 +31,9 @@ def configure(ctx):
             else:
                 ctx.msg('Checking for library \'%s\'' % l, 'ok')
 
-        ctx.env.LIBS = ['Batteries', 'Extlib', 'Stdint', 'Sha']
-        for l in ctx.env.LIBS:
+        ctx.env.LIBS = {'Batteries', 'Extlib', 'Stdint', 'Sha'}
+        ctx.env.TASM_LIBS = {'Stdint'}
+        for l in ctx.env.LIBS | ctx.env.TASM_LIBS:
             find_lib(l)
 
         ctx.env.OC = [os.path.basename(ctx.env.OCAMLC[0])]
@@ -53,8 +55,8 @@ def build(ctx):
     if ctx.options.compile_docs:
         ctx.recurse('docs')
     elif ctx.options.compile_all:
-        ctx.recurse('src/compiler src/vm')
+        ctx.recurse('src/compiler src/tasm src/vm')
         ctx.recurse('docs')
     else:
-        ctx.recurse('src/compiler src/vm')
+        ctx.recurse('src/compiler src/tasm src/vm')
 

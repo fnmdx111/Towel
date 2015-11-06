@@ -21,49 +21,56 @@ cmxn = lambda n: _c(n, 'cmx')
 
 def build(ctx):
     mlis = ['ast']
-    lib_mls = ['exc', 'common', 'scoping', 'cseg', 'switches']
+    lib_mls = []
     aff_mlis = ['parser']
-    non_exec_mls = ['parser', 'scanner', 'asm']
-    target_mls = ['tokens', 'towel']
+    non_exec_mls = ['parser', 'scanner']
+    target_mls = []
 
-    external_libs = ','.join(ctx.env.LIBS)
-    incl_folder = '%s/src/compiler/' % ctx.out_dir
     build_prefix = '%s/' % ctx.out_dir
     # stupid waf!!
+    external_libs = ','.join(ctx.env.TASM_LIBS)
+    incl_folder = '%s/src/tasm/' % ctx.out_dir
+
+    ctx(rule='${PY3K} ../%s %s ${SRC} ${TGT}' % (
+        ctx.path.get_src().find_resource('ccg.py').relpath(), 'src/tasm'),
+        target='parser.mly scanner.mll ast.mli',
+        source='scanner.mll.p')
 
     obj_ext = cmxn if ctx.options.compile_natively else cmon
     obj_j = cmxj if ctx.options.compile_natively else cmoj
 
     oc_rule = '${OCAMLFIND} ${OC} -package %s'\
-              ' -I %s -c -o %s${TGT} ${SRC}'\
+              ' -I %s -c -o %s/src/${TGT} ${SRC}'\
               % (external_libs, incl_folder, build_prefix)
 
-    ctx.add_group('parser')
-    ctx(rule='${MENHIR} --base %s/src/compiler/parser ${SRC}' % ctx.out_dir,
-        source='parser.mly',
-        target='parser.ml parser.mli')
-
-    ctx(rule='${OCAMLLEX} ${SRC} -o %s${TGT}' % build_prefix,
-        source='scanner.mll',
-        target='scanner.ml')
-
+    ctx.add_group('tasmmlis')
     ctx(rule=oc_rule,
         source='ast.mli',
         target='ast.cmi')
+
+    ctx.add_group('tasmparser')
+    ctx(rule='${MENHIR} --base %s/src/tasm/parser ${SRC}' % ctx.out_dir,
+        source='parser.mly',
+        target='parser.ml parser.mli')
+
+    print(ctx.out_dir)
+    ctx(rule='${OCAMLLEX} ${SRC} -o ${TGT}',
+        source='scanner.mll',
+        target='scanner.ml')
 
     def cpl_oc(n, src_ext_f, tgt_ext_f):
         ctx(rule=oc_rule,
             source=src_ext_f(n),
             target=tgt_ext_f(n))
 
-    ctx.add_group('lib')
+    ctx.add_group('tasmlib')
     for it in lib_mls:
         cpl_oc(it, mln, obj_ext)
 
     for it in aff_mlis:
         cpl_oc(it, mlin, cmin)
 
-    ctx.add_group('non_exec')
+    ctx.add_group('tasmnon_exec')
     for it in non_exec_mls:
         cpl_oc(it, mln, obj_ext)
 
@@ -77,7 +84,7 @@ def build(ctx):
             source=obj_j(lib_mls + non_exec_mls + [n]),
             target=n)
 
-    ctx.add_group('tgt')
+    ctx.add_group('tasmtgt')
     for n in target_mls:
         cpl_tgt(n)
 
