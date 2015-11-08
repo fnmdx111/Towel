@@ -192,6 +192,10 @@ Takes one argument as the ID of the name that references to a function which is 
 
 Take care of the return value of the function. Pops the execution stack. And jumps to the return address.
 
+\subsubsection{\inst{shared-ret}}
+
+Just sets the instruction pointer back to where this shared sequence gets called. No return value copied whatsoever (because there isn't any).
+
 \subsection{Conditional Branching Instructions}
 
 \subsubsection{\inst{jump}}
@@ -296,6 +300,10 @@ Reads a string from standard input and store that string in ORT.
 \subsubsection{\inst{dint}}
 
 Invokes the debug interrupt handler. See also \url{https://github.com/qwert42/ketivm/blob/master/vm/keti.py#L164}, which is an implementation of a similar instruction.
+
+\subsubsection{\inst{type}}
+
+Pushes the type reference of TOS onto the stack. This instruction only recognizes built-in types.
 
 \subsubsection{\inst{unimplemented}}
 

@@ -1,15 +1,27 @@
 push-stack
 push-scope
-push-fun :de26e572d-0-st
-:de26e572d-0-st push-stack
+make-fun :d712c46a0-0-st
+make-backquote
+jump :d712c46a0-0-real-end
+:d712c46a0-0-st push-name -1L
+:d712c46a0-0-end shared-ret
+:d712c46a0-0-real-end
+make-fun :d712c46a0-1-st
+bind 1
+jump :d712c46a0-1-real-end
+:d712c46a0-1-st push-stack
 push-scope
-fun-arg 0
-patpush-list
-end-list
-match :de26e572d-1-p0!
-push-list
-end-list
-jump :de26e572d-1-end
-:de26e572d-1-p0! :de26e572d-1-end :de26e572d-0-end ret
-:de26e572d-0-real-end
+fun-arg 2
+fun-arg 3
+push-name 2L
+push-name 3L
+hjgz :d712c46a0-2!
+:d712c46a0-2 push-fint 1
+jump :d712c46a0-2-end
+:d712c46a0-2! push-fint 0
+:d712c46a0-2-end
+push-name 0L
+:d712c46a0-1-end ret
+:d712c46a0-1-real-end
+push-name 1L
 terminate

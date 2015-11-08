@@ -36,14 +36,14 @@ let asm =
   let in_src, fn = src_content, src_file
 
   in let sw, has_sw_preamble = Switches.parse(in_src)
-  in let in_src_memchan = IO.input_string in_src
-  in let () = if has_sw_preamble
-       then (ignore (input_line in_src_memchan);
-             ignore (input_line in_src_memchan))
+  in let text = if has_sw_preamble
+       then let _, r = String.split src_content "\n"
+         in let _, r = String.split r "\n"
+         in r
        (* ignore the two-line preamble so that no syntax error will show up *)
-       else ()
+       else src_content
 
-  in let lexbuf = Lexing.from_channel in_src_memchan
+  in let lexbuf = Lexing.from_string text
   in try
 
     let cst = Parser.sentence Scanner.token lexbuf
@@ -63,6 +63,8 @@ let asm =
   | SyntacticError(s, ln, st, e) ->
     Printf.printf "(%d,%d-%d) Syntactic error: %s.\n"
       ln st e s; exit 0
+  | NameNotFoundError(s) ->
+    Printf.printf "Name not found: %s.\n" s; exit 0
   | TypeError ->
     Printf.printf "type error\n"; exit 0
 
@@ -73,4 +75,3 @@ in let ochan =
 in Pervasives.output_string ochan asm; Pervasives.flush ochan;
 if out_file = "-"
 then () else Pervasives.close_out ochan
-

@@ -18,7 +18,7 @@ let parse src =
   in let second_line = input_line in_
 
   in close_in in_;
-  if second_line <> "\n"
+  if second_line <> ""
   then _default, false
   else let hungry = BatString.exists first_line "hungry"
     in let share_stack = BatString.exists first_line "share-stack"
@@ -29,4 +29,3 @@ let parse src =
        (* None of the switches appeared in the preamble, in this situation, *)
        (* compiler reads the source from the very beginning. *)
        else true
-

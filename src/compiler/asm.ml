@@ -171,7 +171,7 @@ and g_backquote ctx =
     | PushMake -> "backquote"
     | Pattern -> "patbackquote"
   in function
-    BQValue(pv) ->
+      BQValue(pv) ->
       g_lit ctx {inst_nil_ctx with
                  post = fun rj (* reljump number *)
                    -> cone1 bq_inst rj} pv
@@ -181,16 +181,16 @@ and g_backquote ctx =
          |~~| cone0 "backquote-name"
          |~~| g_name ctx n
 
-  | BQSeq(seq) ->
-    g_seq ctx
-      IsNotBody {inst_nil_ctx with
-                 post = fun uid
-                   -> (cone0 bq_inst)
-                      |~~| (cone1 "jump"
-                              (uid -- "real-end"))} seq
+    | BQSeq(seq) ->
+      g_seq ctx IsNotBody
+        {inst_nil_ctx with
+         post = fun uid
+           -> (cone0 bq_inst)
+              |~~| (cone1 "jump"
+                      (uid -- "real-end"))} seq
 
-  | BQBackquote(b) ->
-    g_backquote ctx b
+    | BQBackquote(b) ->
+      g_backquote ctx b
 
 and g_seq ctx is_body_ inst_ctx seq =
   let _UID =
@@ -243,7 +243,7 @@ and g_seq ctx is_body_ inst_ctx seq =
              (* For shared sequences, we do none of the clean-ups, and
                 the end label is not important at all. But for the sake of
                 symmetricness, we put it here alright. *)
-         else LabeledCodeSegment([seq_end_id], [])
+         else LabeledCodeSegment([seq_end_id], [cone0 "shared-ret"])
        in (opt_cs _x) |~~| LabeledCodeSegment([seq_real_end_id], [])
 
   in let body, scp_stk = match seq with
@@ -300,12 +300,14 @@ and g_match ctx =
                     NRegular(x) -> x
                   | NTailCall(x) ->
                     (ignore @@ List.map (lookup_name ctx.scp_stk) x); x
-                    (* We can't call a name that does not exist yet. *)
+                    (* We can't invoke a name that does not exist yet. *)
 
                 in (match n with
                       x::[] ->
                       (try if lookup_name ctx.scp_stk x
                               = BatInt64.minus_one
+                              (* This stands for the name does not exist in
+                                 debug mode. *)
                          then
                            (new_names := x::!new_names;
                             push_name ctx.scp_stk x @@ name_repr_tick ())
@@ -318,6 +320,8 @@ and g_match ctx =
                              might result in a NameNotFoundError. *)
 
                     | _ -> failwith "Illegal name binding");
+                (* You can't bind to names in other namespaces. *)
+
                 g_word {ctx with mode = Pattern}
                   IsNotBody inst_nil_ctx w
               (* I have to log this name into current scope if it does not

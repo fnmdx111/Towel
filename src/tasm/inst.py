@@ -1,3 +1,8 @@
+"""
+Definition for the instructions of Towel Assembly Language.
+
+See also the Towel Assembly Language Manual.
+"""
 
 nullary_instructions = [
     'push-scope',
@@ -12,9 +17,11 @@ nullary_instructions = [
     'share-stack',
     'pop-stack',
     'ret',
+    'shared-ret',
     'show',
     'read',
     'dint',
+    'type',
     'unimplemented',
     'idle',
     'backquote-name',
