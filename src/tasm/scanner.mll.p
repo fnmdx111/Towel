@@ -1,6 +1,6 @@
 {
-open Ast
-open Parser
+open Tasm_ast
+open Tasm_parser
 open Stdint
 
 let strip_mod s =
@@ -56,7 +56,7 @@ rule token = parse
 
 | _DQUOTE [^ '"' '\n' '\r']* _DQUOTE { token lexbuf } (* comments *)
 
-| atom_lit as a { LABEL(Ast.Label(a)) }
+| atom_lit as a { LABEL(Tasm_ast.Label(a)) }
 | string_lit as str {
     LITERAL(VString(String.sub str 1 (String.length str - 2)))
   }

@@ -7,9 +7,9 @@ This script accepts two arguments, the first one for output directory, the
 second one for the prototype file for scanner.mll.
 
 This script outputs three files:
-  * ast.mli
-  * parser.mly
-  * scanner.mll
+  * tasm_ast.mli
+  * tasm_parser.mly
+  * tasm_scanner.mll
 for a minimal TASM parser.
 """
 
@@ -26,7 +26,7 @@ output_dir = sys.argv[1]
 scanner_p = sys.argv[2]
 
 def _open(fn):
-    return open(os.path.join(output_dir, fn), 'w')
+    return open(os.path.join(output_dir, 'tasm_%s' % fn), 'w')
 
 
 def _in2id(i):
@@ -59,16 +59,16 @@ def gen_scanner():
 def gen_parser():
     with _open('parser.mly') as fo:
         print('''%%{
-open Ast
+open Tasm_ast
 %%}
 
 %%token EOF %s
 
-%%token <Ast.lit> LITERAL
-%%token <Ast.label> LABEL
+%%token <Tasm_ast.lit> LITERAL
+%%token <Tasm_ast.label> LABEL
 
 %%start asm
-%%type <Ast.asm> asm
+%%type <Tasm_ast.asm> asm
 
 %%%%
 

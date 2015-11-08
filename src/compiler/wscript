@@ -20,10 +20,12 @@ cmxn = lambda n: _c(n, 'cmx')
 
 
 def build(ctx):
-    mlis = ['ast']
+    mlis = ['ast', 'tasm_ast']
     lib_mls = ['exc', 'common', 'scoping', 'cseg', 'switches']
-    aff_mlis = ['parser']
-    non_exec_mls = ['parser', 'scanner', 'asm']
+    aff_mlis = ['parser', 'tasm_parser']
+    non_exec_mls = ['parser', 'scanner',
+                    'tasm_parser', 'tasm_scanner',
+                    'asm']
     target_mls = ['tokens', 'towel']
 
     external_libs = ','.join(ctx.env.LIBS)
@@ -42,14 +44,24 @@ def build(ctx):
     ctx(rule='${MENHIR} --base %s/src/compiler/parser ${SRC}' % ctx.out_dir,
         source='parser.mly',
         target='parser.ml parser.mli')
+    ctx(rule='${MENHIR} --base %s/src/compiler/tasm_parser ${SRC}'\
+        % ctx.out_dir,
+        source='tasm_parser.mly',
+        target='tasm_parser.ml tasm_parser.mli')
 
     ctx(rule='${OCAMLLEX} ${SRC} -o %s${TGT}' % build_prefix,
         source='scanner.mll',
         target='scanner.ml')
+    ctx(rule='${OCAMLLEX} ${SRC} -o %s${TGT}' % build_prefix,
+        source='tasm_scanner.mll',
+        target='tasm_scanner.ml')
 
     ctx(rule=oc_rule,
         source='ast.mli',
         target=ctx.path.get_bld().find_or_declare('ast.cmi'))
+    ctx(rule=oc_rule,
+        source='tasm_ast.mli',
+        target=ctx.path.get_bld().find_or_declare('tasm_ast.cmi'))
 
     def cpl_oc(n, src_ext_f, tgt_ext_f):
         ctx(rule=oc_rule,
