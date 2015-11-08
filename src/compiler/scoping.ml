@@ -34,6 +34,14 @@ let pop_scope scp_stk =
 let push_name scp_stk name value =
   Hashtbl.replace (table_of_scope (List.hd scp_stk)) name.name_repr value;;
 
+let print_ht ht = print_string "ht:\n";
+    Hashtbl.iter (fun k v -> Printf.printf "%s -> %s\n" k (Int64.to_string v)) ht;
+    print_string "-----\n";;
+
+let print_scp_stk scp_stk = print_string "scope stack:\n";
+    List.iter (fun x -> match x with Scope(h, _) -> print_ht h) scp_stk;
+  print_string "_____\n";;
+
 let pop_name scp_stk name =
   Hashtbl.remove (table_of_scope (List.hd scp_stk)) name.name_repr;;
 

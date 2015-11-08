@@ -35,8 +35,8 @@ def build(ctx):
     obj_j = cmxj if ctx.options.compile_natively else cmoj
 
     oc_rule = '${OCAMLFIND} ${OC} ${DEBUG} -package %s'\
-              ' -I %s -c -o %s${TGT} ${SRC}'\
-              % (external_libs, incl_folder, build_prefix)
+              ' -I %s -c -o ${TGT} ${SRC}'\
+              % (external_libs, incl_folder,)
 
     ctx.add_group('parser')
     ctx(rule='${MENHIR} --base %s/src/compiler/parser ${SRC}' % ctx.out_dir,
@@ -49,7 +49,7 @@ def build(ctx):
 
     ctx(rule=oc_rule,
         source='ast.mli',
-        target='ast.cmi')
+        target=ctx.path.get_bld().find_or_declare('ast.cmi'))
 
     def cpl_oc(n, src_ext_f, tgt_ext_f):
         ctx(rule=oc_rule,
@@ -80,4 +80,3 @@ def build(ctx):
     ctx.add_group('tgt')
     for n in target_mls:
         cpl_tgt(n)
-
