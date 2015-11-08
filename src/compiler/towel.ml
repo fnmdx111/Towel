@@ -17,7 +17,7 @@ let commands = [
 
     ("-r",
      Arg.Set(raw_asm_r),
-     "Raw asm with their labels on");
+     "Raw asm with labels on");
   ];;
 
 let () = Arg.parse commands (fun fn -> src_file_r := fn)

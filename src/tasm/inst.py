@@ -7,8 +7,7 @@ See also the Towel Assembly Language Manual.
 nullary_instructions = [
     'push-scope',
     'pop-scope',
-    'make-list',
-    'make-tuple',
+    'make-backquote',
     'end-list',
     'end-tuple',
     'pop',
@@ -25,6 +24,8 @@ nullary_instructions = [
     'unimplemented',
     'idle',
     'backquote-name',
+    'backquote',
+    'patbackquote',
     'terminate',
 ]
 
@@ -35,17 +36,19 @@ unary_instructions = [
     'jump',
     'match',
     'hmatch',
-    'backquote',
-    'patbackquote',
-    'make-backquote',
+    'rjump',
 ]
 
 multiarity_instructions = [
     'push-name',
+    'patpush-name',
     'push-tail-name',
 ]
 
 for i in ['make', 'push', 'patpush']:
+    for j in ['list', 'tuple']:
+        nullary_instructions.append('%s-%s' % (i, j))
+
     for j in ['fun', 'int', 'fint', 'ufint', 'float', 'string',
               'atom']:
         unary_instructions.append('%s-%s' % (i, j))

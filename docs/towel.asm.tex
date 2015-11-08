@@ -202,6 +202,10 @@ Just sets the instruction pointer back to where this shared sequence gets called
 
 Takes a label as its argument and unconditionally jumps to that label.
 
+\subsubsection{\inst{rjump}}
+
+Jumps to the position given by the argument relatively.
+
 \subsubsection{\inst{j*}}
 
 Takes a label as its argument and tests against the TOS on the data stack. If the result is true, TVM jumps to the label, otherwise, TVM jumps to \texttt{label!}.
@@ -272,14 +276,11 @@ In addition to integer operations of \inst{fint-*} and \inst{ufint-*} instructio
 
 \subsubsection{\inst{make-backquote}}
 
-Backquote the newest created value along with the copy of current scope, then jump $n$ instructions, where $n$ is given by its argument to skip evaluating the actual contents of the backquoted value.
-
-Some notes on the copied scope: right after the backquoted thing is evaluated, the copied scope should be destroyed immediately so that GC would work correctly.
+Backquote the newest created value (actually does nothing).
 
 \subsubsection{\inst{backquote}}
 
-Backquote the TOS along with the copy of current scope and pushes the backquoted value back onto the stack, then jump $n$ instructions, where $n$ is given by its argument to skip evaluating the actual contents of the backquoted value.
-
+Backquote the TOS (actually does nothing).
 
 \subsubsection{\inst{backquote-name}}
 

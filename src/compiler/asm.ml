@@ -173,8 +173,8 @@ and g_backquote ctx =
   in function
       BQValue(pv) ->
       g_lit ctx {inst_nil_ctx with
-                 post = fun rj (* reljump number *)
-                   -> cone1 bq_inst rj} pv
+                 post = fun rj (* reljump number deserves a r-inst *)
+                   -> (cone0 bq_inst) |~~| (cone1 "rjump" rj)} pv
 
     | BQName(n)
       -> cnil
