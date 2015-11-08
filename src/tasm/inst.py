@@ -53,11 +53,21 @@ for i in ['make', 'push', 'patpush']:
 inst_that_supports_label_as_argument = {
     'jump', 'match', 'hmatch'
 }
+
+for i in ['make', 'push', 'patpush']:
+    inst_that_supports_label_as_argument.add('%s-fun' % i)
+
+branching_inst_that_doesnt_support_hungry_mode = {
+    'e', 'ne'
+}
+
 for i in ['gez', 'gz', 'lez', 'lz', 'ez', 'nez', 't', 'f', 'e', 'ne']:
     unary_instructions.append('j%s' % i)
-    unary_instructions.append('hj%s' % i)
     inst_that_supports_label_as_argument.add('j%s' % i)
-    inst_that_supports_label_as_argument.add('hj%s' % i)
+
+    if i not in branching_inst_that_doesnt_support_hungry_mode:
+        unary_instructions.append('hj%s' % i)
+        inst_that_supports_label_as_argument.add('hj%s' % i)
 
 for i in ['fint', 'ufint', 'int', 'float']:
     for j in ['add', 'sub', 'mul', 'div', 'pow', 'equ']:

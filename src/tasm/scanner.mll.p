@@ -46,7 +46,7 @@ let dot_float = ((dot frac) | (int dot frac)) exp?
 let exp_float = int (dot frac)? exp
 let float_lit = signed? (dot_float | exp_float)
 
-let atom_lit = ":" ['0'-'9' 'a'-'z' 'A'-'Z']*
+let atom_lit = ":" ['0'-'9' 'a'-'z' 'A'-'Z' '-']+ "!"?
 
 rule token = parse
 | _WHITESPACE+ { token lexbuf }

@@ -512,4 +512,4 @@ let assemble cst fn sw =
   in ((cone0 "push-stack")::(cone0 "push-scope")::result
       @ [cone0 "terminate"])
      |> aggregate
-     |> composite
+     |> compose

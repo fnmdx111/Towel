@@ -91,7 +91,7 @@ let rec comp = function
     |>> assemble_labels st |=> comp c
     |>> List.fold_left (|>>) "" @@ List.map comp cs
 
-let rec composite = comp;;
+let rec compose = comp;;
 
 let rec dump_cs = function
     LabeledCodeSegment(ss, css)
@@ -99,4 +99,3 @@ let rec dump_cs = function
          (String.concat "\n" @@ List.map dump_cs css)
   | CodeOneliner(c)
     -> Printf.sprintf "co: %s" c
-

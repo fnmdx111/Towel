@@ -10,6 +10,7 @@ This script outputs three files:
   * tasm_ast.mli
   * tasm_parser.mly
   * tasm_scanner.mll
+  * tasm_stringify.ml
 for a minimal TASM parser.
 """
 
@@ -90,7 +91,7 @@ inst:
 
         for i in MAINST:
             id_ = _in2id(i)
-            print('| %s list(LITERAL)'
+            print('| %s nonempty_list(LITERAL)'
                   ' { %s(List.map (fun x -> ArgLit(x)) $2) }' % (id_, id_),
                   file=fo)
 
@@ -128,7 +129,58 @@ type asm = Asm of line list;;
        ' | '.join(map(lambda x: '%s of arg list' % _in2id(x), MAINST))),
               file=fo)
 
+def gen_stringify():
+    p = '''open Stdint
+open Tasm_ast
+
+let p_label = function Label(l) -> l;;
+
+let p_labels ls = String.concat " " (List.map p_label ls);;
+
+let p_arg = function
+    ArgLabel(l) -> p_label l
+  | ArgLit(v) -> (match v with
+      VString(s) -> Printf.sprintf "'%s'" s
+    | VInt(i) -> Printf.sprintf "%sl" @@ Big_int.string_of_big_int i
+    | VFixedInt(i) -> Int64.to_string i
+    | VUFixedInt(u) -> Printf.sprintf "%su" @@ Uint64.to_string u
+    | VFloat(f) -> string_of_float f);;
+
+let _p_inst inst arg = inst ^ " " ^ (p_arg arg);;
+let _p_inst_ma inst args =
+  inst ^ " " ^ (String.concat " " (List.map p_arg args));;
+let _p_inst_na inst = inst;;
+
+let p_inst =
+  function
+  {NU_INST}
+| {UN_INST}
+| {MA_INST}
+
+let p_line = function
+  Line(ls, inst) -> (p_labels ls) ^ " " ^ (p_inst inst);;
+
+let p_asm = function
+  Asm(lines) -> String.concat "\n" (List.map p_line lines);;
+'''
+
+    NU_INST_U = '{ID} -> _p_inst_na "{IN}"'
+    NU_INSTS = ' | '.join(map(lambda x: NU_INST_U.format(ID=_in2id(x), IN=x),
+                              NUINST))
+    UN_INST_U = '{ID}(arg) -> _p_inst "{IN}" arg'
+    UN_INSTS = ' | '.join(map(lambda x: UN_INST_U.format(ID=_in2id(x), IN=x),
+                              UNINST))
+    MA_INST_U = '{ID}(args) -> _p_inst_ma "{IN}" args'
+    MA_INSTS = ' | '.join(map(lambda x: MA_INST_U.format(ID=_in2id(x), IN=x),
+                              MAINST))
+
+    with _open('stringify.ml') as fo:
+        print(p.format(NU_INST=NU_INSTS, UN_INST=UN_INSTS, MA_INST=MA_INSTS),
+              file=fo)
+
+
 if __name__ == '__main__':
     gen_scanner()
     gen_parser()
     gen_ast()
+    gen_stringify()

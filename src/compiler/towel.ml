@@ -4,6 +4,7 @@ open Exc;;
 let src_file_r = ref "";;
 let in_files_r = ref [];;
 let out_file_r = ref "";;
+let raw_asm_r = ref false;;
 
 let commands = [
     ("-o",
@@ -13,10 +14,16 @@ let commands = [
     ("-i",
      Arg.Rest(fun _s -> in_files_r := _s::(!in_files_r)),
      "Paths of input files");
+
+    ("-r",
+     Arg.Set(raw_asm_r),
+     "Raw asm with their labels on");
   ];;
 
 let () = Arg.parse commands (fun fn -> src_file_r := fn)
        "The Towel Compiler at your service. Don't panic!";;
+
+let raw_asm = !raw_asm_r;;
 
 let src_file = !src_file_r;;
 let src_inchan = Pervasives.open_in src_file;;
@@ -68,10 +75,18 @@ let asm =
   | TypeError ->
     Printf.printf "type error\n"; exit 0
 
+in let text =
+     if raw_asm then asm
+     else let lexbuf = Lexing.from_string asm
+       in let cst = Tasm_parser.asm Tasm_scanner.token lexbuf
+       in cst
+          |> Unlabel.unlabel
+          |> Tasm_stringify.p_asm
+
 in let ochan =
      if out_file = "-"
      then Pervasives.stdout
      else Pervasives.open_out out_file
-in Pervasives.output_string ochan asm; Pervasives.flush ochan;
+in Pervasives.output_string ochan text; Pervasives.flush ochan;
 if out_file = "-"
 then () else Pervasives.close_out ochan
