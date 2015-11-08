@@ -169,11 +169,6 @@ and g_backquote ctx =
   let bq_inst = match ctx.mode with
       MakeOnly -> "make-backquote"
     | PushMake -> "backquote"
-    (* This is interesting, because we evaluate before
-                        we push, backquotes of PushMake mode are
-                        automatically eliminated, thus no instructions are
-                        needed. In fact, there will be problems if you
-                        generate them. *)
     | Pattern -> "patbackquote"
   in function
     BQValue(pv) ->
@@ -251,7 +246,6 @@ and g_seq ctx is_body_ inst_ctx seq =
          else LabeledCodeSegment([seq_end_id], [])
        in (opt_cs _x) |~~| LabeledCodeSegment([seq_real_end_id], [])
 
-
   in let body, scp_stk = match seq with
         Sequence(s) -> s, if _UID = "na"
                        then ctx.scp_stk (* Leave the scope stack be *)
@@ -271,7 +265,7 @@ and g_seq ctx is_body_ inst_ctx seq =
      |~~| let r = csnl (flap body
                         @@ g_word {ctx with mode = PushMake;
                                             scp_stk = scp_stk}
-                          IsNotBody inst_ctx) in r
+                          IsNotBody inst_nil_ctx) in r
      |~~| seq_postamble
 
 and g_ctrl ctx =
