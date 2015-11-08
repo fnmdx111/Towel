@@ -27,6 +27,8 @@ let (|=>) x y =
 let assemble_labels = List.fold_left (|=>) "";;
 
 let (|~~|) cs ocs = match cs, ocs with
+    (* TODO NEEDS REWORK since I have fixed the asm parser
+       issue on newlines and labels. *)
     LabeledCodeSegment([], []), _
     -> ocs
   | LabeledCodeSegment(st1, []),
