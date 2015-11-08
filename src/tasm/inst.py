@@ -26,12 +26,15 @@ nullary_instructions = [
 unary_instructions = [
     'bind',
     'fun-arg',
-    'push-name',
-    'push-name-tail',
     'pack',
     'jump',
     'match',
     'hmatch',
+]
+
+multiarity_instructions = [
+    'push-name',
+    'push-tail-name',
     'backquote-name',
 ]
 
@@ -56,4 +59,3 @@ for i in ['fint', 'ufint', 'int', 'float']:
 for i in ['fint', 'ufint']:
     for j in ['and', 'or', 'xor', 'not', 'shl', 'shr', 'shll']:
         nullary_instructions.append('%s-%s' % (i, j))
-

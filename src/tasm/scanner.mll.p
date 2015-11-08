@@ -50,7 +50,7 @@ let atom_lit = ":" ['0'-'9' 'a'-'z' 'A'-'Z']*
 
 rule token = parse
 | _WHITESPACE+ { token lexbuf }
-| _NEWLINE { Lexing.new_line lexbuf; NL }
+| _NEWLINE { Lexing.new_line lexbuf; token lexbuf }
 
 | eof { EOF }
 
@@ -73,4 +73,3 @@ rule token = parse
 | float_lit as f {
     LITERAL(VFloat(float_of_string f))
   }
-
