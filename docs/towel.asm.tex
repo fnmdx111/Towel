@@ -268,17 +268,18 @@ In addition to integer operations of \inst{fint-*} and \inst{ufint-*} instructio
 
 \subsubsection{\inst{make-backquote}}
 
-Backquote the newest created value along with the copy of current scope and pushes the backquoted value onto the stack.
+Backquote the newest created value along with the copy of current scope, then jump $n$ instructions, where $n$ is given by its argument to skip evaluating the actual contents of the backquoted value.
 
 Some notes on the copied scope: right after the backquoted thing is evaluated, the copied scope should be destroyed immediately so that GC would work correctly.
 
 \subsubsection{\inst{backquote}}
 
-Backquote the TOS along with the copy of current scope and pushes the backquoted value back onto the stack.
+Backquote the TOS along with the copy of current scope and pushes the backquoted value back onto the stack, then jump $n$ instructions, where $n$ is given by its argument to skip evaluating the actual contents of the backquoted value.
+
 
 \subsubsection{\inst{backquote-name}}
 
-Backquote the name given by the \inst{push-name} instruction right after \inst{backquote-name} along with the copy of current scope and pushes the backquoted value back onto the stack.
+Backquote the name given by the \inst{push-name} instruction right after \inst{backquote-name} along with the copy of current scope and pushes the backquoted name back onto the stack.
 
 \subsection{I/O Instructions}
 

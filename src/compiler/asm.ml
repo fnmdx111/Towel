@@ -23,16 +23,24 @@ type is_shared_sequence =
 type ctx_t = {sw: switches; mode: word_builder_mode;
               scp_stk: scope list};;
 
-
 type inst_ctx_t = {pre: (string -> code_segment);
                    post: (string -> code_segment)};;
+(* `pre' and `post' are hooks that accepts a UID string as their argument,
+   and generates appropriate code segment after the leading instruction,
+   e.g. `make-list', `push-fun', etc. *)
 
 let inst_nil_ctx = {pre = (fun _ -> cnil); post = (fun _ -> cnil)};;
+(* Most of the time, you don't want to insert anything more. *)
 
 let __unique64 = Common.counter ();;
 let uniq64 x = Printf.sprintf ":%s-%s"
     !global_fn_id
   @@ Int64.to_string @@ __unique64 x;;
+(* This function generates a unique label with respect to the id of the
+   source file, i.e. `global_fn_id'. The `global_fn_id' is the first ten
+   character of the hex alphanumeric representation of the SHA1 digest of the
+   file content. I learned this idea from git. And I think ten characters
+   should suffice the requirement for uniqueness. *)
 
 let negate_label l = l ^ "!";;
 
@@ -40,11 +48,14 @@ let flap = flip List.map;;
 
 let atom_dict = Hashtbl.create 512;;
 let atom_repr_tick = Common.counter ();;
+(* Atoms are just names in another universe where mappings are different. *)
 
-ignore @@ atom_repr_tick ();; (* tick for false *)
-ignore @@ atom_repr_tick ();; (* tick for true *)
+ignore @@ atom_repr_tick ();; (* tick tock for false - 0 *)
+ignore @@ atom_repr_tick ();; (* tick tock for true - 1 *)
 
 let name_repr_tick = Common.counter ();;
+(* 2**63 names should be enough. I can switch to Stdint.Uint128 if it's
+   necessary. *)
 
 let fun_tick = Common.counter ();;
 
@@ -67,26 +78,41 @@ let rec g_lit ctx inst_ctx lit =
        with Not_found ->
          let r = atom_repr_tick ()
          in Hashtbl.add atom_dict atom.atom_name r; r)
-    in cone1 (inst "atom") @@ Int64.to_string repr
+    in inst_ctx.pre "0"
+       |~~| (cone1 (inst "atom") @@ Int64.to_string repr)
+       |~~| inst_ctx.post "0"
 
   | VFixedInt(i) ->
-    cone1 (inst "fint") @@ Int64.to_string i
+    inst_ctx.pre "0"
+    |~~| (cone1 (inst "fint") @@ Int64.to_string i)
+    |~~| inst_ctx.post "0"
 
   | VUFixedInt(u) ->
-    cone1 (inst "ufint") @@ Uint64.to_string u
+    inst_ctx.pre "0"
+    |~~| (cone1 (inst "ufint") @@ Uint64.to_string u)
+    |~~| inst_ctx.post "0"
 
   | VInt(i) ->
-    cone1 (inst "int") @@ Printf.sprintf "%sl" @@ Big_int.string_of_big_int i
+    inst_ctx.pre "0"
+    |~~| (cone1 (inst "int")
+          @@ Printf.sprintf "%sl"
+          @@ Big_int.string_of_big_int i)
+    |~~| inst_ctx.post "0"
 
   | VFloat(f) ->
-    cone1 (inst "float") @@ string_of_float f
+    inst_ctx.pre "0"
+    |~~| (cone1 (inst "float") @@ string_of_float f)
+    |~~| inst_ctx.post "0"
 
   | VList(wl)
     -> cnil (* ascii art!! *)
-       |~~| inst_ctx.pre ""
+       |~~| (inst_ctx.pre
+             @@ string_of_int
+             @@ (List.length wl) + 1)
        |~~| (cone0 @@ inst "list")
-       |~~| inst_ctx.post "" (* Generally, somebody will insert a bind or
-                                backquote instruction here *)
+       |~~| (inst_ctx.post
+             @@ string_of_int
+             @@ (List.length wl) + 1)
        |~~| let r = csnl (flap wl @@ g_word
                             {ctx with mode = PushMake}
                             IsNotBody
@@ -94,13 +120,19 @@ let rec g_lit ctx inst_ctx lit =
        |~~| (cone0 "end-list")
 
   | VString(s) ->
-    cone1 (inst "string") @@ Printf.sprintf "'%s'" s
+    inst_ctx.pre "0"
+    |~~| (cone1 (inst "string") @@ Printf.sprintf "'%s'" s)
+    |~~| inst_ctx.post "0"
 
   | VTuple(wl)
     -> cnil
-       |~~| inst_ctx.pre ""
+       |~~| (inst_ctx.pre
+             @@ string_of_int
+             @@ (List.length wl) + 1)
        |~~| (cone0 @@ inst "tuple")
-       |~~| inst_ctx.post ""
+       |~~| (inst_ctx.post
+             @@ string_of_int
+             @@ (List.length wl) + 1)
        |~~| let r = csnl (flap wl
                           @@ g_word {ctx with mode = PushMake}
                             IsNotBody
@@ -108,7 +140,9 @@ let rec g_lit ctx inst_ctx lit =
        |~~| cone0 "end-tuple"
 
   | VAlTypeLiteral(_) ->
-    cone0 "not-implemented"
+    inst_ctx.pre "0"
+    |~~| cone0 "not-implemented"
+    |~~| inst_ctx.post "0"
 
 and g_name ctx pn =
   let to_name_id_string ns =
@@ -134,7 +168,8 @@ and g_name ctx pn =
 and g_backquote ctx =
   let bq_inst = match ctx.mode with
       MakeOnly -> "make-backquote"
-    | PushMake -> "" (* This is interesting, because we evaluate before
+    | PushMake -> "backquote"
+    (* This is interesting, because we evaluate before
                         we push, backquotes of PushMake mode are
                         automatically eliminated, thus no instructions are
                         needed. In fact, there will be problems if you
@@ -142,7 +177,9 @@ and g_backquote ctx =
     | Pattern -> "patbackquote"
   in function
     BQValue(pv) ->
-    g_lit ctx {inst_nil_ctx with post = fun _ -> cone0 bq_inst} pv
+      g_lit ctx {inst_nil_ctx with
+                 post = fun rj (* reljump number *)
+                   -> cone1 bq_inst rj} pv
 
     | BQName(n)
       -> cnil

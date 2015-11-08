@@ -12,14 +12,12 @@ nullary_instructions = [
     'share-stack',
     'pop-stack',
     'ret',
-    'patbackquote',
-    'make-backquote',
-    'backquote',
     'show',
     'read',
     'dint',
     'unimplemented',
     'idle',
+    'backquote-name',
     'terminate',
 ]
 
@@ -30,12 +28,14 @@ unary_instructions = [
     'jump',
     'match',
     'hmatch',
+    'backquote',
+    'patbackquote',
+    'make-backquote',
 ]
 
 multiarity_instructions = [
     'push-name',
     'push-tail-name',
-    'backquote-name',
 ]
 
 for i in ['make', 'push', 'patpush']:
