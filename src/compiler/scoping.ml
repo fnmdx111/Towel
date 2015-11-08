@@ -47,7 +47,7 @@ let pop_name scp_stk name =
 
 let rec lookup_name scp_stk name =
   match scp_stk with
-    [] -> if !is_DEBUG then -1L
+    [] -> if !is_DEBUG (* culture shock!! *) then -1L
     else
     raise (Exc.NameNotFoundError
                    (Printf.sprintf
