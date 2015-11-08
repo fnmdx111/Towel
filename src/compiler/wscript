@@ -34,7 +34,7 @@ def build(ctx):
     obj_ext = cmxn if ctx.options.compile_natively else cmon
     obj_j = cmxj if ctx.options.compile_natively else cmoj
 
-    oc_rule = '${OCAMLFIND} ${OC} -package %s'\
+    oc_rule = '${OCAMLFIND} ${OC} ${DEBUG} -package %s'\
               ' -I %s -c -o %s${TGT} ${SRC}'\
               % (external_libs, incl_folder, build_prefix)
 
@@ -71,7 +71,7 @@ def build(ctx):
         ctx(rule=oc_rule,
             source=mln(n),
             target=obj_ext(n))
-        ctx(rule='${OCAMLFIND} ${OC} -package %s -linkpkg'
+        ctx(rule='${OCAMLFIND} ${OC} ${DEBUG} -package %s -linkpkg'
                  ' -o %s${TGT} ${SRC}' %\
                  (external_libs, build_prefix),
             source=obj_j(lib_mls + non_exec_mls + [n]),

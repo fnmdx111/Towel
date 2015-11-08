@@ -34,6 +34,9 @@ let pop_scope scp_stk =
 let push_name scp_stk name value =
   Hashtbl.replace (table_of_scope (List.hd scp_stk)) name.name_repr value;;
 
+let pop_name scp_stk name =
+  Hashtbl.remove (table_of_scope (List.hd scp_stk)) name.name_repr;;
+
 let rec lookup_name scp_stk name =
   match scp_stk with
     [] -> if !is_DEBUG then -1L
@@ -51,4 +54,3 @@ let rec lookup_name scp_stk name =
                           (Printf.sprintf "scope %s is corrupted"
                            (name_of_scope scp)))
     with Not_found -> lookup_name rest name
-

@@ -12,7 +12,7 @@ type word_builder_mode =
   | PushMake
   | Pattern;;
 
-type is_body =
+type is_body_t =
     IsNotBody
   | IsBody;;
 
@@ -20,8 +20,18 @@ type is_shared_sequence =
     IsSharedSeq
   | IsNotSharedSeq;;
 
+type ctx_t = {sw: switches; mode: word_builder_mode};;
+
+
+type inst_ctx_t = {pre: (string -> code_segment);
+                   post: (string -> code_segment)};;
+
+let inst_nil_ctx = {pre = (fun _ -> cnil); post = (fun _ -> cnil)};;
+
 let __unique64 = Common.counter ();;
-let uniq64 x = Printf.sprintf ":%s-%s" !global_fn_id @@ Int64.to_string @@ __unique64 x;;
+let uniq64 x = Printf.sprintf ":%s-%s"
+    !global_fn_id
+  @@ Int64.to_string @@ __unique64 x;;
 
 let negate_label l = l ^ "!";;
 
@@ -38,17 +48,12 @@ let name_repr_tick = Common.counter ();;
 let fun_tick = Common.counter ();;
 
 let (--) x y = Printf.sprintf "%s-%s" x y;;
+let (^-) x y = Printf.sprintf "%d-%s" x y;;
 
 (* All the g_* functions should return a code_segment value. *)
-let rec g_lit
-    sw
-    mode
-    scp_stk
-    cs_pre_leading_inst
-    cs_post_leading_inst
-    lit =
+let rec g_lit ctx scp_stk inst_ctx lit =
   let inst t =
-    (match mode with
+    (match ctx.mode with
        MakeOnly -> "make"
      | PushMake -> "push"
      | Pattern -> "patpush") -- t
@@ -76,12 +81,15 @@ let rec g_lit
     cone1 (inst "float") @@ string_of_float f
 
   | VList(wl)
-    -> cnil (* ascii art!! *) 
-       |~~| cs_pre_leading_inst
+    -> cnil (* ascii art!! *)
+       |~~| inst_ctx.pre ""
        |~~| cone0 @@ inst "list"
-       |~~| cs_post_leading_inst
-       |~~| csnl (flap wl @@ g_word sw PushMake IsNotBody scp_stk
-                    cnil cnil)
+       |~~| inst_ctx.post "" (* Generally, somebody will insert a bind or
+                                backquote instruction here *)
+       |~~| csnl (flap wl @@ g_word
+                    {ctx with mode = PushMake} scp_stk
+                    IsNotBody
+                    inst_nil_ctx)
        |~~| cone0 "end-list"
 
   | VString(s) ->
@@ -89,101 +97,140 @@ let rec g_lit
 
   | VTuple(wl)
     -> cnil
-       |~~| cs_pre_leading_inst
+       |~~| inst_ctx.pre ""
        |~~| (cone0 @@ inst "tuple")
-       |~~| cs_post_leading_inst
-       |~~| csnl (flap wl @@ g_word sw PushMake IsNotBody scp_stk
-                    cnil cnil)
+       |~~| inst_ctx.post ""
+       |~~| csnl (flap wl
+                  @@ g_word {ctx with mode = PushMake} scp_stk
+                    IsNotBody
+                    inst_nil_ctx)
        |~~| cone0 "end-tuple"
 
   | VAlTypeLiteral(_) ->
     cone0 "not-implemented"
 
-and g_name mode scp_stk pn =
+and g_name ctx scp_stk pn =
   let to_name_id_string ns =
     String.concat " "
     @@ List.map (fun x -> Printf.sprintf "%sL" @@ Int64.to_string x)
     @@ List.map (lookup_name scp_stk) ns
-  in let prefix = match mode with
+    (* It's a series of name IDs combined by spaces and reminds me that
+       my ccg.py needs some modification. *)
+
+  in let prefix = match ctx.mode with
         PushMake -> ""
       | Pattern -> "pat"
       | MakeOnly -> "" (* What's the point in this? *)
+
   in let inst t = prefix ^ t -- "name"
+
   in let ns, t = match pn with
         NRegular(n) -> n, "push"
       | NTailCall(n) -> n, "push-tail"
+
   in cone1 (inst t) (to_name_id_string ns)
 
-and g_backquote sw mode scp_stk =
-  let bq_inst = Printf.sprintf "%sbackquote" (match mode with
+and g_backquote ctx scp_stk =
+  let bq_inst = Printf.sprintf "%sbackquote" (match ctx.mode with
         MakeOnly -> "make-"
       | PushMake -> ""
       | Pattern -> "pat")
   in function
     BQValue(pv) ->
-    g_lit sw mode scp_stk cnil (cone0 bq_inst) pv
+    g_lit ctx scp_stk {inst_nil_ctx with post = fun _ -> cone0 bq_inst} pv
 
     | BQName(n)
       -> cnil
          |~~| cone0 "backquote-name"
-         |~~| g_name mode scp_stk n
+         |~~| g_name ctx scp_stk n
 
   | BQSeq(seq) ->
-    g_seq sw mode IsNotBody scp_stk cnil (cone0 bq_inst) seq
+    g_seq ctx scp_stk
+      IsNotBody {inst_nil_ctx with
+                 post = fun uid
+                   -> (cone0 bq_inst)
+                      |~~| (cone1 "jump"
+                              (uid -- "real-end"))} seq
 
   | BQBackquote(b) ->
-    g_backquote sw mode scp_stk b
+    g_backquote ctx scp_stk b
 
-and g_seq sw mode is_body_ scp_stk
-    cs_pre_leading_inst cs_post_leading_inst
-    seq =
-  let _UID = uniq64 ();
+and g_seq ctx scp_stk is_body_ inst_ctx seq =
+  let _UID =
+    if sw_opt_seq ctx.sw
+    then match is_body_ with
+        IsNotBody -> uniq64 ()
+      | IsBody -> "na"
+      (* do not assign a UID to a seq that is to be eliminated *)
+    else uniq64 ()
+
   in let seq_st_id = Printf.sprintf "%s-st" _UID
   in let seq_end_id = Printf.sprintf "%s-end" _UID
-  in let blpt what =
-       if sw_opt_seq sw
-       then what
-       else match is_body_ with
+
+  in let seq_type = match seq with
+        Sequence(_) -> 1
+      | SharedSequence(_) -> 0
+
+  in let opt_cs what =
+       if sw_opt_seq ctx.sw
+       then match is_body_ with
            IsNotBody -> what
          | IsBody -> cnil
+       else what
 
   in let seq_preamble =
-       let _x = match seq with
-           Sequence(_) -> "push"
-         | SharedSequence(_) -> "share"
-       in let _p = LabeledCodeSegment([seq_st_id],
-                                      [cone0 @@ _x -- "scope";
-                                       cone0 @@ _x -- "stack"])
-       in blpt _p
+       let _x = if seq_type = 1 then
+           (* If this is a Sequence sequence, do all the initializations
+              with a start label; *)
+           LabeledCodeSegment([seq_st_id],
+                              [cone0 "push-stack";
+                               cone0 "push-scope"])
+             (* otherwise, do none of the initializations with a start
+                label.
+                This start label is important for recurive invocations to
+                this shared sequence.
+             *)
+         else LabeledCodeSegment([seq_st_id], [])
+       in opt_cs _x
 
-  in let seq_postamble = blpt (LabeledCodeSegment([seq_end_id],
-                                                  [cone0 "ret"]))
+  in let seq_postamble =
+       let _x = if seq_type = 1 then
+         (* For regular sequences, the clean-ups are the same with functions,
+            popping the scope and return the return value. *)
+           LabeledCodeSegment([seq_end_id], [cone0 "pop-scope";
+                                             cone0 "ret"])
+             (* For shared sequences, we do none of the clean-ups, and
+                the end label is not important at all. But for the sake of
+                symmetricness, we put it here alright. *)
+         else LabeledCodeSegment([seq_end_id], [])
+       in opt_cs _x
 
   in let body, scp_stk = match seq with
         Sequence(s) -> s, push_scope scp_stk
       | SharedSequence(s) -> s, scp_stk
 
-  in let lead_inst = match mode with
+  in let lead_inst = match ctx.mode with
         MakeOnly -> cone1 "make-fun" seq_st_id
       | PushMake -> cone1 "push-fun" seq_st_id
       | Pattern -> cone1 "patpush-fun" seq_st_id
 
   in cnil
-     |~~| cs_pre_leading_inst
-     |~~| lead_inst
-     |~~| cs_post_leading_inst
+     |~~| inst_ctx.pre _UID
+     |~~| (opt_cs lead_inst)
+     |~~| inst_ctx.post _UID
      |~~| seq_preamble
-     |~~| csnl (flap body @@ g_word sw mode IsNotBody scp_stk
-                        cnil cnil)
+     |~~| csnl (flap body
+                @@ g_word ctx scp_stk
+                  IsNotBody inst_ctx)
      |~~| seq_postamble
 
-and g_ctrl sw mode scp_stk =
+and g_ctrl ctx scp_stk =
   function
-    CtrlSeqIfForm(i) -> g_if sw mode scp_stk i
-  | CtrlSeqMatchForm(m) -> g_match sw mode scp_stk m
+    CtrlSeqIfForm(i) -> g_if ctx scp_stk i
+  | CtrlSeqMatchForm(m) -> g_match ctx scp_stk m
 
-and g_match sw mode scp_stk =
-  let inst = if sw_hungry_if sw
+and g_match ctx scp_stk =
+  let inst = if sw_hungry_if ctx.sw
     then "hmatch"
     else "match"
 
@@ -198,15 +245,54 @@ and g_match sw mode scp_stk =
        function
          PatternAndMatch(ws, w)
          -> let label = action_label @@ pattern_counter ()
-         in cnil
-            |~~| aggregate (flap ws
-                            @@ g_word sw Pattern IsNotBody scp_stk
-                              cnil cnil)
+
+         in let new_names = ref []
+
+         in let map_pattern =
+              (* COMPLICATED!!!!!! *)
+              function
+                WName(pn) as w ->
+                let n = match pn with
+                    NRegular(x) -> x
+                  | NTailCall(x) ->
+                    (ignore @@ List.map (lookup_name scp_stk) x); x
+                    (* We can't call a name that does not exist yet. *)
+
+                in (match n with
+                      x::[] ->
+                      (try ignore (lookup_name scp_stk x)
+                       with Exc.NameNotFoundError(_) ->
+                         (new_names := x::!new_names);
+                         (push_name scp_stk x @@ name_repr_tick ()))
+                         (* Users might bind some new names in this pattern,
+                             so if I don't deal with these new names, it
+                             might result in a NameNotFoundError. *)
+
+                    | _ -> failwith "Illegal name binding");
+                g_word {ctx with mode = Pattern} scp_stk
+                  IsNotBody inst_nil_ctx w
+              (* I have to log this name into current scope if it does not
+                 belong to it, because in this situation, user is binding new
+                 names in patterns *)
+              | _ as w ->
+                g_word {ctx with mode = Pattern} scp_stk
+                  IsNotBody inst_nil_ctx w
+
+         in let ret = cnil
+            |~~| aggregate (List.map map_pattern ws)
             |~~| cone1 inst (negate_label label)
-            |~~| let r = g_word sw PushMake IsBody scp_stk cnil cnil w
+              (* Jump to the negated label if this pattern doesn't match,
+                 otherwise, just continue. *)
+            |~~| let r = g_word {ctx with mode = PushMake} scp_stk
+                     IsBody
+                     inst_nil_ctx w
             in r
             |~~| cone1 "jump" match_end_label
             |~~| LabeledCodeSegment([negate_label label], [])
+         in List.iter (pop_name scp_stk) !new_names; ret
+         (* I have to remove the new names because they belong only here,
+            not the incoming patterns. *)
+         (* COMPLICATED!!!!!!! *)
 
   in function
       PatternsAndMatches(ps)
@@ -214,18 +300,23 @@ and g_match sw mode scp_stk =
          |~~| (aggregate @@ List.map _g_pat_and_act ps)
          |~~| LabeledCodeSegment([match_end_label], [])
 
-and g_if sw mode scp_stk =
-  let inst t = if sw_hungry_if sw
-    then Printf.sprintf "h%s" t
-    else t
+and g_if ctx scp_stk =
+  let _UID = uniq64 ()
+  in let brancht_id = _UID
+  in let branchf_id = negate_label _UID
+
+  in let inst t = if sw_hungry_if ctx.sw
+       then Printf.sprintf "h%s %s" t branchf_id
+       else Printf.sprintf "%s %s" t branchf_id
+       (* If the condition is not met, jump to the false branch. *)
+
   in let if_body_ = function
       IfBody(bt, bf) ->
-       let brancht = g_word sw mode IsBody scp_stk cnil cnil bt
-       in let branchf = g_word sw mode IsBody scp_stk cnil cnil bf
-       in let _UID = uniq64 ()
-       in let brancht_id = _UID
-       in let branchf_id = negate_label _UID
+       let brancht = g_word ctx scp_stk IsBody inst_nil_ctx bt
+       in let branchf = g_word ctx scp_stk IsBody inst_nil_ctx bf
+
        in let if_end_id = Printf.sprintf "%s-end" _UID
+
        in LabeledCodeSegment([brancht_id], [brancht])
           |~~| cone1 "jump" if_end_id
           |~~| LabeledCodeSegment([branchf_id], [branchf])
@@ -249,22 +340,23 @@ and g_if sw mode scp_stk =
   | IfNonEmpty(ib) -> _g_body ib @@ "jne"
 (* je and jne do not have their hungry counter-parts *)
 
-and g_fun sw mode
-    scp_stk
-    cs_pre_leading_inst cs_post_leading_inst =
+and g_fun ctx scp_stk inst_ctx =
   let _UID = uniq64 ()
   in let lead_inst =
-    match mode with
+    match ctx.mode with
       MakeOnly -> "make-fun"
     | PushMake -> "push-fun"
     | Pattern -> "patpush-fun"
+    (* I don't think you should write a such complex pattern with a
+       anonymous function invocation in it. *)
   in let st_label = _UID -- "st"
   in let end_label = _UID -- "end"
+  in let real_end_label = _UID -- "real-end"
   in let preamble = LabeledCodeSegment([st_label],
-                                       [cone0 "push-scope";
-                                        cone0 (if sw_share_stack sw
+                                       [cone0 (if sw_share_stack ctx.sw
                                                then "share-stack"
-                                               else "push-stack")])
+                                               else "push-stack");
+                                        cone0 "push-scope"])
   in let scp_stk = push_scope scp_stk
   in let _g_arg_def = function
         ArgDef(pn)
@@ -274,12 +366,17 @@ and g_fun sw mode
   in function
     Function(arg_defs, body)
     -> cnil
-       |~~| cs_pre_leading_inst
+       |~~| inst_ctx.pre _UID
        |~~| (cone1 lead_inst @@ st_label)
-       |~~| cs_post_leading_inst
+       |~~| inst_ctx.post _UID
        |~~| preamble
        |~~| csnl (List.map _g_arg_def arg_defs)
-       |~~| let r = g_word sw mode IsBody scp_stk cnil cnil body in r
+       (* For tail calls, its start label is always two instructions
+          behind the canonical start label. *)
+       |~~| (let r = g_word
+                 {ctx with mode = PushMake} scp_stk
+                 IsBody
+                 inst_nil_ctx body in r)
           (* I think an OCaml bug lies here:
              1. I have checked that infix operators starting with | are
              left-associative, so this expression is evaluated top-down
@@ -294,44 +391,47 @@ and g_fun sw mode
              something I did wrongly.
              4. OCaml is sometimes *super* stupid. *)
        |~~| LabeledCodeSegment([end_label], [cone0 "ret"])
+       |~~| LabeledCodeSegment([real_end_label], [])
 
-and g_bind sw mode scp_stk =
+and g_bind ctx scp_stk =
   let _g_bind_body =
     function
       BindBody(pn, b) ->
-      push_name scp_stk pn @@ name_repr_tick ();
-      cnil
-      |~~| g_word sw MakeOnly IsNotBody scp_stk cnil
-        (cone1 "bind"
-         @@ Int64.to_string
-         @@ lookup_name scp_stk pn)
-        b
+      (push_name scp_stk pn @@ name_repr_tick ());
+      (cnil
+      |~~| (g_word
+              {ctx with mode = MakeOnly} scp_stk
+              IsNotBody
+              {inst_nil_ctx with post = fun uid ->
+                   (cone1 "bind"
+                    @@ Int64.to_string
+                    @@ lookup_name scp_stk pn)
+                   |~~| (cone1 "jump" (uid -- "real-end"))}
+              b))
   in function
       BindThen(bs, b)
       -> cnil
          |~~| csnl (List.map _g_bind_body bs)
-         |~~| g_word sw PushMake IsBody scp_stk cnil cnil b
+         |~~| g_word {ctx with mode = PushMake} scp_stk IsBody inst_nil_ctx b
 
-and g_word sw wb_mode is_body_ scp_stk pre post = function
-    WLiteral(pv) -> g_lit sw wb_mode scp_stk pre post pv
+and g_word ctx scp_stk is_body_ inst_ctx = function
+    WLiteral(pv) -> g_lit ctx scp_stk inst_ctx pv
 
-  | WName(n) -> g_name wb_mode scp_stk n
+  | WName(n) -> g_name ctx scp_stk n
 
-  | WBackquote(bq) -> g_backquote sw wb_mode scp_stk bq
+  | WBackquote(bq) -> g_backquote ctx scp_stk bq
 
   | WSequence(seq) -> g_seq
-                        sw (* global compiler switch *)
-                        wb_mode
+                        ctx scp_stk
                         is_body_
-                        scp_stk
-                        pre post
+                        inst_ctx
                         seq
 
-  | WControl(ctrl) -> g_ctrl sw wb_mode scp_stk ctrl
+  | WControl(ctrl) -> g_ctrl ctx scp_stk ctrl
 
-  | WFunction(f) -> g_fun sw wb_mode scp_stk pre post f
+  | WFunction(f) -> g_fun ctx scp_stk inst_ctx f
 
-  | WBind(b) -> g_bind sw wb_mode scp_stk b
+  | WBind(b) -> g_bind ctx scp_stk b
 
   | WIdle -> cone0 "idle"
 
@@ -342,12 +442,15 @@ let assemble cst fn sw =
 
   in global_fn_id := fn;
   let result = List.map
-         (g_word sw PushMake IsBody scope_stack_init cnil cnil)
-         (match cst with
-            Sentence(ws) -> ws
-          | _ -> [WIdle])
+      (g_word
+         {sw = sw; mode = PushMake} scope_stack_init
+         IsBody
+         inst_nil_ctx)
+      (match cst with
+         Sentence(ws) -> ws
+       | _ -> [WIdle])
 
-  in result
+  in ((cone0 "push-stack")::(cone0 "push-scope")::result
+      @ [cone0 "terminate"])
      |> aggregate
      |> composite
-
