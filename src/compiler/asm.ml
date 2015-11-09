@@ -147,7 +147,7 @@ let rec g_lit ctx inst_ctx lit =
 and g_name ctx pn =
   let to_name_id_string ns =
     String.concat " "
-    @@ List.map (fun x -> Printf.sprintf "%sL" @@ Int64.to_string x)
+    @@ List.map (fun x -> Printf.sprintf "%s" @@ Int64.to_string x)
     @@ List.map (lookup_name ctx.scp_stk) ns
     (* It's a series of name IDs combined by spaces and reminds me that
        my ccg.py needs some modification. *)
@@ -380,16 +380,19 @@ and g_if ctx =
        |~~| if_body_ ib
 
   in function
-    IfGEZ(ib) -> _g_body ib @@ inst "jgez"
-  | IfGZ(ib) -> _g_body ib @@ inst "jgz"
-  | IfLEZ(ib) -> _g_body ib @@ inst "jlez"
-  | IfLZ(ib) -> _g_body ib @@ inst "jlz"
-  | IfEZ(ib) -> _g_body ib @@ inst "jez"
-  | IfNEZ(ib) -> _g_body ib @@ inst "jnez"
-  | IfT(ib) -> _g_body ib @@ inst"jt"
-  | IfF(ib) -> _g_body ib @@ inst "jf"
-  | IfEmpty(ib) -> _g_body ib @@ "je"
-  | IfNonEmpty(ib) -> _g_body ib @@ "jne"
+    (* These instruction are generated oppositely for example,
+       when you generate for IfGEZ, because we only jump when not GEZ,
+       we generate "j not GEZ" => "jlz". *)
+    IfGEZ(ib) -> _g_body ib @@ inst "jlz"
+  | IfGZ(ib) -> _g_body ib @@ inst "jlez"
+  | IfLEZ(ib) -> _g_body ib @@ inst "jgz"
+  | IfLZ(ib) -> _g_body ib @@ inst "jgez"
+  | IfEZ(ib) -> _g_body ib @@ inst "jnez"
+  | IfNEZ(ib) -> _g_body ib @@ inst "jez"
+  | IfT(ib) -> _g_body ib @@ inst"jf"
+  | IfF(ib) -> _g_body ib @@ inst "jt"
+  | IfEmpty(ib) -> _g_body ib @@ "jne"
+  | IfNonEmpty(ib) -> _g_body ib @@ "je"
 (* je and jne do not have their hungry counter-parts *)
 
 and g_fun ctx inst_ctx =
@@ -415,6 +418,10 @@ and g_fun ctx inst_ctx =
       | ArgDefWithType(pn, _) ->
         push_name scp_stk pn @@ name_repr_tick ();
         cone1 "fun-arg" @@ Int64.to_string @@ lookup_name scp_stk pn
+  in let _g_arg_push = function
+        ArgDef(pn)
+      | ArgDefWithType(pn, _) ->
+        cone1 "push-name" @@ Int64.to_string @@ lookup_name scp_stk pn
 
   in function
     Function(arg_defs, body)
@@ -430,6 +437,7 @@ and g_fun ctx inst_ctx =
 
             Irrelevantly, for tail calls, its start label is always two
             instructions behind the canonical start label. *)
+       |~~| let r = csnl (List.map _g_arg_push @@ List.rev arg_defs) in r
        |~~| (let r = g_word
                  {ctx with mode = PushMake; scp_stk = scp_stk}
                  IsBody
@@ -447,7 +455,7 @@ and g_fun ctx inst_ctx =
              have (|~~|) big-CSeg ret-CSeg. Hope this isn't
              something I did wrongly.
              4. OCaml is sometimes *super* stupid. *)
-       |~~| LabeledCodeSegment([end_label], [cone0 "ret"])
+       |~~| LabeledCodeSegment([end_label], [cone0 "pop-scope"; cone0 "ret"])
        |~~| LabeledCodeSegment([real_end_label], [])
 
 and g_bind ctx =
