@@ -43,8 +43,8 @@ to support multiple file compilation. Note that this file is generated
 automatically during compilation guided by the export clause.
 To show a `.e` file prototype:
 
-    (GCD {Int Int Int})
-    (Quicksort {List List})
+        (GCD {Int Int Int})
+        (Quicksort {List List})
 
 * Also implement type checking algorithm!
 
