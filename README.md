@@ -26,6 +26,37 @@ run
 
     waf configure build --native
 
+Don't panic!
+----
+
+See `towel -h`.
+
+Roadmap
+----
+
+* Implement the Towel Virtual Machine so that we can actually **run** Towel
+programs; implement some key standard libraries.
+
+* On the compiler side, implement type inferring algorithm along with Towel
+interface (exportation) file (with extension `.e` as in Tow*e*l and *e*xport)
+to support multiple file compilation. Note that this file is generated
+automatically during compilation guided by the export clause.
+To show a `.e` file prototype:
+
+    (GCD {Int Int Int})
+    (Quicksort {List List})
+
+* Also implement type checking algorithm!
+
+The Future
+----
+
+Of course the TOWEL-C COMPILER like the cool guys!!! And maybe a
+bytecode compiler for a VM in C.
+
+Oh, and algebraic data type.
+
+(And of course not javascript, it just sucks.)
 
 License
 ----
