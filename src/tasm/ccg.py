@@ -6,7 +6,7 @@ This is ccg.py (Towel Assembly Parser generator script).
 This script accepts two arguments, the first one for output directory, the
 second one for the prototype file for scanner.mll.
 
-This script outputs three files:
+This script outputs the following files:
   * tasm_ast.mli
   * tasm_parser.mly
   * tasm_scanner.mll
