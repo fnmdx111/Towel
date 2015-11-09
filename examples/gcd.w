@@ -1,6 +1,6 @@
- make-fun 3
+ make-fun 3u
  bind 1u
- jump 30
+ jump 30u
  push-stack
  push-scope
  fun-arg 2u
@@ -8,23 +8,23 @@
  push-name 3u
  push-name 2u
  push-name 0u
- jnez 13
+ jnez 13u
  push-name 2u
- jump 28
- jlez 20
+ jump 28u
+ jlez 20u
  push-name 2u
  push-name 2u
  push-name 3u
  push-name 0u
  push-tail-name 1u
- jump 28
- jgez 27
+ jump 28u
+ jgez 27u
  push-name 3u
  push-name 2u
  push-name 0u
  push-name 3u
  push-tail-name 1u
- jump 28
+ jump 28u
  push-fint 0
  pop-scope
  ret
