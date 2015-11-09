@@ -1,3 +1,1 @@
-* do name/atom counting and identifying correctly in parser; basically with a `Map'
-
-* add NTailRecursive and NNormal to names
+* see if code for virtual machine can be automatically generated
