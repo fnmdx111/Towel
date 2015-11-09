@@ -35,18 +35,20 @@ Roadmap
 ----
 
 * Implement the Towel Virtual Machine so that we can actually **run** Towel
-programs; implement some key standard libraries.
+programs; implement some key standard libraries. Priority 5.
 
 * On the compiler side, implement type inferring algorithm along with Towel
 interface (exportation) file (with extension `.e` as in Tow*e*l and *e*xport)
 to support multiple file compilation. Note that this file is generated
-automatically during compilation guided by the export clause.
+automatically during compilation guided by the export clause. Priority 4.
 To show a `.e` file prototype:
 
         (GCD {Int Int Int})
         (Quicksort {List List}).
 
-* Also implement type checking algorithm!
+* Also implement type checking algorithm! Priority 4.
+
+* The module system needs to be detailed designed. Priority 3.5.
 
 The Future
 ----
