@@ -51,12 +51,10 @@ To show a `.e` file prototype:
 The Future
 ----
 
-Of course the TOWEL-C COMPILER like the cool guys!!! And maybe a
-bytecode compiler for a VM in C.
+Of course the TOWEL-C COMPILER like the cool guys!!! (And of course not javascript, it just sucks.)
+Maybe a bytecode compiler for a VM in C.
 
-Oh, and algebraic data type.
-
-(And of course not javascript, it just sucks.)
+Oh, and algebraic data type. I'll have to do a lot of thinking.
 
 License
 ----
