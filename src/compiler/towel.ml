@@ -5,6 +5,7 @@ let src_file_r = ref "";;
 let in_files_r = ref [];;
 let out_file_r = ref "";;
 let raw_asm_r = ref false;;
+let all_in_one_r = ref false;;
 
 let commands = [
     ("-o",
@@ -18,12 +19,18 @@ let commands = [
     ("-r",
      Arg.Set(raw_asm_r),
      "Raw asm with labels on");
+
+    ("-a",
+     Arg.Set(all_in_one_r),
+     "Include all other modules in one output")
   ];;
 
 let () = Arg.parse commands (fun fn -> src_file_r := fn)
        "The Towel Compiler at your service. Don't panic!";;
 
 let raw_asm = !raw_asm_r;;
+
+let all_in_one = !all_in_one_r;;
 
 let src_file = !src_file_r;;
 let src_inchan = Pervasives.open_in src_file;;

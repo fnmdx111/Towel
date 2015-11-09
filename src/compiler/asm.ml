@@ -3,6 +3,7 @@ open Scoping
 open Batteries
 open Switches
 open Cseg
+open Common
 open Stdint
 
 let global_fn_id = ref "";;
@@ -35,7 +36,7 @@ let inst_nil_ctx = {pre = (fun _ -> cnil); post = (fun _ -> cnil)};;
 let __unique64 = Common.counter ();;
 let uniq64 x = Printf.sprintf ":%s-%s"
     !global_fn_id
-  @@ Int64.to_string @@ __unique64 x;;
+  @@ tu64 @@ __unique64 x;;
 (* This function generates a unique label with respect to the id of the
    source file, i.e. `global_fn_id'. The `global_fn_id' is the first ten
    character of the hex alphanumeric representation of the SHA1 digest of the
@@ -79,7 +80,7 @@ let rec g_lit ctx inst_ctx lit =
          let r = atom_repr_tick ()
          in Hashtbl.add atom_dict atom.atom_name r; r)
     in inst_ctx.pre "0"
-       |~~| (cone1 (inst "atom") @@ Int64.to_string repr)
+       |~~| (cone1 (inst "atom") @@ tu64 repr)
        |~~| inst_ctx.post "0"
 
   | VFixedInt(i) ->
@@ -89,7 +90,7 @@ let rec g_lit ctx inst_ctx lit =
 
   | VUFixedInt(u) ->
     inst_ctx.pre "0"
-    |~~| (cone1 (inst "ufint") @@ Uint64.to_string u)
+    |~~| (cone1 (inst "ufint") @@ tu64 u)
     |~~| inst_ctx.post "0"
 
   | VInt(i) ->
@@ -147,7 +148,7 @@ let rec g_lit ctx inst_ctx lit =
 and g_name ctx pn =
   let to_name_id_string ns =
     String.concat " "
-    @@ List.map (fun x -> Printf.sprintf "%s" @@ Int64.to_string x)
+    @@ List.map (fun x -> tu64 x)
     @@ List.map (lookup_name ctx.scp_stk) ns
     (* It's a series of name IDs combined by spaces and reminds me that
        my ccg.py needs some modification. *)
@@ -282,7 +283,7 @@ and g_match ctx =
   in let _UID = uniq64 ()
   in let action_label i =
        Printf.sprintf "%s-p%s" _UID
-       @@ Int64.to_string i
+       @@ tu64 i
   in let match_end_label = _UID -- "end"
 
   in let _g_pat_and_act =
@@ -305,7 +306,7 @@ and g_match ctx =
                 in (match n with
                       x::[] ->
                       (try if lookup_name ctx.scp_stk x
-                              = BatInt64.minus_one
+                              = Uint64.zero
                               (* This stands for the name does not exist in
                                  debug mode. *)
                          then
@@ -417,11 +418,11 @@ and g_fun ctx inst_ctx =
         ArgDef(pn)
       | ArgDefWithType(pn, _) ->
         push_name scp_stk pn @@ name_repr_tick ();
-        cone1 "fun-arg" @@ Int64.to_string @@ lookup_name scp_stk pn
+        cone1 "fun-arg" @@ tu64 @@ lookup_name scp_stk pn
   in let _g_arg_push = function
         ArgDef(pn)
       | ArgDefWithType(pn, _) ->
-        cone1 "push-name" @@ Int64.to_string @@ lookup_name scp_stk pn
+        cone1 "push-name" @@ tu64 @@ lookup_name scp_stk pn
 
   in function
     Function(arg_defs, body)
@@ -469,7 +470,7 @@ and g_bind ctx =
               IsNotBody
               {inst_nil_ctx with post = fun uid ->
                    (cone1 "bind"
-                    @@ Int64.to_string
+                    @@ tu64
                     @@ lookup_name ctx.scp_stk pn)
                    |~~| (cone1 "jump" (uid -- "real-end"))}
               b))
@@ -517,7 +518,7 @@ let assemble cst fn sw =
          Sentence(ws) -> ws
        | _ -> [WIdle])
 
-  in ((cone0 "push-stack")::(cone0 "push-scope")::result
+  in (result
       @ [cone0 "terminate"])
      |> aggregate
      |> compose

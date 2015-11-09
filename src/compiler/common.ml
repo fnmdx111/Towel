@@ -1,12 +1,16 @@
 open Batteries
 open Ast
+open Stdint
 
 (* =======================================
      Counter
    ======================================= *)
 let counter = fun () ->
-  let cnt = Array.of_list [BatInt64.minus_one]
-  in fun () -> cnt.(0) <- BatInt64.succ cnt.(0); cnt.(0);;
+  let cnt = Array.of_list [Uint64.of_int 0]
+  in fun () -> cnt.(0) <- Uint64.succ cnt.(0); cnt.(0);;
+(* Losing one -1 for a whole bunch of 2**63. *)
+
+let tu64 x = Printf.sprintf "%su" @@ Uint64.to_string x;;
 
 (* =======================================
      AST stringifiers

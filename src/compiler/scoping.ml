@@ -1,7 +1,8 @@
 open Ast
+open Stdint
 
 (* ==========================================
-   Scoping utilities for both Towel compiler and virtual machine
+   Scoping utilities for both Towel compiler
 
    + A Towel module consists of different scopes, and as functions
      being invoked, new scopes along with the functions are pushed/popped
@@ -11,9 +12,9 @@ open Ast
      looking up names, and maybe some metaprogramming infrastructures.
    ========================================== *)
 
-let is_DEBUG = ref true;
+let is_DEBUG = ref true;;
 
-type scope = Scope of (string, int64) Hashtbl.t * string;;
+type scope = Scope of (string, uint64) Hashtbl.t * string;;
 
 let name_of_scope = function
     Scope(_, n) -> n;;
@@ -35,7 +36,7 @@ let push_name scp_stk name value =
   Hashtbl.replace (table_of_scope (List.hd scp_stk)) name.name_repr value;;
 
 let print_ht ht = print_string "ht:\n";
-    Hashtbl.iter (fun k v -> Printf.printf "%s -> %s\n" k (Int64.to_string v)) ht;
+    Hashtbl.iter (fun k v -> Printf.printf "%s -> %s\n" k (Uint64.to_string v)) ht;
     print_string "-----\n";;
 
 let print_scp_stk scp_stk = print_string "scope stack:\n";
@@ -47,11 +48,11 @@ let pop_name scp_stk name =
 
 let rec lookup_name scp_stk name =
   match scp_stk with
-    [] -> if !is_DEBUG (* culture shock!! *) then -1L
-    else
-    raise (Exc.NameNotFoundError
-                   (Printf.sprintf
-                      "requested name `%s' not found" name.name_repr))
+    [] -> if !is_DEBUG (* culture shock!! *)
+    then Uint64.zero
+    else raise (Exc.NameNotFoundError
+                  (Printf.sprintf
+                     "requested name `%s' not found" name.name_repr))
   | scp::rest ->
     try
       let vs = Hashtbl.find_all (table_of_scope scp) name.name_repr in
