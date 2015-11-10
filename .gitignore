@@ -10,6 +10,12 @@
 parser.mli
 parser.ml
 scanner.ml
+tasm_ast.mli
+tasm_parser.mly
+tasm_scanner.mll
+tasm_stringify.ml
+__pycache__
+.lock*
 
 *.automaton
 *.conflicts
