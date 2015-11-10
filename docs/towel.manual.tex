@@ -460,18 +460,29 @@ Algebraic data types will be basically the same with that of OCaml except the sy
 
 You can only put atoms, parameterized names (potential namespaced) into the parameter list. See also \autoref{ssec:adt-example}.
 
-\section{Exports}
+\section{Imports and Exports}
 
-After the main sentence, you can export some of the names you bound previously so that they are visible to other modules by using \texttt{export} like this:
+You can import other namespaces (or modules if you like) by invoking the \texttt{import} statement as follows:
+\begin{verbatim}
+  bind A 1
+  also B 2
+  then (import 'big-int' @
+    A B +/Big-int).
+\end{verbatim}
+Towel will search for files named \texttt{big-int.w} and \texttt{big-int.e} in predefined library paths. When it finds the required file, it binds the module to the name of 
+ Common predefined library paths include the current working directory, somewhere in the Towel compiler installation (when compiling), somewhere in the Towel virtual machine installation (when executing assembled Towel).
 
+Note that you can import multiple modules in a single \texttt{import} statement.
+
+You can also export names in your module so that they are visible to other modules with \texttt{export} statement as follows:
 \begin{verbatim}
   bind A 1
   also B 2
   also C 3
-  then Idle.
-
-  export A B C.
+  then export A B C @.
 \end{verbatim}
+
+\texttt{import} and \texttt{export} statements does not affect the stack.
 
 \section{Switches}
 \label{sec:switches}
@@ -483,10 +494,9 @@ Towel provides some switches to change the default behavior of the compiler or t
 \item \texttt{optimize-seq}, on by default
 \end{itemize}
 
-If you want to turn on/off these switches, enter the switch names on first line followed by the word \texttt{on} and a period, leave an empty line next to it, then go on with your code, like this.
-
+If you want to turn on/off these switches, type in the switch names on first line, leave an empty line next to it, then go on with your code, like this:
 \begin{verbatim}
-  hungry share-stack on.
+  I'm so hungry! Also please share-stack.
 
   bind Something-new (1 2 -)
   then Something-new.
