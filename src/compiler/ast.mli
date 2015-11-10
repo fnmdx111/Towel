@@ -59,6 +59,8 @@ and word =
   | WControl of control_sequence
   | WFunction of function_sform
   | WAt of at_sform
+  | WImport of string list
+  | WExport of pname list
   | WBind of bind_sform
   | WAlType of altype_sform
   | WIdle

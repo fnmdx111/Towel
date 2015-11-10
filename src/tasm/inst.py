@@ -27,6 +27,7 @@ nullary_instructions = [
     'backquote',
     'patbackquote',
     'terminate',
+    'not-implemented',
 ]
 
 unary_instructions = [
@@ -37,6 +38,7 @@ unary_instructions = [
     'match',
     'hmatch',
     'rjump',
+    'import',
 ]
 
 multiarity_instructions = [

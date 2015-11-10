@@ -298,6 +298,10 @@ Reads a string from standard input and store that string in ORT.
 
 \subsection{Miscellaneous Instructions}
 
+\subsubsection{\inst{import}}
+
+Accepts a string of the name of the module you wish to import. TVM will assign a unique ID to every module imported based on the SHA1 digest of the source file of the module.
+
 \subsubsection{\inst{dint}}
 
 Invokes the debug interrupt handler. See also \url{https://github.com/qwert42/ketivm/blob/master/vm/keti.py#L164}, which is an implementation of a similar instruction.
@@ -306,7 +310,7 @@ Invokes the debug interrupt handler. See also \url{https://github.com/qwert42/ke
 
 Pushes the type reference of TOS onto the stack. This instruction only recognizes built-in types.
 
-\subsubsection{\inst{unimplemented}}
+\subsubsection{\inst{not-implemented}}
 
 Prints an error message stating that an unimplemented instruction was found and the virtual machine has to exit.
 

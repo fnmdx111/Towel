@@ -31,7 +31,7 @@ let _RPAREN = ')'
 let _LBRACKET = '['
 let _RBRACKET = ']'
 let _SLASH = '\\'
-let _AT = "@"
+let _AT = '@'
 let _LBRACE = '{'
 let _RBRACE = '}'
 
@@ -114,6 +114,7 @@ rule token = parse
 | "then" { THEN }
 | "fun" { FUNCTION }
 | "type" { TYPE }
+| "import" { IMPORT }
 | "export" { EXPORT }
 
 | eof { TERMINATOR(Ast.EOF) }
@@ -131,8 +132,7 @@ rule token = parse
           atom_repr = 1});
   }
 | string_lit as str {
-    LITERAL({value_content = VString(String.sub str 1 (String.length str - 2));
-             value_type = TypeDef([TDPrimitiveType(PT_String)])})
+    STRING(String.sub str 1 (String.length str - 2))
   }
 | fint_lit as i {
     LITERAL({value_content = VFixedInt(Int64.of_string i);

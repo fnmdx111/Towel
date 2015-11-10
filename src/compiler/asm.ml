@@ -171,6 +171,7 @@ and g_backquote ctx =
       MakeOnly -> "make-backquote"
     | PushMake -> "backquote"
     | Pattern -> "patbackquote"
+
   in function
       BQValue(pv) ->
       g_lit ctx {inst_nil_ctx with
@@ -191,7 +192,7 @@ and g_backquote ctx =
                       (uid -- "real-end"))} seq
 
     | BQBackquote(b) ->
-      g_backquote ctx b
+      (g_backquote ctx b) |~~| (cone0 bq_inst)
 
 and g_seq ctx is_body_ inst_ctx seq =
   let _UID =
@@ -439,6 +440,7 @@ and g_fun ctx inst_ctx =
             Irrelevantly, for tail calls, its start label is always two
             instructions behind the canonical start label. *)
        |~~| let r = csnl (List.map _g_arg_push @@ List.rev arg_defs) in r
+       |~~| LabeledCodeSegment([_UID -- "tail-call"], [])
        |~~| (let r = g_word
                  {ctx with mode = PushMake; scp_stk = scp_stk}
                  IsBody
@@ -479,8 +481,13 @@ and g_bind ctx =
       -> cnil
          |~~| let r = csnl (List.map _g_bind_body bs) in r
          |~~| let r = g_word {ctx with mode = PushMake}
-                  IsBody inst_nil_ctx b
-                  in r
+                  IsBody inst_nil_ctx b in r
+
+and g_import ss =
+  List.fold_left (|~~|) cnil
+  @@ List.map (fun x -> cone1 "import" @@ Printf.sprintf "'%s'" x) ss
+
+and export ns = cnil
 
 and g_word ctx is_body_ inst_ctx = function
     WLiteral(pv) -> g_lit ctx inst_ctx pv
@@ -500,6 +507,11 @@ and g_word ctx is_body_ inst_ctx = function
   | WFunction(f) -> g_fun ctx inst_ctx f
 
   | WBind(b) -> g_bind ctx b
+
+  | WImport(is) -> g_import is
+
+  | WExport(ns) -> export ns
+    (* Export does not generate any code, but a name table. *)
 
   | WIdle -> cone0 "idle"
 

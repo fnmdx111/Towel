@@ -6,11 +6,12 @@ open Exc
 %}
 
 %token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
-%token MATCH FUNCTION BIND ALSO THEN AT TYPE EXPORT
+%token MATCH FUNCTION BIND ALSO THEN AT TYPE IMPORT EXPORT
 %token SLASH BQUOTE COMMA SEMICOLON
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 
 %token <Ast.atom> ATOM
+%token <string> STRING
 %token <Ast.pvalue> LITERAL
 %token <Ast.pname> NAME
 %token <Ast.terminator> TERMINATOR
@@ -42,6 +43,8 @@ lit_altype_literal:
 
 literal:
   LITERAL { $1 }
+| STRING { {value_content = VString($1);
+            value_type = TypeDef([TDPrimitiveType(PT_String)])} }
 | ATOM { {value_content = VAtom($1);
           value_type = TypeDef([TDPrimitiveType(PT_Atom)])} }
 | lit_list { {value_content = $1;
@@ -312,6 +315,16 @@ altype_sform:
     AlType($2, $4)
   }
 
+import:
+  IMPORT list(STRING) AT {
+    $2
+  }
+
+export:
+  EXPORT list(NAME) AT {
+    $2
+  }
+
 word:
   backquote { WBackquote($1) }
 | sequence { WSequence($1) }
@@ -319,6 +332,8 @@ word:
 | control_sequence { WControl($1) }
 | function_ { WFunction($1) }
 | bind_sform { WBind($1) }
+| import { WImport($1) }
+| export { WExport($1) }
 (* | at_sform { WAt($1) } *)
 | name { WName($1) }
 | altype_sform { WAlType($1) }
@@ -337,7 +352,6 @@ sequence:
 
 sentence:
   list(word) TERMINATOR { Sentence($1) }
-| EXPORT list(NAME) TERMINATOR { Export($2) }
 | list(word) error {
     err "expected a terminator"
     $startpos($2) $startofs($2) $endofs($2)

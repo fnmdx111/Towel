@@ -171,6 +171,8 @@ and word_stringify w =
   | WFunction(f) -> _w (fun_stringify f) "fun"
   | WAt(a) -> _w (at_stringify a) "@"
   | WBind(b) -> _w (bind_stringify b) "bind"
+  | WImport(is) -> "some imports"
+  | WExport(ns) -> "some exports"
   | WAlType(alt) -> _w (altype_stringify alt) "al-type"
   | WIdle -> "idle"
 
