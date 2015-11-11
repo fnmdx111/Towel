@@ -119,7 +119,7 @@ rule token = parse
 
 | eof { TERMINATOR(Ast.EOF) }
 
-| _DQUOTE [^ '"' '\n' '\r']* _DQUOTE { token lexbuf } (* comments *)
+| _DQUOTE { comment lexbuf } (* comments *)
 
 | name as n {
     NAME({name_repr = n;
@@ -158,3 +158,7 @@ rule token = parse
               lexbuf.lex_curr_p.pos_lnum,
               lexbuf.lex_curr_p.pos_bol))
   }
+
+and comment = parse
+  _DQUOTE { token lexbuf }
+| _ { comment lexbuf }
