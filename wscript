@@ -1,9 +1,10 @@
 #! /usr/bin/env python3
 
 import os
+import waflib
 
 APPNAME = 'Towel'
-VERSION = '0.0'
+VERSION = '-1.-1'
 
 top = '.'
 out = 'build'
@@ -19,6 +20,8 @@ def options(opt):
                    dest='compile_all')
     opt.add_option('--debug', action='store_true', default=False,
                    dest='compile_debug')
+    opt.add_option('--conf-test', action='store_true', default=False,
+                   dest='conf_test')
 
 def configure(ctx):
     def conf_ocaml():
@@ -57,6 +60,24 @@ def configure(ctx):
         conf_tex()
     else:
         conf_ocaml()
+
+    if ctx.options.conf_test:
+        ctx.find_program('ruby')
+        ctx.find_program('gem')
+
+        def test_lib(what):
+            ret = ctx.cmd_and_log(['gem', 'list', what],
+                                  output=waflib.Context.STDOUT,
+                                  quiet=waflib.Context.BOTH)
+            if what in ret:
+                ctx.msg('Checking for library \'%s\'' % what, 'ok')
+            else:
+                ctx.fatal('Cannot find library \'%s\'.' % what)
+
+        test_lib('colorize')
+
+def test(ctx):
+    ctx.recurse('tests')
 
 def build(ctx):
     if ctx.options.compile_docs:

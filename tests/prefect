@@ -1,0 +1,95 @@
+#! /usr/bin/env ruby
+
+require 'open3'
+require 'colorize'
+
+class Prefect
+  # This class tests per file.
+  IN_PREFIX = '!>> '
+  OUT_PREFIX = '!<< '
+
+  PAT = /.*".*---\n(.*)\n#{IN_PREFIX}(.*)\n#{OUT_PREFIX}(.*)"/m
+  # This means that a testcase description consists of three parts:
+  # (1) the text description part that tells what this testcase is about
+  # (2) the input part, led by !>>\space
+  # (3) the expected output part, led by !<<\space
+
+  def initialize(fp, **ctx)
+    @ctx = ctx
+
+    open(fp) {|f|
+      @content = f.read
+    }
+
+    extract_info
+  end
+
+  def extract_info
+    @description, @input, @expected_output = PAT.match(@content).captures
+    @description.strip!
+  end
+
+  def execute_ok(idx)
+    pretty_input = if @input == ''
+                     'None'.gray
+                   else
+                     @input.white
+                   end
+    pretty_output = if @expected_output == ''
+                      'None'.gray
+                    else
+                      @expected_output.white
+                    end
+
+    puts "Testcase #{('#' + idx.to_s).blue}: #{@description}
+---
+Input: #{pretty_input}
+Output: #{pretty_output}"
+
+    output, status = Open3.capture2 @ctx[:towel_path], :stdin_data=>@input
+
+    if output == @expected_output
+      [true, '']
+    else
+      [false, output]
+    end
+  end
+end
+
+SUFFIX = 't'
+TOWEL_PATH = ARGV[1]
+TVM_PATH = ARGV[2] # TODO remember to use a temporary directory for compilation
+make_prefect = lambda {|fp| Prefect.new fp, :towel_path=>TOWEL_PATH}
+
+cnt = 0
+results = {}
+Dir.foreach '.' do |entry|
+  if entry =~ /[^.]*\.#{SUFFIX}/
+    cnt += 1
+    ok, out = make_prefect.call(entry).execute_ok cnt
+    if ok
+      results[entry] = :ok
+      puts "#{entry} =====> #{'[OK]'.green}"
+    else
+      results[entry] = :failed
+      puts "#{entry} =====> #{'[FAILED]'.red}
+Real output: #{out}"
+    end
+
+    puts '-' * 42
+  end
+end
+
+count = results.inject({}) do |acc, kv|
+  _, v = kv
+  if acc.has_key? v
+    acc[v] += 1
+  else
+    acc[v] = 1
+  end
+  acc
+end
+
+if count != {}
+  puts "Summary: #{count[:ok].to_s.green} passed, #{count[:failed].to_s.red} failed."
+end
