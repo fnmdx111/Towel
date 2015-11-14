@@ -2,5 +2,6 @@ import os
 
 def test(ctx):
     ctx.exec_command(['./tests/prefect', os.path.join('build', 'src',
-                                                      'compiler', 'towel')])
-
+                                                      'compiler', 'towel'),
+                                         os.path.join('build', 'src',
+                                                      'vm', 'tvm')])
