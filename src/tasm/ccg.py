@@ -16,6 +16,7 @@ for a minimal TASM parser.
 
 from inst import nullary_instructions as NUINST
 from inst import unary_instructions as UNINST
+from inst import binary_instructions as BIINST
 from inst import multiarity_instructions as MAINST
 from inst import inst_that_supports_label_as_argument
 
@@ -48,6 +49,10 @@ def gen_scanner():
             print('| "%s" { %s }' % (inst, _in2id(inst)),
                   file=fo)
 
+        for inst in BIINST:
+            print('| "%s" { %s }' % (inst, _in2id(inst)),
+                  file=fo)
+
         for inst in MAINST:
             print('| "%s" { %s }' % (inst, _in2id(inst)),
                   file=fo)
@@ -74,7 +79,7 @@ open Tasm_ast
 %%%%
 
 inst:
-''' % (' '.join(map(_in2id, UNINST + NUINST + MAINST))),
+''' % (' '.join(map(_in2id, UNINST + NUINST + BIINST + MAINST))),
               file=fo)
         for i in NUINST:
             id_ = _in2id(i)
@@ -89,6 +94,12 @@ inst:
 
             print('| %s LITERAL { %s(ArgLit($2)) }' % (id_, id_), file=fo)
 
+        for i in BIINST:
+            id_ = _in2id(i)
+            print('| %s LITERAL LITERAL { %s(ArgLit($2), ArgLit($3)) }'
+                  % (id_, id_),
+                  file=fo)
+
         for i in MAINST:
             id_ = _in2id(i)
             print('| %s nonempty_list(LITERAL)'
@@ -102,6 +113,12 @@ asm: list(line) EOF { Asm($1) }
 ''', file=fo)
 
 def gen_ast():
+    def gen_defs(fmt, defs):
+        if not defs:
+            return ''
+        else:
+            return '| ' + ' | '.join(map(lambda x: fmt % _in2id(x), defs))
+
     with _open('ast.mli') as fo:
         print('''open Stdint
 
@@ -118,15 +135,17 @@ type arg = ArgLit of lit
 
 type inst =
 %s
-| %s
-| %s;;
+%s
+%s
+%s;;
 
 type line = Line of label list * inst;;
 
 type asm = Asm of line list;;
 ''' % (' | '.join(map(_in2id, NUINST)),
-       ' | '.join(map(lambda x: '%s of arg' % _in2id(x), UNINST)),
-       ' | '.join(map(lambda x: '%s of arg list' % _in2id(x), MAINST))),
+       gen_defs('%s of arg', UNINST),
+       gen_defs('%s of arg * arg', BIINST),
+       gen_defs('%s of arg list', MAINST)),
               file=fo)
 
 def gen_stringify():
@@ -147,6 +166,7 @@ let p_arg = function
     | VFloat(f) -> string_of_float f);;
 
 let _p_inst inst arg = inst ^ " " ^ (p_arg arg);;
+let _p_inst_ba inst arg1 arg2 = inst ^ " " ^ (p_arg arg1) ^ " " ^ (p_arg arg2);;
 let _p_inst_ma inst args =
   inst ^ " " ^ (String.concat " " (List.map p_arg args));;
 let _p_inst_na inst = inst;;
@@ -154,8 +174,9 @@ let _p_inst_na inst = inst;;
 let p_inst =
   function
   {NU_INST}
-| {UN_INST}
-| {MA_INST}
+{UN_INST}
+{BI_INST}
+{MA_INST}
 
 let p_line = function
   Line(ls, inst) -> (p_labels ls) ^ " " ^ (p_inst inst);;
@@ -170,12 +191,25 @@ let p_asm = function
     UN_INST_U = '{ID}(arg) -> _p_inst "{IN}" arg'
     UN_INSTS = ' | '.join(map(lambda x: UN_INST_U.format(ID=_in2id(x), IN=x),
                               UNINST))
+    if UN_INSTS:
+        UN_INSTS = '| ' + UN_INSTS
+
+    BI_INST_U = '{ID}(arg1, arg2) -> _p_inst_ba "{IN}" arg1 arg2'
+    BI_INSTS = ' | '.join(map(lambda x: BI_INST_U.format(ID=_in2id(x), IN=x),
+                              BIINST))
+    if BI_INSTS:
+        BI_INSTS = '| ' + BI_INSTS
+
     MA_INST_U = '{ID}(args) -> _p_inst_ma "{IN}" args'
     MA_INSTS = ' | '.join(map(lambda x: MA_INST_U.format(ID=_in2id(x), IN=x),
                               MAINST))
+    if MA_INSTS:
+        MA_INSTS = '| ' + MA_INSTS
 
     with _open('stringify.ml') as fo:
-        print(p.format(NU_INST=NU_INSTS, UN_INST=UN_INSTS, MA_INST=MA_INSTS),
+        print(p.format(NU_INST=NU_INSTS, UN_INST=UN_INSTS,
+                       BI_INST=BI_INSTS,
+                       MA_INST=MA_INSTS),
               file=fo)
 
 

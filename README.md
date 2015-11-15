@@ -43,12 +43,16 @@ to support multiple file compilation. Note that this file is generated
 automatically during compilation guided by the export clause. Priority 4.
 To show a `.e` file prototype:
 
-        (GCD {Int Int Int})
-        (Quicksort {List List}).
+        (GCD 0u {Int Int Int})
+        (Quicksort 1u {List List}).
 
 * Also implement type checking algorithm! Priority 4.
 
 * The module system needs to be detailed designed. Priority 3.5.
+This is done by now. Parts missing: libpath mechanism, and maybe something else.
+
+* A script that generates std.w and std.e. Module `Std` generally covers all the
+assembly instructions that aren't covered in `asm`. Priority 4.
 
 The Future
 ----

@@ -1,5 +1,6 @@
 open Batteries;;
 open Exc;;
+open Stdint;;
 
 let src_file_r = ref "";;
 let in_files_r = ref [];;
@@ -46,7 +47,12 @@ let in_srcs = List.map (fun (inc, fn) -> input_list inc, fn) in_chans;;
 
 List.iter Pervasives.close_in @@ List.map fst in_chans;;
 
-let asm =
+let fn_digest = src_content
+                       |> Sha1.string
+                       |> Sha1.to_hex
+                       |> fun x -> String.sub x 0 9;;
+
+let asm, exp_scope =
   let in_src, fn = src_content, src_file
 
   in let sw, has_sw_preamble = Switches.parse(in_src)
@@ -61,12 +67,6 @@ let asm =
   in try
 
     let cst = Parser.sentence Scanner.token lexbuf
-
-    in let fn_digest = src_content
-                       |> Sha1.string
-                       |> Sha1.to_hex
-                       |> fun x -> String.sub x 0 9
-
     in if (* type checking *) true
     then Asm.assemble cst fn_digest sw
     else raise TypeError
@@ -89,6 +89,26 @@ in let text =
        in cst
           |> Unlabel.unlabel
           |> Tasm_stringify.p_asm
+
+in let () =
+     let compose_exp_file x =
+       Hashtbl.fold (fun nstr idx acc
+                      -> acc ^ "\n"
+                         ^ (Printf.sprintf "(%s %su)" nstr (Uint64.to_string idx)))
+         x ""
+     in let content =
+          Printf.sprintf "\"Automatically generated .e for %s\"\n\n%s."
+            fn_digest (compose_exp_file exp_scope)
+     in let ochan =
+          if out_file = "-"
+          then Pervasives.stdout
+          else Pervasives.open_out
+            @@ String.concat "." [fst (String.rsplit out_file ".");
+                                  "e"]
+          (* Replace the t extension with e. *)
+     in Pervasives.output_string ochan content; Pervasives.flush ochan;
+     if out_file = "-"
+     then () else Pervasives.close_out ochan
 
 in let ochan =
      if out_file = "-"

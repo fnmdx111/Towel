@@ -38,13 +38,16 @@ unary_instructions = [
     'match',
     'hmatch',
     'rjump',
+]
+
+binary_instructions = [
+    'push-name',
+    'patpush-name',
+    'push-tail-name',
     'import',
 ]
 
 multiarity_instructions = [
-    'push-name',
-    'patpush-name',
-    'push-tail-name',
 ]
 
 for i in ['make', 'push', 'patpush']:

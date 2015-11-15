@@ -14,7 +14,50 @@ open Stdint
 
 let is_DEBUG = ref true;;
 
-type scope = Scope of (string, uint64) Hashtbl.t * string;;
+type name_t = uint64;;
+type scope = Scope of (string, name_t) Hashtbl.t * string;;
+
+type external_scope = ExtScope of (string, external_scope) Hashtbl.t (* path table *)
+                                  * (string, name_t) Hashtbl.t       (* scope *)
+                                  * uint64                           (* id *)
+
+let print_ht ht = print_string "ht:\n";
+    Hashtbl.iter (fun k v -> Printf.printf "%s -> %s\n" k (Uint64.to_string v)) ht;
+  print_string "-----\n";;
+
+let print_es es = print_string "es:\n";
+  Hashtbl.iter (fun k v -> Printf.printf "%s -> %s\n" k "es")
+    (match es with ExtScope(p, _, _) -> p);
+  print_ht (match es with ExtScope(_, p, _) -> p);
+  print_string "-----\n";;
+
+let push_ext_scope meta ext_scope uid possible_mod_path =
+  let rec _push_e_s cur mod_path =
+    try let parent, rest = BatString.split Filename.dir_sep mod_path
+      in match cur with
+        ExtScope(package_path, _, _) ->
+        if Hashtbl.mem package_path parent
+        then _push_e_s (Hashtbl.find package_path parent) rest
+        else Hashtbl.replace package_path (BatString.capitalize parent)
+            (ExtScope(Hashtbl.create 512, Hashtbl.create 512, Uint64.zero));
+        _push_e_s (Hashtbl.find package_path parent) rest
+
+    with Not_found ->
+    match cur with
+    ExtScope(paths, _, _) ->
+      Hashtbl.replace paths (BatString.capitalize mod_path)
+        (ExtScope(Hashtbl.create 512, ext_scope, uid))
+  in _push_e_s meta possible_mod_path;;
+
+let lookup_ext_name meta ns =
+  let rec _lookup cur = function
+      [] -> failwith "Not found."
+    | n::[] -> (match cur with
+          ExtScope(_, ext_scope, uid) -> Hashtbl.find ext_scope n.name_repr, uid)
+    | name::rest -> (match cur with
+          ExtScope(p, _, _) -> _lookup (Hashtbl.find p name.name_repr) rest)
+
+  in _lookup meta (List.rev ns)
 
 let name_of_scope = function
     Scope(_, n) -> n;;
@@ -34,10 +77,6 @@ let pop_scope scp_stk =
 
 let push_name scp_stk name value =
   Hashtbl.replace (table_of_scope (List.hd scp_stk)) name.name_repr value;;
-
-let print_ht ht = print_string "ht:\n";
-    Hashtbl.iter (fun k v -> Printf.printf "%s -> %s\n" k (Uint64.to_string v)) ht;
-    print_string "-----\n";;
 
 let print_scp_stk scp_stk = print_string "scope stack:\n";
     List.iter (fun x -> match x with Scope(h, _) -> print_ht h) scp_stk;

@@ -5,6 +5,8 @@ open Switches
 open Cseg
 open Common
 open Stdint
+open Exp
+open Config
 
 let global_fn_id = ref "";;
 
@@ -22,7 +24,7 @@ type is_shared_sequence =
   | IsNotSharedSeq;;
 
 type ctx_t = {sw: switches; mode: word_builder_mode;
-              scp_stk: scope list};;
+              scp_stk: scope list; ext_scope_meta: external_scope};;
 
 type inst_ctx_t = {pre: (string -> code_segment);
                    post: (string -> code_segment)};;
@@ -55,13 +57,25 @@ ignore @@ atom_repr_tick ();; (* tick tock for false - 0 *)
 ignore @@ atom_repr_tick ();; (* tick tock for true - 1 *)
 
 let name_repr_tick = Common.counter ();;
-(* 2**63 names should be enough. I can switch to Stdint.Uint128 if it's
+(* 2**64 names should be enough. I can switch to Stdint.Uint128 if it's
    necessary. *)
+
+let ext_scope_tick = Common.counter ();;
 
 let fun_tick = Common.counter ();;
 
 let (--) x y = Printf.sprintf "%s-%s" x y;;
 let (^-) x y = Printf.sprintf "%d-%s" x y;;
+
+
+let exp_scope:(string, name_t) Hashtbl.t = Hashtbl.create 512;;
+let export ctx ns =
+  let _export_one n =
+    let nr = n.name_repr
+    in (if Hashtbl.mem exp_scope nr
+    then Hashtbl.replace 
+    else Hashtbl.add) exp_scope nr @@ lookup_name ctx.scp_stk n
+  in List.iter _export_one ns; cnil;;
 
 (* All the g_* functions should return a code_segment value. *)
 let rec g_lit ctx inst_ctx lit =
@@ -147,9 +161,11 @@ let rec g_lit ctx inst_ctx lit =
 
 and g_name ctx pn =
   let to_name_id_string ns =
-    String.concat " "
-    @@ List.map (fun x -> tu64 x)
-    @@ List.map (lookup_name ctx.scp_stk) ns
+    if List.length ns = 1
+    then (* It's a local name *) Printf.sprintf "%s 0u"
+      (tu64 (lookup_name ctx.scp_stk (List.hd ns)))
+    else let n_uid, es_uid = lookup_ext_name ctx.ext_scope_meta ns
+      in Printf.sprintf "%s %s" (tu64 n_uid) (tu64 es_uid)
     (* It's a series of name IDs combined by spaces and reminds me that
        my ccg.py needs some modification. *)
 
@@ -423,7 +439,10 @@ and g_fun ctx inst_ctx =
   in let _g_arg_push = function
         ArgDef(pn)
       | ArgDefWithType(pn, _) ->
-        cone1 "push-name" @@ tu64 @@ lookup_name scp_stk pn
+        cone1 "push-name"
+        @@ Printf.sprintf "%s %s"
+          (tu64 @@ lookup_name scp_stk pn)
+          (tu64 Uint64.zero)
 
   in function
     Function(arg_defs, body)
@@ -483,11 +502,25 @@ and g_bind ctx =
          |~~| let r = g_word {ctx with mode = PushMake}
                   IsBody inst_nil_ctx b in r
 
-and g_import ss =
-  List.fold_left (|~~|) cnil
-  @@ List.map (fun x -> cone1 "import" @@ Printf.sprintf "'%s'" x) ss
+and g_import ctx ss =
+  let uid = ext_scope_tick ()
 
-and export ns = cnil
+  in let rec find_module mod_str = function
+      path::rest ->
+      let possible_mod_path = Filename.concat path (mod_str ^ ".e")
+      in if BatSys.file_exists possible_mod_path
+
+      then let ext_scope = open_export possible_mod_path
+        in push_ext_scope ctx.ext_scope_meta ext_scope uid mod_str
+
+      else find_module mod_str rest
+    | [] -> failwith "Requested module not found."
+
+  in let () = List.iter (fun x -> find_module x Config.libpaths) ss
+  in List.fold_left (|~~|) cnil
+  @@ List.map
+    (fun x -> (cone1 "import"
+                 (Printf.sprintf "'%s' %s" x (tu64 uid)))) ss
 
 and g_word ctx is_body_ inst_ctx = function
     WLiteral(pv) -> g_lit ctx inst_ctx pv
@@ -508,9 +541,9 @@ and g_word ctx is_body_ inst_ctx = function
 
   | WBind(b) -> g_bind ctx b
 
-  | WImport(is) -> g_import is
+  | WImport(is) -> g_import ctx is
 
-  | WExport(ns) -> export ns
+  | WExport(ns) -> export ctx ns
     (* Export does not generate any code, but a name table. *)
 
   | WIdle -> cone0 "idle"
@@ -523,14 +556,16 @@ let assemble cst fn sw =
   in global_fn_id := fn;
   let result = List.map
       (g_word
-         {sw = sw; mode = PushMake; scp_stk = scope_stack_init}
+         {sw = sw; mode = PushMake; scp_stk = scope_stack_init;
+          ext_scope_meta = ExtScope(Hashtbl.create 512, Hashtbl.create 512,
+                                    Uint64.zero)}
          IsBody
          inst_nil_ctx)
       (match cst with
-         Sentence(ws) -> ws
-       | _ -> [WIdle])
+         Sentence(ws) -> ws)
 
-  in (result
+  in ((result
       @ [cone0 "terminate"])
      |> aggregate
-     |> compose
+     |> compose,
+     exp_scope)

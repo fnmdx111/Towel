@@ -120,7 +120,5 @@ and at_sform =
 
 and terminator = Period | EOF
 
-and export = Export of pname list;;
+type sentence = Sentence of word list;;
 
-type sentence = Sentence of word list
-              | Export of pname list;;
