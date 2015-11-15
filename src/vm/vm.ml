@@ -17,7 +17,7 @@ let modules:(uint64, module_t) Hashtbl.t = Hashtbl.create 512;;
 let dss_ = [];;
 let scps_ = [];;
 let ctxs_ = [];;
-let aus_=[];;     //
+let aus_=[];;     (*auxiliary stack*)
 
 
 let tos = List.hd;;
@@ -81,9 +81,11 @@ let exec insts =
       in __exec ctxs dss scps next_ip           
     | MAKE_UFINT(Arglit(i))->
       let  ()= new_ufint current_module.ort i 
-      in __exec ctxs dss scps next_ip     //
+      in __exec ctxs dss scps next_ip     
     | POP_STACK -> __exec ctxs pop_todss scps next_ip
     | PUSH_STACK -> __exec ctxs ([]::dss) scps next_ip
+    | SHARE_STACK ->__exec ctxs dss scps next_ip
+    | SHARE_SCOPE -> __exec ctxs dss scps next_ip
     | POP_SCOPE -> __exec ctxs dss (pop_scope scps) next_ip
     | PUSH_SCOPE -> __exec ctxs dss (push_scope scps) next_ip
     | PUSH_NAME(List.map (fun x -> ArgLit(x)) nonempty_list(VUFixedInt(i))) -> 
