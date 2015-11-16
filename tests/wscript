@@ -1,7 +1,9 @@
 import os
 
 def test(ctx):
-    ctx.exec_command(['./tests/prefect', os.path.join('build', 'src',
-                                                      'compiler', 'towel'),
-                                         os.path.join('build', 'src',
-                                                      'vm', 'tvm')])
+    os.chdir('tests')
+
+    ctx.exec_command(['./prefect', os.path.join('build', 'src',
+                                                'compiler', 'towel'),
+                      os.path.join('build', 'src',
+                                   'vm', 'tvm')])

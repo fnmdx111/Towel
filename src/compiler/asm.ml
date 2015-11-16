@@ -27,12 +27,12 @@ type ctx_t = {sw: switches; mode: word_builder_mode;
               scp_stk: scope list; ext_scope_meta: external_scope};;
 
 type inst_ctx_t = {pre: (string -> code_segment);
-                   post: (string -> code_segment)};;
+                   post: (string -> bool -> code_segment)};;
 (* `pre' and `post' are hooks that accepts a UID string as their argument,
    and generates appropriate code segment after the leading instruction,
    e.g. `make-list', `push-fun', etc. *)
 
-let inst_nil_ctx = {pre = (fun _ -> cnil); post = (fun _ -> cnil)};;
+let inst_nil_ctx = {pre = (fun _ -> cnil); post = (fun _ _ -> cnil)};;
 (* Most of the time, you don't want to insert anything more. *)
 
 let nil_name = {name_repr = ""; name_type = TypeDef([TDPrimitiveType(PT_Any)])};;
@@ -97,29 +97,29 @@ let rec g_lit ctx inst_ctx lit =
          in Hashtbl.add atom_dict atom.atom_name r; r)
     in inst_ctx.pre "0"
        |~~| (cone1 (inst "atom") @@ tu64 repr)
-       |~~| inst_ctx.post "0"
+       |~~| inst_ctx.post "0" true
 
   | VFixedInt(i) ->
     inst_ctx.pre "0"
     |~~| (cone1 (inst "fint") @@ Int64.to_string i)
-    |~~| inst_ctx.post "0"
+    |~~| inst_ctx.post "0" true
 
   | VUFixedInt(u) ->
     inst_ctx.pre "0"
     |~~| (cone1 (inst "ufint") @@ tu64 u)
-    |~~| inst_ctx.post "0"
+    |~~| inst_ctx.post "0" true
 
   | VInt(i) ->
     inst_ctx.pre "0"
     |~~| (cone1 (inst "int")
           @@ Printf.sprintf "%sl"
           @@ Big_int.string_of_big_int i)
-    |~~| inst_ctx.post "0"
+    |~~| inst_ctx.post "0" true
 
   | VFloat(f) ->
     inst_ctx.pre "0"
     |~~| (cone1 (inst "float") @@ string_of_float f)
-    |~~| inst_ctx.post "0"
+    |~~| inst_ctx.post "0" true
 
   | VList(wl)
     -> cnil (* ascii art!! *)
@@ -128,8 +128,7 @@ let rec g_lit ctx inst_ctx lit =
              @@ (List.length wl) + 1)
        |~~| (cone0 @@ inst "list")
        |~~| (inst_ctx.post
-             @@ string_of_int
-             @@ (List.length wl) + 1)
+             (string_of_int ((List.length wl) + 1)) true)
        |~~| let r = csnl (flap wl @@ g_word
                             {ctx with mode = PushMake}
                             IsNotBody
@@ -139,7 +138,7 @@ let rec g_lit ctx inst_ctx lit =
   | VString(s) ->
     inst_ctx.pre "0"
     |~~| (cone1 (inst "string") @@ Printf.sprintf "'%s'" s)
-    |~~| inst_ctx.post "0"
+    |~~| inst_ctx.post "0" true
 
   | VTuple(wl)
     -> cnil
@@ -147,9 +146,7 @@ let rec g_lit ctx inst_ctx lit =
              @@ string_of_int
              @@ (List.length wl) + 1)
        |~~| (cone0 @@ inst "tuple")
-       |~~| (inst_ctx.post
-             @@ string_of_int
-             @@ (List.length wl) + 1)
+       |~~| (inst_ctx.post (string_of_int ((List.length wl) + 1)) true)
        |~~| let r = csnl (flap wl
                           @@ g_word {ctx with mode = PushMake}
                             IsNotBody
@@ -159,7 +156,7 @@ let rec g_lit ctx inst_ctx lit =
   | VAlTypeLiteral(_) ->
     inst_ctx.pre "0"
     |~~| cone0 "not-implemented"
-    |~~| inst_ctx.post "0"
+    |~~| inst_ctx.post "0" true
 
 and g_name ctx pn =
   let to_name_id_string ns =
@@ -193,7 +190,7 @@ and g_backquote ctx =
   in function
       BQValue(pv) ->
       g_lit ctx {inst_nil_ctx with
-                 post = fun rj (* reljump number deserves a r-inst *)
+                 post = fun rj is_literal (* reljump number deserves a r-inst *)
                    -> (cone0 bq_inst) |~~| (cone1 "rjump" rj)} pv
 
     | BQName(n)
@@ -204,7 +201,7 @@ and g_backquote ctx =
     | BQSeq(seq) ->
       g_seq ctx IsNotBody
         {inst_nil_ctx with
-         post = fun uid
+         post = fun uid is_literal
            -> (cone0 bq_inst)
               |~~| (cone1 "jump"
                       (uid -- "real-end"))} seq
@@ -280,7 +277,7 @@ and g_seq ctx is_body_ inst_ctx seq =
   in cnil
      |~~| inst_ctx.pre _UID
      |~~| (opt_cs lead_inst)
-     |~~| inst_ctx.post _UID
+     |~~| inst_ctx.post _UID false
      |~~| seq_preamble
      |~~| let r = csnl (flap body
                         @@ g_word {ctx with mode = PushMake;
@@ -451,16 +448,16 @@ and g_fun ctx inst_ctx =
     -> cnil
        |~~| inst_ctx.pre _UID
        |~~| (cone1 lead_inst @@ st_label)
-       |~~| inst_ctx.post _UID
+       |~~| inst_ctx.post _UID false
        |~~| preamble
-       |~~| let r = csnl (List.map _g_arg_def arg_defs) in r
+       |~~| let r = csnl (List.rev @@ List.map _g_arg_def arg_defs) in r
          (* The bug stated at 383 is also causing problem here leading the
             name pushing code running later than name resolving code. This
             results in failures in names resolving.
 
             Irrelevantly, for tail calls, its start label is always two
             instructions behind the canonical start label. *)
-       |~~| let r = csnl (List.map _g_arg_push @@ List.rev arg_defs) in r
+       |~~| let r = csnl (List.map _g_arg_push arg_defs) in r
        |~~| LabeledCodeSegment([_UID -- "tail-call"], [])
        |~~| (let r = g_word
                  {ctx with mode = PushMake; scp_stk = scp_stk}
@@ -491,10 +488,13 @@ and g_bind ctx =
       |~~| (g_word
               {ctx with mode = MakeOnly}
               IsNotBody
-              {inst_nil_ctx with post = fun uid ->
+              {inst_nil_ctx with post = fun uid is_literal ->
                    (cone1 "bind"
                     @@ tu64
-                    @@ lookup_name ctx.scp_stk pn)}
+                    @@ lookup_name ctx.scp_stk pn)
+                   |~~| (if is_literal
+                         then cnil
+                         else (cone1 "jump" (uid -- "real-end")))}
               b))
   in function
       BindThen(bs, b)

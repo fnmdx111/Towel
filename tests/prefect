@@ -8,7 +8,7 @@ class Prefect
   IN_PREFIX = '!>> '
   OUT_PREFIX = '!<< '
 
-  PAT = /.*".*---\n(.*)\n#{IN_PREFIX}(.*)\n#{OUT_PREFIX}(.*)"/m
+  PAT = /.*".*---\n(.*)\n#{IN_PREFIX}([^"]*)\n#{OUT_PREFIX}([^"]*)"/m
   # This means that a testcase description consists of three parts:
   # (1) the text description part that tells what this testcase is about
   # (2) the input part, led by !>>\space

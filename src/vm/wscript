@@ -24,6 +24,7 @@ def build(ctx):
     lib_mls = ['exc', 'scoping', 'common', 'config', 'tasm_stringify']
     aff_mlis = ['tasm_parser']
     non_exec_mls = ['tasm_parser', 'tasm_scanner', 'ort']
+    some_more_mls0 = ['vm_t']
     some_more_mls1 = ['imp', 'jumps']
     some_more_mls2 = ['vm']
     target_mls = ['tvm']
@@ -51,7 +52,7 @@ def build(ctx):
               ' -I %s -c -o ${TGT} ${SRC}'\
               % (external_libs, incl_folder,)
 
-    ctx.add_group('parser')
+    ctx.add_group('vmparser')
     ctx(rule='${MENHIR} --base %s/src/vm/tasm_parser ${SRC}'\
         % ctx.out_dir,
         source='tasm_parser.mly',
@@ -74,22 +75,26 @@ def build(ctx):
             source=src_ext_f(n),
             target=tgt_ext_f(n))
 
-    ctx.add_group('lib')
+    ctx.add_group('vmlib')
     for it in lib_mls:
         cpl_oc(it, mln, obj_ext)
 
     for it in aff_mlis:
         cpl_oc(it, mlin, cmin)
 
-    ctx.add_group('non_exec')
+    ctx.add_group('vmnon_exec')
     for it in non_exec_mls:
         cpl_oc(it, mln, obj_ext)
 
-    ctx.add_group('more_non_exec1')
+    ctx.add_group('vmmore_non_exec0')
+    for it in some_more_mls0:
+        cpl_oc(it, mln, obj_ext)
+
+    ctx.add_group('vmmore_non_exec1')
     for it in some_more_mls1:
         cpl_oc(it, mln, obj_ext)
 
-    ctx.add_group('more_non_exec2')
+    ctx.add_group('vmmore_non_exec2')
     for it in some_more_mls2:
         cpl_oc(it, mln, obj_ext)
 
@@ -101,10 +106,11 @@ def build(ctx):
                  ' -o %s${TGT} ${SRC}' %\
                  (external_libs, build_prefix),
             source=obj_j(lib_mls + non_exec_mls
+                         + some_more_mls0
                          + some_more_mls1
                          + some_more_mls2 + [n]),
             target=n)
 
-    ctx.add_group('tgt')
+    ctx.add_group('vmtgt')
     for n in target_mls:
         cpl_tgt(n)

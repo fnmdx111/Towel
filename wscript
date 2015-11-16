@@ -12,6 +12,8 @@ out = 'build'
 def options(opt):
     opt.add_option('--docs', action='store_true', default=False,
                    dest='compile_docs')
+    opt.add_option('--compiler', action='store_true', default=True,
+                   dest='compile_compiler_stub')
     opt.add_option('--native', action='store_true', default=False,
                    dest='compile_natively')
     opt.add_option('--tvm', action='store_true', default=False,
@@ -22,14 +24,36 @@ def options(opt):
                    dest='compile_debug')
     opt.add_option('--conf-test', action='store_true', default=False,
                    dest='conf_test')
+    opt.add_option('--no-docs', action='store_true', default=False,
+                   dest='no_docs')
 
 def configure(ctx):
-    def conf_ocaml():
+    ctx.options.compile_compiler = True
+
+    if ctx.options.compile_docs:
+        ctx.options.compile_compiler = False
+
+    if ctx.options.compile_tvm:
+        ctx.options.compile_compiler = False
+
+    if ctx.options.no_docs:
+        ctx.options.compile_docs = False
+
+    if ctx.options.compile_compiler_stub:
+        ctx.options.compile_compiler = True
+
+    if ctx.options.compile_all:
+       ctx.options.compile_docs = True
+       ctx.options.compile_compiler = True
+       ctx.options.compile_tvm = True
+       ctx.options.conf_test = True
+
+    def conf_ocaml(programs, libs):
         ctx.load('ocaml')
 
-        ctx.find_program('ocamlfind', var="OCAMLFIND")
-        ctx.find_program('python3', var='PY3K')
-        ret = ctx.exec_command(['ocamlfind', 'query', 'Batteries'])
+        ctx.find_program('ocamlfind', var='OCAMLFIND')
+        for p, v in programs:
+            ctx.find_program(p, var=v)
 
         def find_lib(l):
             ret = ctx.exec_command([ctx.env.OCAMLFIND[0], 'query', l])
@@ -40,8 +64,7 @@ def configure(ctx):
 
         ctx.env.LIBS = {'Batteries', 'Extlib', 'Stdint', 'Sha'}
         ctx.env.TVM_LIBS = {'Stdint', 'Batteries', 'Extlib'}
-        for l in ctx.env.LIBS |\
-        (ctx.env.TVM_LIBS if ctx.options.compile_tvm else set()):
+        for l in libs:
             find_lib(l)
 
         ctx.env.OC = [os.path.basename(ctx.env.OCAMLC[0])]
@@ -56,15 +79,7 @@ def configure(ctx):
     def conf_tex():
         ctx.load('tex')
 
-    if ctx.options.compile_docs:
-        conf_tex()
-    elif ctx.options.compile_all:
-        conf_ocaml()
-        conf_tex()
-    else:
-        conf_ocaml()
-
-    if ctx.options.conf_test:
+    def conf_test():
         ctx.find_program('ruby')
         ctx.find_program('gem')
 
@@ -79,18 +94,40 @@ def configure(ctx):
 
         test_lib('colorize')
 
+    if ctx.options.compile_docs:
+        conf_tex()
+    
+    if ctx.options.compile_all:
+        conf_compiler()
+        conf_tvm()
+        conf_tex()
+        conf_test()
+
+    if ctx.options.compile_compiler:
+        conf_ocaml([('python3', 'PY3K')],
+                   ['Batteries', 'Stdint', 'Extlib', 'Sha'])
+
+    if ctx.options.compile_tvm:
+        conf_ocaml([('ruby', 'RUBY')], ['Batteries', 'Stdint'])
+
+    if ctx.options.conf_test:
+        conf_test()
+
 def test(ctx):
     ctx.recurse('tests')
 
 def build(ctx):
     if ctx.options.compile_docs:
         ctx.recurse('docs')
-    elif ctx.options.compile_all:
+
+    if ctx.options.compile_tvm:
+        ctx.recurse('src/vm')
+
+    if ctx.options.compile_compiler:
+        ctx.recurse('src/compiler')
+
+    if ctx.options.compile_all:
         ctx.recurse('src/compiler src/vm')
         ctx.recurse('docs')
-    else:
-        if ctx.options.compile_tvm:
-            ctx.recurse('src/vm')
-        else:
-            ctx.recurse('src/compiler')
+
 

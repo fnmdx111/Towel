@@ -3,12 +3,15 @@ prelude = "open Tasm_ast;;
 open Ort;;
 open T;;
 open Stdint;;
+open Vm_t;;
 
-let branch tods ort next_ip = function"
+let branch tods mods next_ip =
+  let m = Hashtbl.find mods (snd tods)
+  in function"
 
 assemble_big = lambda {|x| "Big_int.#{x}_big_int i Big_int.zero_big_int"}
 
-match = 'let _ip = match (lookup_val ort tods).v with'
+match = 'let _ip = match (lookup_val m.ort tods).v with'
 clause = 'then j else next_ip'
 
 numerical_conditionals = [
@@ -92,6 +95,7 @@ File.open "#{ARGV[0]}/jumps.ml", 'w' do |f|
   f.write prelude
   f.write "\n"
   f.write conditionals
+  f.write "\n"
   f.write "| _ -> failwith \"Not possible.\"
 "
 end

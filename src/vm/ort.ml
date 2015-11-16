@@ -12,7 +12,7 @@ open Stdint;;
 type ort_t =
   {tick: (unit -> uint64 * uint64);
    module_id: uint64;
-   ort: (ref_t, value_t) Hashtbl.t;
+   the_ort: (ref_t, value_t) Hashtbl.t;
    intp: (Big_int.big_int, ref_t) Hashtbl.t;
    fintp: (int64, ref_t) Hashtbl.t;
    ufintp: (uint64, ref_t) Hashtbl.t;
@@ -26,7 +26,7 @@ type ort_t =
 let new_ort module_id =
   let _tick = Common.counter ()
   in {tick = (fun () -> (_tick (), module_id));
-      ort = Hashtbl.create 512;
+      the_ort = Hashtbl.create 512;
       module_id = module_id;
       intp = Hashtbl.create 512;
       fintp = Hashtbl.create 512;
@@ -41,7 +41,7 @@ let new_ort module_id =
 let set_nref_of ort r = ort.nref := r
 
 let lookup_val ort r =
-  Hashtbl.find ort.ort r;;
+  Hashtbl.find ort.the_ort r;;
 
 let new_integer ort type_hint =
   try
@@ -68,7 +68,7 @@ let new_integer ort type_hint =
       | THFunction(lit) -> Hashtbl.add ort.funp lit ref_; OVFunction(lit)
       | _ -> failwith "Incompatible type hint."
 
-    in Hashtbl.add ort.ort ref_
+    in Hashtbl.add ort.the_ort ref_
       {v = x;
        refc = Uint64.zero};
     ref_;;
@@ -94,12 +94,12 @@ let new_string ort lit =
   in set_nref_of ort ref_;
   (* No matter whether we found that string in the pool, we are going to
      set the newestly created value reference to it. Same for others. *)
-  Hashtbl.add ort.ort ref_ {v = OVString(lit); refc = Uint64.zero};
+  Hashtbl.add ort.the_ort ref_ {v = OVString(lit); refc = Uint64.zero};
   ref_;;
 
 let new_float ort f =
   let ref_ = ort.tick ()
-  in set_nref_of ort ref_; Hashtbl.replace ort.ort ref_
+  in set_nref_of ort ref_; Hashtbl.replace ort.the_ort ref_
     {v = OVFloat(f); refc = Uint64.zero};
   ref_;;
 
@@ -107,7 +107,7 @@ let new_list ort =
   let ref_ = ort.tick ()
   (* We don't cache list values. *)
   in set_nref_of ort ref_;
-  Hashtbl.replace ort.ort ref_ {v = OVLNil; refc = Uint64.zero};
+  Hashtbl.replace ort.the_ort ref_ {v = OVLNil; refc = Uint64.zero};
   ref_;;
 (** TODO here: nested (nasty) lists must be created according to a stack
     of list creating status, e.g.:
@@ -117,7 +117,7 @@ let new_tuple ort =
   let ref_ = ort.tick ()
   (* Nor for tuples. *)
   in set_nref_of ort ref_;
-  Hashtbl.replace ort.ort ref_ {v = OVTNil; refc = Uint64.zero};
+  Hashtbl.replace ort.the_ort ref_ {v = OVTNil; refc = Uint64.zero};
   ref_;;
 
 let _append_list_elem ort lref r =
@@ -125,7 +125,7 @@ let _append_list_elem ort lref r =
       OVLNil -> {v = OVList([r]); refc = Uint64.zero}
     | OVList(rs) -> {v = OVList(r::rs); refc = Uint64.zero}
     | _ -> failwith "Wrong type of list constructor."
-  in Hashtbl.replace ort.ort lref nval;;
+  in Hashtbl.replace ort.the_ort lref nval;;
 (* This is to say, after appending the new item, we replace what was
    there with our new list. *)
 
@@ -159,7 +159,7 @@ let _append_tuple_elem ort lref r =
       OVTNil -> {v = OVTuple([r]); refc = Uint64.zero}
     | OVTuple(rs) -> {v = OVTuple(r::rs); refc = Uint64.zero}
     | _ -> failwith "Wrong type of tuple constructor."
-  in Hashtbl.replace ort.ort lref nval;;
+  in Hashtbl.replace ort.the_ort lref nval;;
 
 let _new_tuple_item nfun ort lref lit =
   let nref = nfun ort lit
@@ -184,14 +184,14 @@ let new_tuple_tuple ort lref =
 let new_name_backquote ort bqn =
   let nref = ort.tick ()
   in set_nref_of ort nref;
-  Hashtbl.add ort.ort nref {v = (OVNameBackquote(bqn));
+  Hashtbl.add ort.the_ort nref {v = (OVNameBackquote(bqn));
                             refc = Uint64.zero};
   nref;;
 
 (* This actually shouldn't be called. *)
 let new_value_backquote ort bqv =
   let nref = ort.tick ()
-  in Hashtbl.add ort.ort nref {v = (OVValueBackquote(bqv));
+  in Hashtbl.add ort.the_ort nref {v = (OVValueBackquote(bqv));
                                refc = Uint64.zero};;
 
 let init_ort ort =
