@@ -87,6 +87,11 @@ let new_integer ort pool type_hint lit =
        refc = Uint64.zero};
     ref_;;
 
+let new_float ort lit = 
+  let ref_ = R((ticker_of ort) ())   (*new added function new_float*)
+in Hashtbl.add ort lit ref_;
+
+
 let new_int ort = new_integer ort (intp_of ort) THInt;;
 let new_fint ort = new_integer ort (fintp_of ort) THFixedInt;;
 let new_ufint ort = new_integer ort (ufintp_of ort) THUFixedInt;;
