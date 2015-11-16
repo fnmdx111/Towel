@@ -5,6 +5,7 @@ open Common
 open Lexing
 open Exc
 open Stdint
+open Batteries
 
 let strip_mod s =
   let len = String.length s
@@ -16,6 +17,27 @@ let strip_sign s =
   in if (first = "+") || (first = "-")
   then String.sub s 1 @@ len - 1
   else s
+
+let unquote s =
+  let rec _unq output state = function
+      ch::rest ->
+      if ch <> '\\'
+      then if state = 0
+        then (BatIO.write output ch;
+              _unq output 0 rest)
+        else (BatIO.write output
+                (match ch with
+                   'n' -> '\n'
+                 | 't' -> '\t'
+                 | 'b' -> '\b'
+                 | '\'' -> '\''
+                 | '\\' -> '\\'
+                 | _ -> failwith "Illegal escape sequence.");
+              _unq output 0 rest)
+      else _unq output 1 rest
+    | [] -> BatIO.close_out output
+  in let out = BatIO.output_string ()
+  in _unq out 0 (String.to_list s)
 }
 
 let _WHITESPACE = [' ' '\t']
@@ -132,7 +154,7 @@ rule token = parse
           atom_repr = 1});
   }
 | string_lit as str {
-    STRING(String.sub str 1 (String.length str - 2))
+    STRING(unquote(String.sub str 1 (String.length str - 2)))
   }
 | fint_lit as i {
     LITERAL({value_content = VFixedInt(Int64.of_string i);
