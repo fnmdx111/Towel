@@ -1,5 +1,6 @@
 "Greatest common divisor test case.
 ---
+Computes the greatest common divisor of 42 and 24.
 Mainly tests tail recursive calls.
 !>> 
 !<< 6
