@@ -16,6 +16,7 @@ class Prefect
 
   def initialize(fp, **ctx)
     @ctx = ctx
+    @fp = fp.chop.chop
 
     open(fp) {|f|
       @content = f.read
@@ -31,12 +32,12 @@ class Prefect
 
   def execute_ok(idx)
     pretty_input = if @input == ''
-                     'None'.gray
+                     'None'.light_cyan
                    else
                      @input.white
                    end
     pretty_output = if @expected_output == ''
-                      'None'.gray
+                      'None'.light_cyan
                     else
                       @expected_output.white
                     end
@@ -46,7 +47,19 @@ class Prefect
 Input: #{pretty_input}
 Output: #{pretty_output}"
 
-    output, status = Open3.capture2 @ctx[:towel_path], :stdin_data=>@input
+    _, _ = Open3.capture2 @ctx[:weave_path], "#{@fp}.t", '-o', "temp/#{@fp}.w"
+
+    if ARGV[0] == '-t'
+      puts "Tracing #{@fp}.w =>"
+      output, _ = Open3.capture2(
+          @ctx[:tvm_path], "temp/#{@fp}.w", '-t', :stdin_data=>@input
+      )
+    else
+      output, _ = Open3.capture2(
+          @ctx[:tvm_path], "temp/#{@fp}.w", :stdin_data=>@input
+      )
+    end
+
 
     if output == @expected_output
       [true, '']
@@ -57,9 +70,13 @@ Output: #{pretty_output}"
 end
 
 SUFFIX = 't'
-TOWEL_PATH = ARGV[1]
-TVM_PATH = ARGV[2] # TODO remember to use a temporary directory for compilation
-make_prefect = lambda {|fp| Prefect.new fp, :towel_path=>TOWEL_PATH}
+WEAVE_PATH = '../build/src/compiler/weave'
+TVM_PATH = '../build/src/vm/tvm'
+make_prefect = lambda {|fp| Prefect.new(
+    fp,
+    :weave_path=>WEAVE_PATH,
+    :tvm_path=>TVM_PATH
+)}
 
 cnt = 0
 results = {}
@@ -80,16 +97,23 @@ Real output: #{out}"
   end
 end
 
-count = results.inject({}) do |acc, kv|
+count = results.inject({:ok => 0, :failed => 0}) do |acc, kv|
   _, v = kv
-  if acc.has_key? v
-    acc[v] += 1
-  else
-    acc[v] = 1
-  end
+  acc[v] += 1
   acc
 end
 
 if count != {}
-  puts "Summary: #{count[:ok].to_s.green} passed, #{count[:failed].to_s.red} failed."
+  if count[:ok] > 0
+    ok = count[:ok].to_s.green
+  else
+    ok = 0.to_s
+  end
+
+  if count[:failed] > 0
+    failed = count[:failed].to_s.red
+  else
+    failed = 0.to_s
+  end
+  puts "Summary: #{ok} passed, #{failed} failed."
 end

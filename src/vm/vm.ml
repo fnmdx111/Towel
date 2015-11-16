@@ -24,11 +24,11 @@ let scpss_ = [[]];;
 let ctxs_ = [];;
 
 let show_ctx c =
-  Printf.printf "{ctx: %s,%s}" (Uint64.to_string c.id) (Uint64.to_string c.ret_addr);;
+  Printf.fprintf stderr "{ctx: %s,%s}" (Uint64.to_string c.id) (Uint64.to_string c.ret_addr);;
 
 let rec show_ctxs = function
-  ctx::rest -> (show_ctx ctx; print_string " "; show_ctxs rest)
-| [] -> print_string "\n";;
+  ctx::rest -> (show_ctx ctx; Printf.fprintf stderr " "; show_ctxs rest)
+| [] -> Printf.fprintf stderr "\n";;
 
 let tos = List.hd;;
 let ntos = List.tl;;
@@ -72,7 +72,7 @@ let exec should_trace insts =
     in let trace msg =
          if should_trace then (show_ctxs ctxs;
            let id_ = flags.module_id
-           in Printf.printf "**(%s,%s) -- %s\n"
+           in Printf.fprintf stderr "**(%s,%s) -- %s\n"
              (Uint64.to_string id_) (Uint64.to_string ip) msg)
          else ()
 
@@ -240,7 +240,7 @@ let exec should_trace insts =
            module_id = tctx.id; current_module = Hashtbl.find modules tctx.id}
           tctx.ret_addr
       else exit 0
-    | _ -> print_string "not implemented yet\n"; exit 0
+    | _ -> Printf.fprintf stderr "not implemented yet\n"; exit 0
 
   in Hashtbl.replace modules Uint64.zero {insts = insts;
                                           ort = make_ort Uint64.zero;
