@@ -5,7 +5,7 @@ open Scoping;;
 open Ort;;
 
 type ctx_t = {id: uint64; ret_addr: uint64};;
-type module_t = {insts: line array; ort: ort_t; exs: scope};;
+type module_t = {insts: line array; exs: scope};;
 
 (* In tail recursive calls, push-tail-name jumps two more lines,
    also fun-arg fetches from current data stack rather than parent

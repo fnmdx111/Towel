@@ -17,7 +17,7 @@ let pop_scope =
     _::rest -> rest
   | [] -> [];;
 
-let push_name scp_stk name value=
+let push_name scp_stk name value =
   Hashtbl.replace (List.hd scp_stk) name value;;
 
 let pop_name scp_stk name =
@@ -25,7 +25,7 @@ let pop_name scp_stk name =
 
 let rec lookup_name scp_stk name =
   match scp_stk with
-    [] -> if !is_DEBUG then (Uint64.zero, Uint64.zero)
+    [] -> if !is_DEBUG then Uint64.zero
     else raise (Exc.NameNotFoundError name)
   | scp::rest ->
     try Hashtbl.find scp name

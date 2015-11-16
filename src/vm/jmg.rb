@@ -5,13 +5,12 @@ open T;;
 open Stdint;;
 open Vm_t;;
 
-let branch tods mods next_ip =
-  let m = Hashtbl.find mods (snd tods)
-  in function"
+let branch glookup_val tods next_ip =
+  function"
 
 assemble_big = lambda {|x| "Big_int.#{x}_big_int i Big_int.zero_big_int"}
 
-match = 'let _ip = match (lookup_val m.ort tods).v with'
+match = 'let _ip = match (glookup_val tods).v with'
 clause = 'then j else next_ip'
 
 numerical_conditionals = [

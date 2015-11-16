@@ -9,8 +9,8 @@ open Config;;
 open Vm_t;;
 
 let modules:module_table_t = Hashtbl.create 512;;
-
-let mod_of ref_ = Hashtbl.find modules (snd ref_);;
+let gort = make_ort ();;
+let glookup_val r = lookup_val gort r;;
 
 let dsss_ = [[]];;
 let scpss_ = [[]];;
@@ -35,8 +35,8 @@ let rec find_module mod_str = function
     else find_module mod_str rest
   | [] -> failwith "Requested module not found."
 
-let rec string_of_value cur_mod r =
-  match (lookup_val (Hashtbl.find modules (snd r)).ort r).v with
+let rec string_of_value r =
+  match (glookup_val r).v with
     OVInt(i) -> Big_int.string_of_big_int i
   | OVFixedInt(i) -> Int64.to_string i
   | OVUFixedInt(i) -> Uint64.to_string i
@@ -45,12 +45,12 @@ let rec string_of_value cur_mod r =
   | OVString(s) -> s
   | OVList(rs) ->
     Printf.sprintf "[%s]"
-      (String.concat " " (List.map (string_of_value cur_mod) rs))
+      (String.concat " " (List.map string_of_value rs))
   | OVTuple(rs) ->
     Printf.sprintf "[@ %s]"
-      (String.concat " " (List.map (string_of_value cur_mod) rs))
-  | OVFunction(st) ->
-    Printf.sprintf "**fun: %s" (tu64 st)
+      (String.concat " " (List.map string_of_value rs))
+  | OVFunction(st, mod_id) ->
+    Printf.sprintf "**fun: %s,%s" (tu64 st) (tu64 mod_id)
   | _ -> "**abstract value";;
 
 let exec should_trace should_warn insts =
@@ -102,20 +102,20 @@ let exec should_trace should_warn insts =
 
     in match inst with
       PUSH_INT(ArgLit(VInt(i))) ->
-      let nr = new_int cur_mod.ort i
+      let nr = new_int gort i
       in __exec ctxs (push_tods nr) scpss flags next_ip
     (* Really should generate code for these and arithmetic instructions. *)
 
     | PUSH_FINT(ArgLit(VFixedInt(i))) -> trace "pushing fint";
-      let nr = new_fint cur_mod.ort i
+      let nr = new_fint gort i
       in __exec ctxs (push_tods nr) scpss flags next_ip
 
     | PUSH_STRING(ArgLit(VString(s))) -> trace "pushing string";
-      let nr = new_string cur_mod.ort s
+      let nr = new_string gort s
       in __exec ctxs (push_tods nr) scpss flags next_ip
 
     | MAKE_FUN(ArgLit(VUFixedInt(ufi))) -> trace "making function";
-      let _ = new_function cur_mod.ort ufi
+      let _ = new_function gort (ufi, flags.module_id)
       in __exec ctxs dsss scpss flags next_ip
 
     | PUSH_FUN(ArgLit(VUFixedInt(ufi))) -> trace "pushing function";
@@ -126,12 +126,12 @@ let exec should_trace should_warn insts =
         ufi
 
     | FINT_SUB -> trace "fint substracting";
-      let (r1, rmod1) as ref1 = tods ()
-      in let (r2, rmod2) as ref2 = tos (ntos (tos (dss ())))
-      in (match ((lookup_val (mod_of ref1).ort ref1).v,
-                 (lookup_val (mod_of ref2).ort ref2).v) with
+      let ref1 = tods ()
+      in let ref2 = tos (ntos (tos (dss ())))
+      in (match ((glookup_val ref1).v,
+                 (glookup_val ref2).v) with
            OVFixedInt(i), OVFixedInt(j) ->
-           let nr = new_fint cur_mod.ort (Int64.sub i j)
+           let nr = new_fint gort (Int64.sub i j)
            in __exec ctxs
              (((nr::((dss ()) |> tos |> ntos |> ntos))
                ::((dss ()) |> ntos))
@@ -153,7 +153,7 @@ let exec should_trace should_warn insts =
     | JGEZ(_)
     | JLEZ(_) ->
       __exec ctxs dsss scpss flags
-        (branch (tods ()) modules next_ip inst)
+        (branch glookup_val (tods ()) next_ip inst)
 
     | HJE(_)
     | HJT(_)
@@ -166,7 +166,7 @@ let exec should_trace should_warn insts =
     | HJGEZ(_)
     | HJLEZ(_) ->
       __exec ctxs (pop_tods ()) scpss flags
-        (branch (tods ()) modules next_ip inst)
+        (branch glookup_val (tods ()) next_ip inst)
 
     | SHARED_RET -> trace "shared returning";
       let tctx = tos ctxs
@@ -189,9 +189,8 @@ let exec should_trace should_warn insts =
         if flags.is_tail_recursive_call
         then tods () (* Working on the same stack when tail recursing. *)
         else tos (snd_todss ())
-      in let r_mod = mod_of to_snd_ds
-      in let value = lookup_val r_mod.ort to_snd_ds
-      in Hashtbl.replace r_mod.ort.the_ort to_snd_ds
+      in let value = glookup_val to_snd_ds
+      in Hashtbl.replace gort.the_ort to_snd_ds
         {value with refc = Uint64.succ value.refc};
       push_name (scps ()) nid to_snd_ds;
 
@@ -208,7 +207,7 @@ let exec should_trace should_warn insts =
 
     | PUSH_TAIL_NAME(ArgLit(VUFixedInt(nid)), ArgLit(VUFixedInt(n_mid))) ->
       trace "pushing tail name";
-      let r, r_mod_id as ref_ = if n_mid = Uint64.zero
+      let ref_ = if n_mid = Uint64.zero
         then lookup_name (scps ()) nid
         else (tvm_warning "Not tail calling a local name!";
           Hashtbl.find (Hashtbl.find modules n_mid).exs nid)
@@ -216,9 +215,8 @@ let exec should_trace should_warn insts =
                function, I think the user's in trouble, but I'm not sure.
                Maybe a warning here? *)
 
-      in let value = lookup_val (mod_of ref_).ort ref_
-      in (match value.v with
-            OVFunction(st) ->
+      in (match (glookup_val ref_).v with
+            OVFunction(st, _) ->
             __exec ctxs dsss scpss {flags with (* Modules should stay the same. *)
                                     is_tail_recursive_call = true}
               (Uint64.succ (Uint64.succ st))
@@ -227,18 +225,17 @@ let exec should_trace should_warn insts =
 
     | PUSH_NAME(ArgLit(VUFixedInt(nid)), ArgLit(VUFixedInt(n_mid))) ->
       trace "pushing name";
-      let r, r_mid as ref_ = if n_mid = Uint64.zero
+      let ref_ = if n_mid = Uint64.zero
         then lookup_name (scps ()) nid
         else Hashtbl.find (Hashtbl.find modules n_mid).exs nid
 
-      in let value = lookup_val (mod_of ref_).ort ref_
-      in (match value.v with
-            OVFunction(st) ->
+      in (match (glookup_val ref_).v with
+            OVFunction(st, mod_id) ->
             __exec (push_cur_ip ())
               dsss scpss
-              {flags with module_id = r_mid;
-                          current_module = mod_of ref_;
-                          is_tail_recursive_call = false} (trace_u64 st; st)
+              {flags with module_id = mod_id;
+                          current_module = Hashtbl.find modules mod_id;
+                          is_tail_recursive_call = false} st
           | OVInt(_)
           | OVAtom(_)
           | OVFixedInt(_)
@@ -250,7 +247,7 @@ let exec should_trace should_warn insts =
           | OVTuple(_)
           | OVTNil
           | OVType(_) ->
-            __exec ctxs (push_tods (r, r_mid)) scpss flags next_ip
+            __exec ctxs (push_tods ref_) scpss flags next_ip
           | _ ->
             __exec ctxs dsss scpss flags next_ip)
 
@@ -258,7 +255,7 @@ let exec should_trace should_warn insts =
       trace "import implicit";
       let w_insts = find_module mod_str libpaths
       (* First, we find the instructions in this woven towel. *)
-      in (Hashtbl.replace modules uid {insts = w_insts; ort = make_ort uid;
+      in (Hashtbl.replace modules uid {insts = w_insts;
                                        exs = Hashtbl.create 512});
       (* Then, we add it to our currently opened modules hashtable. *)
       (__exec (push_cur_ip ()) ([]::dsss) ([]::scpss)
@@ -272,7 +269,7 @@ let exec should_trace should_warn insts =
       trace "import explicit";
       (* Roughly the same as IMPLICIT_IMPORT *)
       let w_insts = find_module mod_str libpaths
-      in (Hashtbl.replace modules uid {insts = w_insts; ort = make_ort uid;
+      in (Hashtbl.replace modules uid {insts = w_insts;
                                        exs = Hashtbl.create 512});
       (__exec (push_cur_ip ()) ([]::dsss) ([]::scpss)
          {flags with
@@ -281,9 +278,9 @@ let exec should_trace should_warn insts =
           module_id = uid; current_module = Hashtbl.find modules uid} Uint64.zero)
 
     | BIND(ArgLit(VUFixedInt(uid))) -> trace "binding"; trace_u64 uid;
-      let nref = cur_mod.ort.nref
-      in let value = lookup_val cur_mod.ort !nref
-      in Hashtbl.replace cur_mod.ort.the_ort !nref
+      let nref = gort.nref
+      in let value = glookup_val !nref
+      in Hashtbl.replace gort.the_ort !nref
         {value with refc = Uint64.succ value.refc};
       (* Anything that got bound to a name, its reference count increments by 1. *)
       push_name (scps ()) uid !nref;
@@ -292,7 +289,7 @@ let exec should_trace should_warn insts =
 
     | SHOW -> trace "showing";
       let r = tos (tos (dss ()))
-      in print_string (string_of_value cur_mod r);
+      in print_string (string_of_value r);
       __exec ctxs
         (((ntos (tos (dss ())))::(ntos (dss ())))::(ntos dsss)) (* WTF!!! *)
         scpss flags next_ip
@@ -312,11 +309,10 @@ let exec should_trace should_warn insts =
 
     | POP_SCOPE -> trace "popping scope";
       Hashtbl.iter (fun name ref_ ->
-          let r_mod = mod_of ref_
-          in let original_value = lookup_val r_mod.ort ref_
+          let original_value = glookup_val ref_
           in if original_value.refc = Uint64.one
-          then Hashtbl.remove r_mod.ort.the_ort ref_
-          else Hashtbl.replace r_mod.ort.the_ort ref_
+          then Hashtbl.remove gort.the_ort ref_
+          else Hashtbl.replace gort.the_ort ref_
               {original_value with refc = Uint64.pred original_value.refc})
         (scp ());
       (* This is where we do garbage collection.
@@ -363,7 +359,6 @@ let exec should_trace should_warn insts =
     | _ -> Printf.fprintf stderr "not implemented yet\n"; exit 0
 
   in Hashtbl.replace modules Uint64.zero {insts = insts;
-                                          ort = make_ort Uint64.zero;
                                           exs = Hashtbl.create 512};
   __exec ctxs_ dsss_ scpss_
     {is_tail_recursive_call = false;

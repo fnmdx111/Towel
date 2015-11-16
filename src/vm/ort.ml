@@ -10,33 +10,30 @@ open Stdint;;
    ========================================== *)
 
 type ort_t =
-  {tick: (unit -> uint64 * uint64);
-   module_id: uint64;
+  {tick: (unit -> uint64);
    the_ort: (ref_t, value_t) Hashtbl.t;
    intp: (Big_int.big_int, ref_t) Hashtbl.t;
    fintp: (int64, ref_t) Hashtbl.t;
    ufintp: (uint64, ref_t) Hashtbl.t;
    atomp: (uint64, ref_t) Hashtbl.t;
    strp: (string, ref_t) Hashtbl.t;
-   funp: (uint64, ref_t) Hashtbl.t;
+   funp: (uint64 * uint64, ref_t) Hashtbl.t;
    nref: ref_t ref;
    tuple_stk: ref_t list ref;
    list_stk: ref_t list ref};;
 
-let new_ort module_id =
-  let _tick = Common.counter ()
-  in {tick = (fun () -> (_tick (), module_id));
-      the_ort = Hashtbl.create 512;
-      module_id = module_id;
-      intp = Hashtbl.create 512;
-      fintp = Hashtbl.create 512;
-      ufintp = Hashtbl.create 512;
-      atomp = Hashtbl.create 512;
-      strp = Hashtbl.create 512;
-      funp = Hashtbl.create 512;
-      nref = ref (Uint64.zero, Uint64.zero);
-      tuple_stk = ref [];
-      list_stk = ref []};;
+let new_ort () =
+  {tick = Common.counter ();
+   the_ort = Hashtbl.create 512;
+   intp = Hashtbl.create 512;
+   fintp = Hashtbl.create 512;
+   ufintp = Hashtbl.create 512;
+   atomp = Hashtbl.create 512;
+   strp = Hashtbl.create 512;
+   funp = Hashtbl.create 512;
+   nref = ref Uint64.zero;
+   tuple_stk = ref [];
+   list_stk = ref []};;
 
 let set_nref_of ort r = ort.nref := r
 
@@ -50,7 +47,7 @@ let new_integer ort type_hint =
       | THFixedInt(fi) -> Hashtbl.find ort.fintp fi
       | THUFixedInt(ufi) -> Hashtbl.find ort.ufintp ufi
       | THAtom(atom) -> Hashtbl.find ort.atomp atom
-      | THFunction(func) -> Hashtbl.find ort.funp func
+      | THFunction(st, mod_id) -> Hashtbl.find ort.funp (st, mod_id)
       | _ -> failwith "Incompatible type hint."
     in set_nref_of ort r; r
   with Not_found ->
@@ -65,7 +62,8 @@ let new_integer ort type_hint =
       | THFixedInt(lit) -> Hashtbl.add ort.fintp lit ref_; OVFixedInt(lit)
       | THUFixedInt(lit) -> Hashtbl.add ort.ufintp lit ref_; OVUFixedInt(lit)
       | THAtom(lit) -> Hashtbl.add ort.atomp lit ref_;  OVAtom(lit)
-      | THFunction(lit) -> Hashtbl.add ort.funp lit ref_; OVFunction(lit)
+      | THFunction(st, mod_id) ->
+        Hashtbl.add ort.funp (st, mod_id) ref_; OVFunction(st, mod_id)
       | _ -> failwith "Incompatible type hint."
 
     in Hashtbl.add ort.the_ort ref_
@@ -77,7 +75,7 @@ let new_int ort i = new_integer ort (THInt(i));;
 let new_fint ort fi = new_integer ort (THFixedInt(fi));;
 let new_ufint ort ufi = new_integer ort (THUFixedInt(ufi));;
 let new_atom ort atom = new_integer ort (THAtom(atom));;
-let new_function ort func = new_integer ort (THFunction(func));;
+let new_function ort (st, mod_id) = new_integer ort (THFunction(st, mod_id));;
 (* Functions are just the start instruction numbers of UInt64. *)
 
 let new_string ort lit =
@@ -198,6 +196,6 @@ let init_ort ort =
     ignore (new_atom ort Uint64.zero); (* false *)
     ignore (new_atom ort Uint64.one);; (* true *)
 
-let make_ort module_id =
-  let ort = new_ort module_id
+let make_ort () =
+  let ort = new_ort ()
   in init_ort ort; ort;;

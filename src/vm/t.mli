@@ -1,7 +1,10 @@
 open Stdint;;
 
-type ref_t = uint64 * uint64;;
+type ref_t = uint64;;
 type name_t = uint64;;
+
+type module_id_t = uint64;;
+type line_no_t = uint64;;
 
 type type_hint_t =
     THInt of Big_int.big_int
@@ -14,7 +17,7 @@ type type_hint_t =
   | THTuple of ref_t list
   | THNBQuote of name_t
   | THVBQuote of ref_t
-  | THFunction of uint64
+  | THFunction of line_no_t * module_id_t
   | THType of type_hint_t
   | THAlType of unit
   | THAlTypeValue of unit;;
@@ -29,13 +32,12 @@ type value = OVInt of Big_int.big_int
            | OVLNil
            | OVNameBackquote of name_t
            | OVValueBackquote of ref_t
-           | OVFunction of uint64
+           | OVFunction of line_no_t * module_id_t
            | OVTuple of ref_t list
            | OVTNil
            | OVType of type_hint_t
            | OVAlType of unit
            | OVAlTypeValue of unit * unit;;
-
 
 type value_t = {v: value; refc: uint64};;
 
