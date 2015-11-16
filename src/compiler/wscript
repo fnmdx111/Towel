@@ -27,7 +27,7 @@ def build(ctx):
     non_exec_mls = ['parser', 'scanner',
                     'tasm_parser', 'tasm_scanner',
                     'exp', 'asm']
-    target_mls = ['tokens', 'towel']
+    target_mls = ['weave']
 
     external_libs = ','.join(ctx.env.LIBS)
     incl_folder = '%s/src/compiler/' % ctx.out_dir

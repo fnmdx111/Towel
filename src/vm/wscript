@@ -1,3 +1,105 @@
+#! /usr/bin/env python3
+
+def j(l, ext):
+    return ' '.join('%s.%s' % (it, ext) for it in l)
+
+mlj = lambda l: j(l, 'ml')
+mlij = lambda l: j(l, 'mli')
+cmij = lambda l: j(l, 'cmi')
+cmoj = lambda l: j(l, 'cmo')
+cmxj = lambda l: j(l, 'cmx')
+
+def _c(n, ext):
+    return '%s.%s' % (n, ext)
+
+mln = lambda n: _c(n, 'ml')
+mlin = lambda n: _c(n, 'mli')
+cmin = lambda n: _c(n, 'cmi')
+cmon = lambda n: _c(n, 'cmo')
+cmxn = lambda n: _c(n, 'cmx')
+
 
 def build(ctx):
-    pass
+    mlis = ['t', 'tasm_ast']
+    lib_mls = ['exc', 'scoping', 'common', 'config', 'tasm_stringify']
+    aff_mlis = ['tasm_parser']
+    non_exec_mls = ['tasm_parser', 'tasm_scanner', 'ort']
+    some_more_mls1 = ['imp']
+    some_more_mls2 = ['vm']
+    target_mls = ['tvm']
+
+    external_libs = ','.join(ctx.env.TVM_LIBS)
+    incl_folder = '%s/src/vm/' % ctx.out_dir
+    build_prefix = '%s/' % ctx.out_dir
+    # stupid waf!!
+
+    ctx.exec_command(['sh', 'src/vm/clean.sh'])
+    ctx.exec_command([
+        'python3', 'src/tasm/ccg.py',
+        'src/vm', 'src/tasm/scanner.mll.p'
+    ])
+
+    obj_ext = cmxn if ctx.options.compile_natively else cmon
+    obj_j = cmxj if ctx.options.compile_natively else cmoj
+
+    oc_rule = '${OCAMLFIND} ${OC} ${DEBUG} -package %s'\
+              ' -I %s -c -o ${TGT} ${SRC}'\
+              % (external_libs, incl_folder,)
+
+    ctx.add_group('parser')
+    ctx(rule='${MENHIR} --base %s/src/vm/tasm_parser ${SRC}'\
+        % ctx.out_dir,
+        source='tasm_parser.mly',
+        target='tasm_parser.ml tasm_parser.mli')
+
+    ctx(rule='${OCAMLLEX} ${SRC} -o %s${TGT}' % build_prefix,
+        source='tasm_scanner.mll',
+        target='tasm_scanner.ml')
+
+    ctx(rule=oc_rule,
+        source='tasm_ast.mli',
+        target=ctx.path.get_bld().find_or_declare('tasm_ast.cmi'))
+
+    ctx(rule=oc_rule,
+        source='t.mli',
+        target=ctx.path.get_bld().find_or_declare('t.cmi'))
+
+    def cpl_oc(n, src_ext_f, tgt_ext_f):
+        ctx(rule=oc_rule,
+            source=src_ext_f(n),
+            target=tgt_ext_f(n))
+
+    ctx.add_group('lib')
+    for it in lib_mls:
+        cpl_oc(it, mln, obj_ext)
+
+    for it in aff_mlis:
+        cpl_oc(it, mlin, cmin)
+
+    ctx.add_group('non_exec')
+    for it in non_exec_mls:
+        cpl_oc(it, mln, obj_ext)
+
+    ctx.add_group('more_non_exec1')
+    for it in some_more_mls1:
+        cpl_oc(it, mln, obj_ext)
+
+    ctx.add_group('more_non_exec2')
+    for it in some_more_mls2:
+        cpl_oc(it, mln, obj_ext)
+
+    def cpl_tgt(n):
+        ctx(rule=oc_rule,
+            source=mln(n),
+            target=obj_ext(n))
+        ctx(rule='${OCAMLFIND} ${OC} ${DEBUG} -package %s -linkpkg'
+                 ' -o %s${TGT} ${SRC}' %\
+                 (external_libs, build_prefix),
+            source=obj_j(lib_mls + non_exec_mls
+                         + some_more_mls1
+                         + some_more_mls2 + [n]),
+            target=n)
+
+    ctx.add_group('tgt')
+    for n in target_mls:
+        cpl_tgt(n)

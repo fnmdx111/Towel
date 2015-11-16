@@ -12,7 +12,7 @@ open Stdint
      looking up names, and maybe some metaprogramming infrastructures.
    ========================================== *)
 
-let is_DEBUG = ref true;;
+let is_DEBUG = ref false;;
 
 type name_t = uint64;;
 type scope = Scope of (string, name_t) Hashtbl.t * string;;

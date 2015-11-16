@@ -10,9 +10,9 @@ Mainly tests tail recursive calls.
 import 'std' @
 
 bind GCD fun A B,
-  (-\Std if=0 A,
+  (- if=0 A,
      if>0 "asdfsfasdfasdfasdf
-     sdfasdfasdfd" (A A B -\Std GCD@),
-     if<0 (B A -\Std B GCD@), 0)
+     sdfasdfasdfd" (A A B - GCD@),
+     if<0 (B A - B GCD@), 0)
 then (42 24 GCD Println
 export GCD @).

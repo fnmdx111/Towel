@@ -35,6 +35,8 @@ type inst_ctx_t = {pre: (string -> code_segment);
 let inst_nil_ctx = {pre = (fun _ -> cnil); post = (fun _ -> cnil)};;
 (* Most of the time, you don't want to insert anything more. *)
 
+let nil_name = {name_repr = ""; name_type = TypeDef([TDPrimitiveType(PT_Any)])};;
+
 let __unique64 = Common.counter ();;
 let uniq64 x = Printf.sprintf ":%s-%s"
     !global_fn_id
@@ -172,7 +174,7 @@ and g_name ctx pn =
   in let prefix = match ctx.mode with
         PushMake -> ""
       | Pattern -> "pat"
-      | MakeOnly -> "" (* What's the point in this? *)
+      | MakeOnly -> "make" (* for binding a name to another name *)
 
   in let inst t = prefix ^ t -- "name"
 
@@ -492,8 +494,7 @@ and g_bind ctx =
               {inst_nil_ctx with post = fun uid ->
                    (cone1 "bind"
                     @@ tu64
-                    @@ lookup_name ctx.scp_stk pn)
-                   |~~| (cone1 "jump" (uid -- "real-end"))}
+                    @@ lookup_name ctx.scp_stk pn)}
               b))
   in function
       BindThen(bs, b)
@@ -502,16 +503,31 @@ and g_bind ctx =
          |~~| let r = g_word {ctx with mode = PushMake}
                   IsBody inst_nil_ctx b in r
 
-and g_import ctx ss =
-  let uid = ext_scope_tick ()
+and g_import ctx imp =
+  let is_explicit, ss = match imp with ExplicitImport(ss) -> true, ss
+                                     | ImplicitImport(ss) -> false, ss
+
+  in let uid = ext_scope_tick ()
+
+  in let push_into_scope ext_scope =
+       let sorted_ext_scope =                     (* sort by idx *)
+         List.sort (fun x y -> Pervasives.compare (snd x) (snd y))
+         @@ Hashtbl.fold
+           (fun k v acc -> (k, v)::acc) ext_scope []
+       in List.iter (fun x ->
+           let k, v = x
+           in push_name ctx.scp_stk {nil_name with name_repr = k}
+             (name_repr_tick ())) sorted_ext_scope
 
   in let rec find_module mod_str = function
       path::rest ->
-      let possible_mod_path = Filename.concat path (mod_str ^ ".e")
-      in if BatSys.file_exists possible_mod_path
-
+        let possible_mod_path = Filename.concat path (mod_str ^ ".e")
+        in if BatSys.file_exists possible_mod_path
       then let ext_scope = open_export possible_mod_path
-        in push_ext_scope ctx.ext_scope_meta ext_scope uid mod_str
+
+        in if is_explicit
+        then push_ext_scope ctx.ext_scope_meta ext_scope uid mod_str
+        else push_into_scope ext_scope
 
       else find_module mod_str rest
     | [] -> failwith "Requested module not found."
@@ -519,8 +535,9 @@ and g_import ctx ss =
   in let () = List.iter (fun x -> find_module x Config.libpaths) ss
   in List.fold_left (|~~|) cnil
   @@ List.map
-    (fun x -> (cone1 "import"
-                 (Printf.sprintf "'%s' %s" x (tu64 uid)))) ss
+    (fun x ->
+       (cone1 ("import" ^ (if is_explicit then "-explicit" else "-implicit"))
+          (Printf.sprintf "'%s' %s" x (tu64 uid)))) ss
 
 and g_word ctx is_body_ inst_ctx = function
     WLiteral(pv) -> g_lit ctx inst_ctx pv
@@ -564,7 +581,8 @@ let assemble cst fn sw =
       (match cst with
          Sentence(ws) -> ws)
 
-  in ((result
+  in (([cone0 "push-scope"; cone0 "push-stack"]
+      @ result
       @ [cone0 "terminate"])
      |> aggregate
      |> compose,

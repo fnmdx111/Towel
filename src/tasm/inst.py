@@ -42,9 +42,11 @@ unary_instructions = [
 
 binary_instructions = [
     'push-name',
+    'make-name',
     'patpush-name',
     'push-tail-name',
-    'import',
+    'import-explicit',
+    'import-implicit',
 ]
 
 multiarity_instructions = [

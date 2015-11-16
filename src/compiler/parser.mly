@@ -316,8 +316,11 @@ altype_sform:
   }
 
 import:
-  IMPORT list(STRING) AT {
-    $2
+  IMPORT list(STRING) SLASH {
+    ExplicitImport($2)
+  }
+| IMPORT list(STRING) AT {
+    ImplicitImport($2)
   }
 
 export:

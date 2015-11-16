@@ -1,17 +1,28 @@
 open Stdint;;
 
-type ref_t = uint64;;
+type ref_t = uint64 * uint64;;
 type name_t = uint64;;
 
 type type_hint_t =
-    THInt | THFixedInt | THUFixedInt | THFloat | THAtom | THString | THList
-  | THTuple | THNBQuote | THVBQuote | THFunction | THType | THAlType
-  | THAlTypeValue;;
+    THInt of Big_int.big_int
+  | THFixedInt of int64
+  | THUFixedInt of uint64
+  | THFloat of float
+  | THAtom of uint64
+  | THString of string
+  | THList of ref_t list
+  | THTuple of ref_t list
+  | THNBQuote of name_t
+  | THVBQuote of ref_t
+  | THFunction of uint64
+  | THType of type_hint_t
+  | THAlType of unit
+  | THAlTypeValue of unit;;
 
 type value = OVInt of Big_int.big_int
            | OVAtom of uint64
            | OVFixedInt of int64
-           | OVUFixedInt of Uint64.uint64
+           | OVUFixedInt of uint64
            | OVString of string
            | OVFloat of float
            | OVList of ref_t list

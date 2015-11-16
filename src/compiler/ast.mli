@@ -51,6 +51,10 @@ and backquote =
   | BQSeq of sequence
   | BQBackquote of backquote
 
+and import =
+    ExplicitImport of string list
+  | ImplicitImport of string list
+
 and word =
     WLiteral of pvalue
   | WName of name
@@ -59,7 +63,7 @@ and word =
   | WControl of control_sequence
   | WFunction of function_sform
   | WAt of at_sform
-  | WImport of string list
+  | WImport of import
   | WExport of pname list
   | WBind of bind_sform
   | WAlType of altype_sform

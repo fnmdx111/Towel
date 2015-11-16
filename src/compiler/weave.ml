@@ -103,8 +103,9 @@ in let () =
           if out_file = "-"
           then Pervasives.stdout
           else Pervasives.open_out
-            @@ String.concat "." [fst (String.rsplit out_file ".");
-                                  "e"]
+            @@ String.concat "."
+              [fst (String.rsplit out_file ".");
+                 "e"]
           (* Replace the t extension with e. *)
      in Pervasives.output_string ochan content; Pervasives.flush ochan;
      if out_file = "-"

@@ -14,8 +14,8 @@ def options(opt):
                    dest='compile_docs')
     opt.add_option('--native', action='store_true', default=False,
                    dest='compile_natively')
-    opt.add_option('--tasm', action='store_true', default=False,
-                   dest='compile_tasm')
+    opt.add_option('--tvm', action='store_true', default=False,
+                   dest='compile_tvm')
     opt.add_option('--all', action='store_true', default=False,
                    dest='compile_all')
     opt.add_option('--debug', action='store_true', default=False,
@@ -39,16 +39,19 @@ def configure(ctx):
                 ctx.msg('Checking for library \'%s\'' % l, 'ok')
 
         ctx.env.LIBS = {'Batteries', 'Extlib', 'Stdint', 'Sha'}
-        ctx.env.TASM_LIBS = {'Stdint'}
+        ctx.env.TVM_LIBS = {'Stdint', 'Batteries', 'Extlib'}
         for l in ctx.env.LIBS |\
-        (ctx.env.TASM_LIBS if ctx.options.compile_tasm else set()):
+        (ctx.env.TVM_LIBS if ctx.options.compile_tvm else set()):
             find_lib(l)
-
-        ctx.env.DEBUG = '-g' if ctx.options.compile_debug else ''
 
         ctx.env.OC = [os.path.basename(ctx.env.OCAMLC[0])]
         if ctx.options.compile_natively:
             ctx.env.OC = [os.path.basename(ctx.env.OCAMLOPT[0])]
+
+        ctx.env.DEBUG = ''
+        if ctx.options.compile_debug:
+            ctx.env.DEBUG = '-g'
+            ctx.env.OC = [os.path.basename(ctx.env.OCAMLC[0])]
 
     def conf_tex():
         ctx.load('tex')
@@ -83,11 +86,11 @@ def build(ctx):
     if ctx.options.compile_docs:
         ctx.recurse('docs')
     elif ctx.options.compile_all:
-        ctx.recurse('src/compiler src/tasm src/vm')
+        ctx.recurse('src/compiler src/vm')
         ctx.recurse('docs')
     else:
-        if ctx.options.compile_tasm:
-            ctx.recurse('src/tasm')
+        if ctx.options.compile_tvm:
+            ctx.recurse('src/vm')
         else:
             ctx.recurse('src/compiler')
 
