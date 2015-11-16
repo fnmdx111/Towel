@@ -24,7 +24,7 @@ def build(ctx):
     lib_mls = ['exc', 'scoping', 'common', 'config', 'tasm_stringify']
     aff_mlis = ['tasm_parser']
     non_exec_mls = ['tasm_parser', 'tasm_scanner', 'ort']
-    some_more_mls1 = ['imp']
+    some_more_mls1 = ['imp', 'jumps']
     some_more_mls2 = ['vm']
     target_mls = ['tvm']
 
@@ -37,6 +37,11 @@ def build(ctx):
     ctx.exec_command([
         'python3', 'src/tasm/ccg.py',
         'src/vm', 'src/tasm/scanner.mll.p'
+    ])
+
+    ctx.exec_command([
+        'ruby', 'src/vm/jmg.rb',
+        'src/vm'
     ])
 
     obj_ext = cmxn if ctx.options.compile_natively else cmon

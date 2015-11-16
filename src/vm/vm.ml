@@ -4,6 +4,7 @@ open Tasm_ast;;
 open Ort;;
 open Imp;;
 open Scoping;;
+open Jumps;;
 open Config;;
 
 type ctx_t = {id: uint64; ret_addr: uint64};;
@@ -63,8 +64,10 @@ let exec should_trace insts =
     in let scps = fun () -> tos scpss
     in let scp = fun () -> tos (scps ())
 
-    in let push_todss x = ((x::(tos (dss ())))::(ntos (dss ())))::(ntos dsss)
+    in let tods = fun () -> (tos (tos (dss ())))
 
+    in let push_tods x = ((x::(tos (dss ())))::(ntos (dss ())))::(ntos dsss)
+    in let pop_tods _ = ((ntos (tos (dss ())))::(ntos (dss ())))::(ntos dsss)
     in let cur_mod = flags.current_module
     in let next_ip = Uint64.succ ip
     in let line = cur_mod.insts.(Uint64.to_int ip)
@@ -82,11 +85,11 @@ let exec should_trace insts =
     in match inst with
       PUSH_INT(ArgLit(VInt(i))) ->
       let nr = new_int cur_mod.ort i
-      in __exec ctxs (push_todss nr) scpss flags next_ip
+      in __exec ctxs (push_tods nr) scpss flags next_ip
 
     | PUSH_STRING(ArgLit(VString(s))) -> trace "pushing string";
       let nr = new_string cur_mod.ort s
-      in __exec ctxs (push_todss nr) scpss flags next_ip
+      in __exec ctxs (push_tods nr) scpss flags next_ip
 
     | MAKE_FUN(ArgLit(VUFixedInt(ufi))) -> trace "making function";
       let _ = new_function cur_mod.ort ufi
@@ -94,6 +97,32 @@ let exec should_trace insts =
 
     | JUMP(ArgLit(VUFixedInt(p))) -> trace "jumping";
       __exec ctxs dsss scpss flags p
+
+    | JE(_)
+    | JT(_)
+    | JF(_)
+    | JNE(_)
+    | JEZ(_)
+    | JGZ(_)
+    | JLZ(_)
+    | JNEZ(_)
+    | JGEZ(_)
+    | JLEZ(_) ->
+      __exec ctxs dsss scpss flags
+        (branch (tods ()) cur_mod.ort next_ip inst)
+
+    | HJE(_)
+    | HJT(_)
+    | HJF(_)
+    | HJNE(_)
+    | HJEZ(_)
+    | HJGZ(_)
+    | HJLZ(_)
+    | HJNEZ(_)
+    | HJGEZ(_)
+    | HJLEZ(_) ->
+      __exec ctxs (pop_tods ()) scpss flags
+        (branch (tods ()) cur_mod.ort next_ip inst)
 
     | SHARED_RET -> trace "shared returning";
       let tctx = tos ctxs
@@ -127,7 +156,7 @@ let exec should_trace insts =
           | OVTuple(_)
           | OVTNil
           | OVType(_) ->
-            __exec ctxs (push_todss (r, r_mid)) scpss flags next_ip
+            __exec ctxs (push_tods (r, r_mid)) scpss flags next_ip
           | _ ->
             __exec ctxs dsss scpss flags next_ip)
 

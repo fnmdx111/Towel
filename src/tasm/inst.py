@@ -68,7 +68,6 @@ for i in ['make', 'push', 'patpush']:
     inst_that_supports_label_as_argument.add('%s-fun' % i)
 
 branching_inst_that_doesnt_support_hungry_mode = {
-    'e', 'ne'
 }
 
 for i in ['gez', 'gz', 'lez', 'lz', 'ez', 'nez', 't', 'f', 'e', 'ne']:
