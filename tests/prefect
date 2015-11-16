@@ -60,9 +60,8 @@ Output: #{pretty_output}"
       )
     end
 
-
     if output == @expected_output
-      [true, '']
+      [true, output]
     else
       [false, output]
     end
@@ -84,13 +83,14 @@ Dir.foreach '.' do |entry|
   if entry =~ /[^.]*\.#{SUFFIX}/
     cnt += 1
     ok, out = make_prefect.call(entry).execute_ok cnt
+
+    puts "Real output: #{out}\n"
     if ok
       results[entry] = :ok
       puts "#{entry} =====> #{'[OK]'.green}"
     else
       results[entry] = :failed
-      puts "#{entry} =====> #{'[FAILED]'.red}
-Real output: #{out}"
+      puts "#{entry} =====> #{'[FAILED]'.red}"
     end
 
     puts '-' * 42
