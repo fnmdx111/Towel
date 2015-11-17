@@ -69,7 +69,14 @@ let exec should_trace should_warn insts =
     in let pop_tods _ = ((ntos (tos (dss ())))::(ntos (dss ())))::(ntos dsss)
     (* FYI, "Linux has four levels of paging". I think it's ok we have three levels
        of data stacking. *)
+
+    in let push_calc nr =
+         (((nr::((dss ()) |> tos |> ntos |> ntos))
+           ::((dss ()) |> ntos))
+          ::(ntos dsss))
+
     in let snd_todss _ = tos (ntos (dss ()))
+    in let snd_tods () = tos (ntos (tos (dss ())))
 
     in let cur_mod = flags.current_module
 
@@ -130,17 +137,14 @@ let exec should_trace should_warn insts =
 
     | FINT_SUB -> trace "fint substracting";
       let ref1 = tods ()
-      in let ref2 = tos (ntos (tos (dss ())))
-      in (match ((glookup_val ref1).v,
-                 (glookup_val ref2).v) with
-           OVFixedInt(i), OVFixedInt(j) ->
-           let nr = new_fint gort (Int64.sub i j)
-           in __exec ctxs
-             (((nr::((dss ()) |> tos |> ntos |> ntos))
-               ::((dss ()) |> ntos))
-              ::(ntos dsss))
-             scpss flags next_ip
-         | _ -> failwith "Incompatible type to do FINT substraction.")
+      in let ref2 = snd_tods ()
+      in let nr =
+           (match ((glookup_val ref1).v,
+                   (glookup_val ref2).v) with
+             OVFixedInt(i), OVFixedInt(j) ->
+             new_fint gort (Int64.sub i j)
+           | _ -> failwith "Incompatible type to do FINT substraction.")
+      in __exec ctxs (push_calc nr) scpss flags next_ip
 
     | JUMP(ArgLit(VUFixedInt(p))) -> trace "jumping";
       __exec ctxs dsss scpss flags p
