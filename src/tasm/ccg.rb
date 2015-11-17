@@ -78,7 +78,7 @@ inst:"
     for i in UNINST
       id = i.in2id
 
-      if Inst::INST_LABELS.include? id
+      if Inst::INST_LABELS.include? i
         wl.call "| #{id} LABEL { #{id}(ArgLabel($2)) }"
       end
 
