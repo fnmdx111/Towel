@@ -34,9 +34,8 @@ def build(ctx):
     build_prefix = '%s/' % ctx.out_dir
     # stupid waf!!
 
-    ctx.exec_command(['sh', 'src/vm/clean.sh'])
     ctx.exec_command([
-        'python3', 'src/tasm/ccg.py',
+        'ruby', 'src/tasm/ccg.rb',
         'src/vm', 'src/tasm/scanner.mll.p'
     ])
 

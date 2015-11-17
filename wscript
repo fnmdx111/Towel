@@ -94,6 +94,13 @@ def configure(ctx):
 
         test_lib('colorize')
 
+    def conf_compiler():
+        conf_ocaml([('ruby', 'RUBY')],
+                   ['Batteries', 'Stdint', 'Extlib', 'Sha'])
+
+    def conf_tvm():
+        conf_ocaml([('ruby', 'RUBY')], ['Batteries', 'Stdint'])
+
     if ctx.options.compile_docs:
         conf_tex()
     
@@ -104,11 +111,10 @@ def configure(ctx):
         conf_test()
 
     if ctx.options.compile_compiler:
-        conf_ocaml([('python3', 'PY3K')],
-                   ['Batteries', 'Stdint', 'Extlib', 'Sha'])
+        conf_compiler()
 
     if ctx.options.compile_tvm:
-        conf_ocaml([('ruby', 'RUBY')], ['Batteries', 'Stdint'])
+        conf_tvm()
 
     if ctx.options.conf_test:
         conf_test()
