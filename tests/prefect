@@ -68,52 +68,58 @@ Output: #{pretty_output}"
   end
 end
 
-SUFFIX = 't'
-WEAVE_PATH = '../build/src/compiler/weave'
-TVM_PATH = '../build/src/vm/tvm'
-make_prefect = lambda {|fp| Prefect.new(
+if __FILE__ == $0
+  require 'fileutils'
+  FileUtils.remove_entry_secure 'temp'
+  FileUtils.mkdir 'temp'
+
+  SUFFIX = 't'
+  WEAVE_PATH = '../build/src/compiler/weave'
+  TVM_PATH = '../build/src/vm/tvm'
+  make_prefect = lambda {|fp| Prefect.new(
     fp,
     :weave_path=>WEAVE_PATH,
     :tvm_path=>TVM_PATH
-)}
+  )}
 
-cnt = 0
-results = {}
-Dir.foreach '.' do |entry|
-  if entry =~ /[^.]*\.#{SUFFIX}/
-    cnt += 1
-    ok, out = make_prefect.call(entry).execute_ok cnt
+  cnt = 0
+  results = {}
+  Dir.foreach '.' do |entry|
+    if entry =~ /[^.]*\.#{SUFFIX}/
+      cnt += 1
+      ok, out = make_prefect.call(entry).execute_ok cnt
 
-    puts "Real output: #{out}\n"
-    if ok
-      results[entry] = :ok
-      puts "#{entry} =====> #{'[OK]'.green}"
+      puts "Real output: #{out}\n"
+      if ok
+        results[entry] = :ok
+        puts "#{entry} =====> #{'[OK]'.green}"
+      else
+        results[entry] = :failed
+        puts "#{entry} =====> #{'[FAILED]'.red}"
+      end
+
+      puts '-' * 42
+    end
+  end
+
+  count = results.inject({:ok => 0, :failed => 0}) do |acc, kv|
+    _, v = kv
+    acc[v] += 1
+    acc
+  end
+
+  if count != {}
+    if count[:ok] > 0
+      ok = count[:ok].to_s.green
     else
-      results[entry] = :failed
-      puts "#{entry} =====> #{'[FAILED]'.red}"
+      ok = 0.to_s
     end
 
-    puts '-' * 42
+    if count[:failed] > 0
+      failed = count[:failed].to_s.red
+    else
+      failed = 0.to_s
+    end
+    puts "Summary: #{ok} passed, #{failed} failed."
   end
-end
-
-count = results.inject({:ok => 0, :failed => 0}) do |acc, kv|
-  _, v = kv
-  acc[v] += 1
-  acc
-end
-
-if count != {}
-  if count[:ok] > 0
-    ok = count[:ok].to_s.green
-  else
-    ok = 0.to_s
-  end
-
-  if count[:failed] > 0
-    failed = count[:failed].to_s.red
-  else
-    failed = 0.to_s
-  end
-  puts "Summary: #{ok} passed, #{failed} failed."
 end
