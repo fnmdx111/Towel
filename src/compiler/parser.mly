@@ -6,7 +6,7 @@ open Exc
 %}
 
 %token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
-%token MATCH FUNCTION BIND ALSO THEN AT TYPE IMPORT EXPORT
+%token MATCH FUNCTION BIND ALSO THEN AT TYPE IMPORT EXPORT IDLE
 %token SLASH BQUOTE COMMA SEMICOLON
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 
@@ -251,8 +251,11 @@ name:
     $startpos($3) $startofs($1) $endofs($3)
   }
 
+idle: IDLE { }
+
 restricted_word:
   name { WName($1) }
+| idle { }
 | backquote { WBackquote($1) }
 | literal { WLiteral($1) }
 | sequence { WSequence($1) }
@@ -337,7 +340,7 @@ word:
 | bind_sform { WBind($1) }
 | import { WImport($1) }
 | export { WExport($1) }
-(* | at_sform { WAt($1) } *)
+| idle { WIdle }
 | name { WName($1) }
 | altype_sform { WAlType($1) }
 

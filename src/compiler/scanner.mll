@@ -130,6 +130,7 @@ rule token = parse
 | "iff" { IFF }
 | "ife" { IFE }
 | "ifne" { IFNE }
+| "idle" { IDLE }
 | "match" { MATCH }
 | "bind" { BIND }
 | "also" { ALSO }
