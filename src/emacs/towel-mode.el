@@ -1,6 +1,7 @@
 (setq tm-keywords
       '("if>=0" "if>0" "if<=0" "if<0" "if=0" "if~0" "ift" "iff" "ife" "ifne"
-	"match" "bind" "also" "then" "fun" "type" "export" "`" "\\."))
+	"match" "bind" "also" "then" "fun" "type" "export" "import" "idle"
+	"`" "\\."))
 
 (setq tm-keywords-regexp (regexp-opt tm-keywords 'words))
 
