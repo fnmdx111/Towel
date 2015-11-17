@@ -114,6 +114,9 @@ let exec should_trace should_warn insts =
       let nr = new_string gort s
       in __exec ctxs (push_tods nr) scpss flags next_ip
 
+    | POP -> trace "popping";
+      __exec ctxs (pop_tods ()) scpss flags next_ip
+
     | MAKE_FUN(ArgLit(VUFixedInt(ufi))) -> trace "making function";
       let _ = new_function gort (ufi, flags.module_id)
       in __exec ctxs dsss scpss flags next_ip
@@ -285,6 +288,9 @@ let exec should_trace should_warn insts =
       (* Anything that got bound to a name, its reference count increments by 1. *)
       push_name (scps ()) uid !nref;
 
+      __exec ctxs dsss scpss flags next_ip
+
+    | IDLE -> trace "idling";
       __exec ctxs dsss scpss flags next_ip
 
     | SHOW -> trace "showing";

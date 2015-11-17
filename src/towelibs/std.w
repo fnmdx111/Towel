@@ -26,9 +26,15 @@ show
 shared-ret
 make-fun 29u
 bind 6u "Println"
-jump 32u
+jump 33u
 show
 push-string '
 '
 show
+shared-ret
+make-fun 36u
+bind 7u "Pop"
+jump 38u
+pop
+shared-ret
 terminate
