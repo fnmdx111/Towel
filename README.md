@@ -26,6 +26,11 @@ run
 
     waf configure build --native
 
+To build Towel virtual machine, Run
+
+    wal configure build --tvm
+
+
 Don't panic!
 ----
 
@@ -34,19 +39,9 @@ See `towel -h`.
 Roadmap
 ----
 
-* Implement the Towel Virtual Machine so that we can actually **run** Towel
-programs; implement some key standard libraries. Priority 5.
+* Implement some key standard libraries. Priority 5.
 
-* On the compiler side, implement type inferring algorithm along with Towel
-interface (exportation) file (with extension `.e` as in Tow*e*l and *e*xport)
-to support multiple file compilation. Note that this file is generated
-automatically during compilation guided by the export clause. Priority 4.
-To show a `.e` file prototype:
-
-        (GCD 0u {Int Int Int})
-        (Quicksort 1u {List List}).
-
-* Also implement type checking algorithm! Priority 4.
+* Implement type checking algorithm! Priority 4.
 
 * The module system needs to be detailed designed. Priority 3.5.
 This is done by now. Parts missing: libpath mechanism, and maybe something else.
