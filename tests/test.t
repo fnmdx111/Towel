@@ -7,4 +7,4 @@ Wow! Such Hello! So World!
 
 import 'std' @
 
-('Hello world!\n' Print).
+('Hello world!\n' !print).

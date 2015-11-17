@@ -20,12 +20,12 @@ jump 21u
 fint-div
 shared-ret
 make-fun 24u
-bind 5u "Print"
+bind 5u "!print"
 jump 26u
 show
 shared-ret
 make-fun 29u
-bind 6u "Println"
+bind 6u "!println"
 jump 33u
 show
 push-string '
@@ -33,7 +33,7 @@ push-string '
 show
 shared-ret
 make-fun 36u
-bind 7u "Pop"
+bind 7u "!pop"
 jump 38u
 pop
 shared-ret

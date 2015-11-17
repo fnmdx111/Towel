@@ -3,7 +3,7 @@
 (- 2u)
 (* 3u)
 (/ 4u)
-(Print 5u)
-(Println 6u)
-(Pop 7u).
+(!print 5u)
+(!println 6u)
+(!pop 7u).
 
