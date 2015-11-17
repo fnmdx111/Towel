@@ -268,7 +268,7 @@ let exec should_trace should_warn insts =
       (__exec (push_cur_ip ()) ([]::dsss) ([]::scpss)
          (* Finally, we jump over to the new module to do its initialization. *)
          {flags with
-          is_import = 1;
+          import_stack = 1::flags.import_stack;
           is_init_ext_mod = true;
           module_id = uid; current_module = Hashtbl.find modules uid} Uint64.zero)
 
@@ -280,7 +280,7 @@ let exec should_trace should_warn insts =
                                        exs = Hashtbl.create 512});
       (__exec (push_cur_ip ()) ([]::dsss) ([]::scpss)
          {flags with
-          is_import = 2;
+          import_stack = 2::flags.import_stack;
           is_init_ext_mod = true;
           module_id = uid; current_module = Hashtbl.find modules uid} Uint64.zero)
 
@@ -331,7 +331,7 @@ let exec should_trace should_warn insts =
       __exec ctxs dsss ((ntos (scps ()))::(ntos scpss)) flags next_ip
 
     | TERMINATE -> trace "terminating";
-      if flags.is_import <> 0
+      if (tos flags.import_stack) <> 0
       then let tctx = (tos ctxs)
         in trace
           (Printf.sprintf "terminating: %s, ip -> %s" (Uint64.to_string tctx.id)
@@ -340,7 +340,7 @@ let exec should_trace should_warn insts =
             Hashtbl.replace cur_mod.exs k v)
             (tos (List.rev (scps ())))
         in begin
-          if flags.is_import = 1
+          if (tos flags.import_stack) = 1
           then Hashtbl.iter (fun k v -> Hashtbl.replace (tos (tos (ntos scpss))) k v)
               (tos (List.rev (scps ())))
               (* If it is implicit import, we have to copy whatever is in the base scope
@@ -349,19 +349,19 @@ let exec should_trace should_warn insts =
           else ();
           __exec (ntos ctxs) (ntos dsss) (ntos scpss)
             {flags with
-             is_import = 0;
+             import_stack = ntos flags.import_stack;
              is_init_ext_mod = false;
              module_id = tctx.id; current_module = Hashtbl.find modules tctx.id}
             tctx.ret_addr
         end
-      else if flags.is_import = 2
+      else if (tos flags.import_stack) = 2
       then let tctx = (tos ctxs)
         in let () = Hashtbl.iter (fun k v ->
             Hashtbl.replace cur_mod.exs k v)
               (tos (List.rev (scps ())))
         in __exec (ntos ctxs) (ntos dsss) (ntos scpss)
           {flags with
-           is_import = 0;
+           import_stack = ntos flags.import_stack;
            is_init_ext_mod = false;
            module_id = tctx.id; current_module = Hashtbl.find modules tctx.id}
           tctx.ret_addr
@@ -374,7 +374,7 @@ let exec should_trace should_warn insts =
     {is_tail_recursive_call = false;
      is_main = true;
      is_init_ext_mod = false;
-     is_import = 0;
+     import_stack = [0];
      module_id = Uint64.zero;
      current_module = Hashtbl.find modules Uint64.zero}
     Uint64.zero
