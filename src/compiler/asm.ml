@@ -81,11 +81,11 @@ let export ctx ns =
 
 (* All the g_* functions should return a code_segment value. *)
 let rec g_lit ctx inst_ctx lit =
-  let inst t =
+  let inst =
     (match ctx.mode with
        MakeOnly -> "make"
      | PushMake -> "push"
-     | Pattern -> "patpush") -- t
+     | Pattern -> "patpush") -- "lit"
 
   in match lit.value_content with
 
@@ -96,29 +96,29 @@ let rec g_lit ctx inst_ctx lit =
          let r = atom_repr_tick ()
          in Hashtbl.add atom_dict atom.atom_name r; r)
     in inst_ctx.pre "0"
-       |~~| (cone1 (inst "atom") @@ tu64 repr)
+       |~~| (cone1 inst @@ Printf.sprintf "%sa" (Uint64.to_string repr))
        |~~| inst_ctx.post "0" true
 
   | VFixedInt(i) ->
     inst_ctx.pre "0"
-    |~~| (cone1 (inst "fint") @@ Int64.to_string i)
+    |~~| (cone1 inst @@ Int64.to_string i)
     |~~| inst_ctx.post "0" true
 
   | VUFixedInt(u) ->
     inst_ctx.pre "0"
-    |~~| (cone1 (inst "ufint") @@ tu64 u)
+    |~~| (cone1 inst @@ tu64 u)
     |~~| inst_ctx.post "0" true
 
   | VInt(i) ->
     inst_ctx.pre "0"
-    |~~| (cone1 (inst "int")
+    |~~| (cone1 inst
           @@ Printf.sprintf "%sl"
           @@ Big_int.string_of_big_int i)
     |~~| inst_ctx.post "0" true
 
   | VFloat(f) ->
     inst_ctx.pre "0"
-    |~~| (cone1 (inst "float") @@ string_of_float f)
+    |~~| (cone1 inst @@ string_of_float f)
     |~~| inst_ctx.post "0" true
 
   | VList(wl)
@@ -137,7 +137,7 @@ let rec g_lit ctx inst_ctx lit =
 
   | VString(s) ->
     inst_ctx.pre "0"
-    |~~| (cone1 (inst "string") @@ Printf.sprintf "'%s'" s)
+    |~~| (cone1 inst @@ Printf.sprintf "'%s'" s)
     |~~| inst_ctx.post "0" true
 
   | VTuple(wl)

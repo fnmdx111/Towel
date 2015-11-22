@@ -37,6 +37,7 @@ let _int_lit = (("0d"? digit+)
 let fint_lit = signed? _int_lit
 let int_lit = signed? digit+ ['L' 'l']
 let ufint_lit = '+'? _int_lit ['U' 'u']
+let atom_lit = _int_lit ['A' 'a']
 
 let dot = '.'
 let int = digit+
@@ -46,7 +47,7 @@ let dot_float = ((dot frac) | (int dot frac)) exp?
 let exp_float = int (dot frac)? exp
 let float_lit = signed? (dot_float | exp_float)
 
-let atom_lit = ":" ['0'-'9' 'a'-'z' 'A'-'Z' '-']+ "!"?
+let label_lit = ":" ['0'-'9' 'a'-'z' 'A'-'Z' '-']+ "!"?
 
 rule token = parse
 | _WHITESPACE+ { token lexbuf }
@@ -56,7 +57,7 @@ rule token = parse
 
 | _DQUOTE [^ '"' '\n' '\r']* _DQUOTE { token lexbuf } (* comments *)
 
-| atom_lit as a { LABEL(Tasm_ast.Label(a)) }
+| label_lit as a { LABEL(Tasm_ast.Label(a)) }
 | string_lit as str {
     LITERAL(VString(String.sub str 1 (String.length str - 2)))
   }
@@ -69,6 +70,9 @@ rule token = parse
 | ufint_lit as i {
     LITERAL(VUFixedInt(Uint64.of_string
                          (i |> strip_sign |> strip_mod)))
+  }
+| atom_lit as i {
+    LITERAL(VAtom(Uint64.of_string (i |> strip_mod)))
   }
 | float_lit as f {
     LITERAL(VFloat(float_of_string f))

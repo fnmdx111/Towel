@@ -44,10 +44,12 @@ module Inst
   ]
 
   for i in ['make', 'push', 'patpush']
+    unary_instructions.push "#{i}-lit"
+
     for j in ['list', 'tuple']
       nullary_instructions.push "#{i}-#{j}"
     end
-    for j in ['fun', 'int', 'fint', 'ufint', 'float', 'string', 'atom']
+    for j in ['fun']
       unary_instructions.push "#{i}-#{j}"
     end
   end

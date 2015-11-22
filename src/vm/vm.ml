@@ -107,18 +107,21 @@ let exec should_trace should_warn insts =
 
     in let inst = match line with Line(_, i) -> i
 
+    in let make_lit = function
+          VInt(i) -> new_int gort i
+        | VFloat(f) -> new_float gort f
+        | VString(str) -> new_string gort str
+        | VUFixedInt(uf) -> new_ufint gort uf
+        | VFixedInt(f) -> new_fint gort f
+        | VAtom(a) -> new_atom gort a
+
     in match inst with
-      PUSH_INT(ArgLit(VInt(i))) ->
-      let nr = new_int gort i
-      in __exec ctxs (push_tods nr) scpss flags next_ip
-    (* Really should generate code for these and arithmetic instructions. *)
+      MAKE_LIT(ArgLit(lit)) -> trace "making lit";
+      ignore (make_lit lit);
+      __exec ctxs dsss scpss flags next_ip
 
-    | PUSH_FINT(ArgLit(VFixedInt(i))) -> trace "pushing fint";
-      let nr = new_fint gort i
-      in __exec ctxs (push_tods nr) scpss flags next_ip
-
-    | PUSH_STRING(ArgLit(VString(s))) -> trace "pushing string";
-      let nr = new_string gort s
+    | PUSH_LIT(ArgLit(lit)) -> trace "pushing lit";
+      let nr = make_lit lit
       in __exec ctxs (push_tods nr) scpss flags next_ip
 
     | POP -> trace "popping";
