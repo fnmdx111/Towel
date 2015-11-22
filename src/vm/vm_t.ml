@@ -4,7 +4,7 @@ open Stdint;;
 open Scoping;;
 open Ort;;
 
-type ctx_t = {id: uint64; ret_addr: uint64};;
+type ctx_t = {id: uint64; ret_addr: uint64; current_function: value};;
 type module_t = {insts: line array; exs: scope};;
 
 (* In tail recursive calls, push-tail-name jumps two more lines,

@@ -69,6 +69,8 @@ let exec should_trace should_warn insts =
     in let pop_tods _ = ((ntos (tos (dss ())))::(ntos (dss ())))::(ntos dsss)
     (* FYI, "Linux has four levels of paging". I think it's ok we have three levels
        of data stacking. *)
+    in let is_todss_empty () = List.length (dss ()) = 0
+    in let is_dsss_empty () = List.length dsss = 0
 
     in let push_calc nr =
          (((nr::((dss ()) |> tos |> ntos |> ntos))
@@ -103,7 +105,10 @@ let exec should_trace should_warn insts =
              (Uint64.to_string id_) (Uint64.to_string ip) msg
          else ()
 
-    in let push_cur_ip _ = {id = flags.module_id; ret_addr = next_ip}::ctxs
+    in let push_cur_ip cur_fun =
+         {id = flags.module_id;
+          ret_addr = next_ip;
+          current_function = cur_fun}::ctxs
 
     in let inst = match line with Line(_, i) -> i
 
@@ -128,7 +133,7 @@ let exec should_trace should_warn insts =
       __exec ctxs (pop_tods ()) scpss flags next_ip
 
     | MAKE_FUN(ArgLit(VUFixedInt(ufi))) -> trace "making function";
-      let _ = new_function gort (ufi, flags.module_id)
+      let _ = new_function gort (ufi, flags.module_id, Hashtbl.create 512)
       in __exec ctxs dsss scpss flags next_ip
 
     | PUSH_FUN(ArgLit(VUFixedInt(ufi))) -> trace "pushing function";
@@ -195,25 +200,50 @@ let exec should_trace should_warn insts =
         tctx.ret_addr
 
     | FUN_ARG(ArgLit(VUFixedInt(nid))) -> trace "fun argumenting";
-      let to_snd_ds =
-        if flags.is_tail_recursive_call
-        then tods () (* Working on the same stack when tail recursing. *)
-        else tos (snd_todss ())
-      in let value = glookup_val to_snd_ds
-      in Hashtbl.replace gort.the_ort to_snd_ds
-        {value with refc = Uint64.succ value.refc};
-      push_name (scps ()) nid to_snd_ds;
+      let st, mod_id, closure = match flags.current_function with
+          OVFunction(st, mod_id, closure) -> st, mod_id, closure
+        | _ -> failwith "Not possible."
+      in let is_partial, to_snd_ds =
+           if Hashtbl.mem closure nid
+           then false, Hashtbl.find closure nid
+           else if flags.is_tail_recursive_call
+           then if is_todss_empty
+             then true, Uint64.zero (* Add this to the closure set. *)
+             else false, tods ()
+             (* Working on the same stack when tail recursing. *)
+           else if is_todss_empty
+           then true, Uint64.zero
+           else false, tos (snd_todss ())
+      in if is_partial
+      then begin
+        let new_closure = Hashtbl.copy closure
+        in Hashtbl.iter (fun k v -> Hashtbl.replace new_closure k v) closure;
+        let nr = new_function gort (st, mod_id, new_closure)
+        (* We've created a new function with the new closure. Now it's time to
+           return it. *)
+        in let tctx = tos ctxs
+        in let ret_ref = nr
+        in __exec (ntos ctxs)
+          (((ret_ref::(snd_todss ()))::(ntos (ntos (dss ()))))::(ntos dsss))
+          scpss {flags with module_id = tctx.id;
+                            current_module = Hashtbl.find modules tctx.id}
+          tctx.ret_addr
+      end else begin
+        Hashtbl.replace gort.the_ort to_snd_ds
+          {value with refc = Uint64.succ value.refc};
+        push_name (scps ()) nid to_snd_ds;
 
-      __exec ctxs
-        (if flags.is_tail_recursive_call
-         then
-           ((ntos (tos (dss ())))::(ntos (dss ())))::(ntos dsss)
-         else
-           (((to_snd_ds::(tos (dss ()))) (* put the tos of second todss onto todss *)
-             ::(ntos (snd_todss ())) (* pop the tos off from second todss *)
-             ::(ntos (ntos (dss ())))) (* stick along with the rest of the ds's *)
-            ::(ntos dsss))) (* stick along with the rest of dss's *)
-        scpss flags next_ip
+        __exec ctxs
+          (if flags.is_tail_recursive_call
+           then
+             ((ntos (tos (dss ())))::(ntos (dss ())))::(ntos dsss)
+           else
+             (((to_snd_ds::(tos (dss ()))) (* put the tos of second todss onto todss *)
+               ::(ntos (snd_todss ())) (* pop the tos off from second todss *)
+               ::(ntos (ntos (dss ())))) (* stick along with the rest of the ds's *)
+              ::(ntos dsss))) (* stick along with the rest of dss's *)
+          scpss flags next_ip
+      end
 
     | PUSH_TAIL_NAME(ArgLit(VUFixedInt(nid)), ArgLit(VUFixedInt(n_mid))) ->
       trace "pushing tail name";
@@ -226,7 +256,7 @@ let exec should_trace should_warn insts =
                Maybe a warning here? *)
 
       in (match (glookup_val ref_).v with
-            OVFunction(st, _) ->
+            OVFunction(st, _, _) as ovf ->
             __exec ctxs dsss scpss {flags with (* Modules should stay the same. *)
                                     is_tail_recursive_call = true}
               (Uint64.succ (Uint64.succ st))
@@ -240,11 +270,12 @@ let exec should_trace should_warn insts =
         else Hashtbl.find (Hashtbl.find modules n_mid).exs nid
 
       in (match (glookup_val ref_).v with
-            OVFunction(st, mod_id) ->
-            __exec (push_cur_ip ())
+            OVFunction(st, mod_id, _) as ovf ->
+            __exec (push_cur_ip ovf)
               dsss scpss
               {flags with module_id = mod_id;
                           current_module = Hashtbl.find modules mod_id;
+                          current_function = ovf;
                           is_tail_recursive_call = false} st
           | OVInt(_)
           | OVAtom(_)
@@ -268,7 +299,7 @@ let exec should_trace should_warn insts =
       in (Hashtbl.replace modules uid {insts = w_insts;
                                        exs = Hashtbl.create 512});
       (* Then, we add it to our currently opened modules hashtable. *)
-      (__exec (push_cur_ip ()) ([]::dsss) ([]::scpss)
+      (__exec (push_cur_ip OVLNil) ([]::dsss) ([]::scpss)
          (* Finally, we jump over to the new module to do its initialization. *)
          {flags with
           import_stack = 1::flags.import_stack;

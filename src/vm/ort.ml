@@ -62,8 +62,8 @@ let new_integer ort type_hint =
       | THFixedInt(lit) -> Hashtbl.add ort.fintp lit ref_; OVFixedInt(lit)
       | THUFixedInt(lit) -> Hashtbl.add ort.ufintp lit ref_; OVUFixedInt(lit)
       | THAtom(lit) -> Hashtbl.add ort.atomp lit ref_;  OVAtom(lit)
-      | THFunction(st, mod_id) ->
-        Hashtbl.add ort.funp (st, mod_id) ref_; OVFunction(st, mod_id)
+      | THFunction(st, mod_id, closure) ->
+        Hashtbl.add ort.funp (st, mod_id) ref_; OVFunction(st, mod_id, closure)
       | _ -> failwith "Incompatible type hint."
 
     in Hashtbl.add ort.the_ort ref_
@@ -75,7 +75,7 @@ let new_int ort i = new_integer ort (THInt(i));;
 let new_fint ort fi = new_integer ort (THFixedInt(fi));;
 let new_ufint ort ufi = new_integer ort (THUFixedInt(ufi));;
 let new_atom ort atom = new_integer ort (THAtom(atom));;
-let new_function ort (st, mod_id) = new_integer ort (THFunction(st, mod_id));;
+let new_function ort (st, mod_id, cls) = new_integer ort (THFunction(st, mod_id, cls));;
 (* Functions are just the start instruction numbers of UInt64. *)
 
 let new_string ort lit =
