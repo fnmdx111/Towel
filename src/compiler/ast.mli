@@ -99,6 +99,7 @@ and arg_def =
 
 and function_sform =
     Function of arg_def list * word
+  | BQFunction of arg_def list * word
 
 and bind_body = BindBody of pname * word
 

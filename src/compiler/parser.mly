@@ -262,6 +262,7 @@ restricted_word:
 
 function_:
   FUNCTION list(arg_def) COMMA word { Function($2, $4) }
+| FUNCTION BQUOTE list(arg_def) COMMA word { BQFunction($2, $4) }
 | FUNCTION list(arg_def) error {
     err "expected a comma for function special form"
     $startpos($3) $startofs($1) $endofs($3)
