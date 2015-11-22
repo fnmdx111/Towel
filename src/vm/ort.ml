@@ -106,6 +106,7 @@ let new_list ort =
   (* We don't cache list values. *)
   in set_nref_of ort ref_;
   Hashtbl.replace ort.the_ort ref_ {v = OVLNil; refc = Uint64.zero};
+  ort.list_stk := (ref_::(!ort.list_stk));
   ref_;;
 (** TODO here: nested (nasty) lists must be created according to a stack
     of list creating status, e.g.:
@@ -116,10 +117,13 @@ let new_tuple ort =
   (* Nor for tuples. *)
   in set_nref_of ort ref_;
   Hashtbl.replace ort.the_ort ref_ {v = OVTNil; refc = Uint64.zero};
+  ort.tuple_stk := (ref_::(!ort.tuple_stk));
   ref_;;
 
-let _append_list_elem ort lref r =
-  let nval = match (lookup_val ort lref).v with
+let _append_list_elem ort r =
+  let lref = List.hd !ort.list_stk
+  (* lref represents the list we are constructing at this very moment. *)
+  in let nval = match (lookup_val ort lref).v with
       OVLNil -> {v = OVList([r]); refc = Uint64.zero}
     | OVList(rs) -> {v = OVList(r::rs); refc = Uint64.zero}
     | _ -> failwith "Wrong type of list constructor."
@@ -127,12 +131,12 @@ let _append_list_elem ort lref r =
 (* This is to say, after appending the new item, we replace what was
    there with our new list. *)
 
-let _new_list_item nfun ort lref lit =
+let _new_list_item nfun ort lit =
   (* First, you make a new thing. *)
   let nref = nfun ort lit
   (* Then you can append it to the list. *)
   in set_nref_of ort nref;
-  _append_list_elem ort lref nref; nref;;
+  _append_list_elem ort nref; nref;;
 
 let new_list_int = _new_list_item new_int;;
 let new_list_fint = _new_list_item new_fint;;
@@ -141,19 +145,22 @@ let new_list_atom = _new_list_item new_atom;;
 let new_list_function = _new_list_item new_function;;
 let new_list_string = _new_list_item new_string;;
 let new_list_float = _new_list_item new_float;;
-let new_list_list ort lref =
+let new_list_list ort =
   (* Get the reference to VLNil. *)
   let nref = new_list ort
-  in _append_list_elem ort lref nref; nref;;
-let new_list_tuple ort lref =
+  in _append_list_elem ort nref; nref;;
+let new_list_tuple ort =
   let nref = new_tuple ort
-  in _append_list_elem ort lref nref; nref;;
+  in _append_list_elem ort nref; nref;;
+let end_list ort =
+  ort.list_stk := List.tl !ort.list_stk;;
 
 (* As you can see, this part below is somewhat similar to the part above,
    and the sad thing is I can't do anything about it except merging Lists and
    Tuples. *)
-let _append_tuple_elem ort lref r =
-  let nval = match (lookup_val ort lref).v with
+let _append_tuple_elem ort r =
+  let lref = List.hd !ort.tuple_stk
+  in let nval = match (lookup_val ort lref).v with
       OVTNil -> {v = OVTuple([r]); refc = Uint64.zero}
     | OVTuple(rs) -> {v = OVTuple(r::rs); refc = Uint64.zero}
     | _ -> failwith "Wrong type of tuple constructor."
@@ -170,14 +177,16 @@ let new_tuple_atom = _new_tuple_item new_atom;;
 let new_tuple_function = _new_tuple_item new_function;;
 let new_tuple_string = _new_tuple_item new_string;;
 let new_tuple_float = _new_tuple_item new_float;;
-let new_tuple_list ort lref =
+let new_tuple_list ort =
   (* Get the reference to VLNil. *)
   let nref = new_list ort
   (* And we are make a tuple here, remember! *)
-  in set_nref_of ort nref; _append_tuple_elem ort lref nref; nref;;
-let new_tuple_tuple ort lref =
+  in set_nref_of ort nref; _append_tuple_elem ort nref; nref;;
+let new_tuple_tuple ort =
   let nref = new_tuple ort
-  in _append_tuple_elem ort lref nref; nref;;
+  in _append_tuple_elem ort nref; nref;;
+let end_tuple ort =
+  ort.tuple_stk := List.tl !ort.tuple_stk;;
 
 let new_name_backquote ort bqn =
   let nref = ort.tick ()
