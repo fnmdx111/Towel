@@ -7,7 +7,7 @@ open Exc
 
 %token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
 %token MATCH FUNCTION BIND ALSO THEN AT TYPE IMPORT EXPORT IDLE
-%token SLASH BQUOTE COMMA SEMICOLON
+%token SLASH BQUOTE COMMA SEMICOLON PHONY
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 
 %token <Ast.atom> ATOM
@@ -332,6 +332,9 @@ export:
     $2
   }
 
+phony:
+  PHONY {}
+
 word:
   backquote { WBackquote($1) }
 | sequence { WSequence($1) }
@@ -343,6 +346,7 @@ word:
 | export { WExport($1) }
 | idle { WIdle }
 | name { WName($1) }
+| phony { WPhony }
 | altype_sform { WAlType($1) }
 
 sequence:

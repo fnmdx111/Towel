@@ -54,6 +54,7 @@ let _LBRACKET = '['
 let _RBRACKET = ']'
 let _SLASH = '\\'
 let _AT = '@'
+let _PHONY = "@@"
 let _LBRACE = '{'
 let _RBRACE = '}'
 
@@ -118,6 +119,7 @@ rule token = parse
 | _SLASH { SLASH }
 | _AT { AT }
 | _LBRACE { LBRACE }
+| _PHONY { PHONY }
 | _RBRACE { RBRACE }
 
 | "if>=0" { IFGEZ }

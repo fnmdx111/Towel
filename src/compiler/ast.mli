@@ -65,6 +65,7 @@ and word =
   | WAt of at_sform
   | WImport of import
   | WExport of pname list
+  | WPhony
   | WBind of bind_sform
   | WAlType of altype_sform
   | WIdle
@@ -126,4 +127,3 @@ and at_sform =
 and terminator = Period | EOF
 
 type sentence = Sentence of word list;;
-
