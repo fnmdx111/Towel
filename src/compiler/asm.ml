@@ -69,23 +69,24 @@ let fun_tick = Common.counter ();;
 let (--) x y = Printf.sprintf "%s-%s" x y;;
 let (^-) x y = Printf.sprintf "%d-%s" x y;;
 
-
 let exp_scope:(string, name_t) Hashtbl.t = Hashtbl.create 512;;
 let export ctx ns =
   let _export_one n =
     let nr = n.name_repr
     in (if Hashtbl.mem exp_scope nr
-    then Hashtbl.replace 
+    then Hashtbl.replace
     else Hashtbl.add) exp_scope nr @@ lookup_name ctx.scp_stk n
   in List.iter _export_one ns; cnil;;
 
 (* All the g_* functions should return a code_segment value. *)
 let rec g_lit ctx inst_ctx lit =
-  let inst =
+  let _pr_inst =
     (match ctx.mode with
        MakeOnly -> "make"
      | PushMake -> "push"
-     | Pattern -> "patpush") -- "lit"
+     | Pattern -> "patpush")
+
+  in let inst = _pr_inst -- "lit"
 
   in match lit.value_content with
 
@@ -126,7 +127,7 @@ let rec g_lit ctx inst_ctx lit =
        |~~| (inst_ctx.pre
              @@ string_of_int
              @@ (List.length wl) + 1)
-       |~~| (cone0 @@ inst "list")
+       |~~| (cone0 @@ _pr_inst -- "list")
        |~~| (inst_ctx.post
              (string_of_int ((List.length wl) + 1)) true)
        |~~| let r = csnl (flap wl @@ g_word
@@ -145,7 +146,7 @@ let rec g_lit ctx inst_ctx lit =
        |~~| (inst_ctx.pre
              @@ string_of_int
              @@ (List.length wl) + 1)
-       |~~| (cone0 @@ inst "tuple")
+       |~~| (cone0 @@ _pr_inst --  "tuple")
        |~~| (inst_ctx.post (string_of_int ((List.length wl) + 1)) true)
        |~~| let r = csnl (flap wl
                           @@ g_word {ctx with mode = PushMake}
