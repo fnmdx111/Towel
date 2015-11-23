@@ -5,8 +5,8 @@ require 'colorize'
 
 class Prefect
   # This class tests per file.
-  IN_PREFIX = '!>> '
-  OUT_PREFIX = '!<< '
+  IN_PREFIX = '!>> ?'
+  OUT_PREFIX = '!<< ?'
 
   PAT = /.*".*---\n(.*)\n#{IN_PREFIX}([^"]*)\n#{OUT_PREFIX}([^"]*)"/m
   # This means that a testcase description consists of three parts:
