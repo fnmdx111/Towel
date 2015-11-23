@@ -101,7 +101,7 @@ and type_def_stringify d =
   match d with
     TypeDef(tds) -> String.concat " -> "
                       (List.map type_def_item_stringify tds)
-    
+
 and arg_def_stringify d =
     match d with
       ArgDef(n) -> pname_stringify n
@@ -120,7 +120,8 @@ and bind_stringify = function
       (word_stringify w)
 
 and fun_stringify = function
-    Function(ds, w) ->
+    BQFunction(ds, w)
+  | Function(ds, w) ->
     P.sprintf "fun %s = %s"
       (String.concat "; " (List.map arg_def_stringify ds))
       (word_stringify w)
@@ -173,6 +174,7 @@ and word_stringify w =
   | WBind(b) -> _w (bind_stringify b) "bind"
   | WImport(is) -> "some imports"
   | WExport(ns) -> "some exports"
+  | WPhony -> "phony"
   | WAlType(alt) -> _w (altype_stringify alt) "al-type"
   | WIdle -> "idle"
 
@@ -186,4 +188,3 @@ and list_stringify lss =
     | w::ws ->
       _strf (String.concat " | " [(word_stringify w); s]) ws
   in _strf "" lss;;
-

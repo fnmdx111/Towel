@@ -143,6 +143,9 @@ let exec should_trace should_warn insts =
         {flags with is_tail_recursive_call = false}
         ufi
 
+    | PUSH_PHONY -> trace "pushing phony";
+      __exec ctxs dsss scpss flags next_ip
+
     | FINT_SUB -> trace "fint substracting";
       let ref1 = tods ()
       in let ref2 = snd_tods ()
