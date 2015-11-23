@@ -49,8 +49,8 @@ let rec string_of_value r =
   | OVTuple(rs) ->
     Printf.sprintf "[@ %s]"
       (String.concat " " (List.map string_of_value rs))
-  | OVFunction(st, mod_id) ->
-    Printf.sprintf "**fun: %s,%s" (tu64 st) (tu64 mod_id)
+  | OVFunction(st, mod_id, cl) ->
+    Printf.sprintf "**fun: %s,%s,<closure set>" (tu64 st) (tu64 mod_id)
   | _ -> "**abstract value";;
 
 let exec should_trace should_warn insts =
@@ -139,7 +139,8 @@ let exec should_trace should_warn insts =
     | PUSH_FUN(ArgLit(VUFixedInt(ufi))) -> trace "pushing function";
       (* I thought about it, and decided just saving the context and then jumping
          should do it. *)
-      __exec (push_cur_ip ()) dsss scpss
+      let nr = new_function gort (ufi, flags.module_id, Hashtbl.create 512)
+      in __exec (push_cur_ip (glookup_val nr).v) dsss scpss
         {flags with is_tail_recursive_call = false}
         ufi
 
@@ -200,18 +201,18 @@ let exec should_trace should_warn insts =
         tctx.ret_addr
 
     | FUN_ARG(ArgLit(VUFixedInt(nid))) -> trace "fun argumenting";
-      let st, mod_id, closure = match flags.current_function with
+      let st, mod_id, closure = match (tos ctxs).current_function with
           OVFunction(st, mod_id, closure) -> st, mod_id, closure
         | _ -> failwith "Not possible."
       in let is_partial, to_snd_ds =
            if Hashtbl.mem closure nid
            then false, Hashtbl.find closure nid
            else if flags.is_tail_recursive_call
-           then if is_todss_empty
+           then if is_todss_empty ()
              then true, Uint64.zero (* Add this to the closure set. *)
              else false, tods ()
              (* Working on the same stack when tail recursing. *)
-           else if is_todss_empty
+           else if is_todss_empty ()
            then true, Uint64.zero
            else false, tos (snd_todss ())
       in if is_partial
@@ -229,8 +230,9 @@ let exec should_trace should_warn insts =
                             current_module = Hashtbl.find modules tctx.id}
           tctx.ret_addr
       end else begin
-        Hashtbl.replace gort.the_ort to_snd_ds
-          {value with refc = Uint64.succ value.refc};
+        let v = glookup_val to_snd_ds
+        in Hashtbl.replace gort.the_ort to_snd_ds
+          {v with refc = Uint64.succ v.refc};
         push_name (scps ()) nid to_snd_ds;
 
         __exec ctxs
@@ -275,7 +277,6 @@ let exec should_trace should_warn insts =
               dsss scpss
               {flags with module_id = mod_id;
                           current_module = Hashtbl.find modules mod_id;
-                          current_function = ovf;
                           is_tail_recursive_call = false} st
           | OVInt(_)
           | OVAtom(_)
@@ -312,7 +313,7 @@ let exec should_trace should_warn insts =
       let w_insts = find_module mod_str libpaths
       in (Hashtbl.replace modules uid {insts = w_insts;
                                        exs = Hashtbl.create 512});
-      (__exec (push_cur_ip ()) ([]::dsss) ([]::scpss)
+      (__exec (push_cur_ip OVLNil) ([]::dsss) ([]::scpss)
          {flags with
           import_stack = 2::flags.import_stack;
           is_init_ext_mod = true;

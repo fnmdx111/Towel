@@ -17,7 +17,6 @@ type ort_t =
    ufintp: (uint64, ref_t) Hashtbl.t;
    atomp: (uint64, ref_t) Hashtbl.t;
    strp: (string, ref_t) Hashtbl.t;
-   funp: (uint64 * uint64, ref_t) Hashtbl.t;
    nref: ref_t ref;
    tuple_stk: ref_t list ref;
    list_stk: ref_t list ref};;
@@ -30,7 +29,6 @@ let new_ort () =
    ufintp = Hashtbl.create 512;
    atomp = Hashtbl.create 512;
    strp = Hashtbl.create 512;
-   funp = Hashtbl.create 512;
    nref = ref Uint64.zero;
    tuple_stk = ref [];
    list_stk = ref []};;
@@ -47,7 +45,6 @@ let new_integer ort type_hint =
       | THFixedInt(fi) -> Hashtbl.find ort.fintp fi
       | THUFixedInt(ufi) -> Hashtbl.find ort.ufintp ufi
       | THAtom(atom) -> Hashtbl.find ort.atomp atom
-      | THFunction(st, mod_id) -> Hashtbl.find ort.funp (st, mod_id)
       | _ -> failwith "Incompatible type hint."
     in set_nref_of ort r; r
   with Not_found ->
@@ -62,8 +59,6 @@ let new_integer ort type_hint =
       | THFixedInt(lit) -> Hashtbl.add ort.fintp lit ref_; OVFixedInt(lit)
       | THUFixedInt(lit) -> Hashtbl.add ort.ufintp lit ref_; OVUFixedInt(lit)
       | THAtom(lit) -> Hashtbl.add ort.atomp lit ref_;  OVAtom(lit)
-      | THFunction(st, mod_id, closure) ->
-        Hashtbl.add ort.funp (st, mod_id) ref_; OVFunction(st, mod_id, closure)
       | _ -> failwith "Incompatible type hint."
 
     in Hashtbl.add ort.the_ort ref_
@@ -75,8 +70,15 @@ let new_int ort i = new_integer ort (THInt(i));;
 let new_fint ort fi = new_integer ort (THFixedInt(fi));;
 let new_ufint ort ufi = new_integer ort (THUFixedInt(ufi));;
 let new_atom ort atom = new_integer ort (THAtom(atom));;
-let new_function ort (st, mod_id, cls) = new_integer ort (THFunction(st, mod_id, cls));;
-(* Functions are just the start instruction numbers of UInt64. *)
+let new_function ort (st, mod_id, cls) =
+  let ref_ = ort.tick ()
+  in set_nref_of ort ref_;
+  Hashtbl.add ort.the_ort ref_
+    {v = OVFunction(st, mod_id, cls); refc = Uint64.zero};
+  ref_;;
+(** TODO It comes to me that the correct way for doing the reference counting and GC is
+    to increase refc every time a new ref_t references to the value_t, rather than just
+    a new name gets bound to it. *)
 
 let new_string ort lit =
   let ref_ =
@@ -106,7 +108,7 @@ let new_list ort =
   (* We don't cache list values. *)
   in set_nref_of ort ref_;
   Hashtbl.replace ort.the_ort ref_ {v = OVLNil; refc = Uint64.zero};
-  ort.list_stk := (ref_::(!ort.list_stk));
+  ort.list_stk := (ref_::(!(ort.list_stk)));
   ref_;;
 (** TODO here: nested (nasty) lists must be created according to a stack
     of list creating status, e.g.:
@@ -117,11 +119,11 @@ let new_tuple ort =
   (* Nor for tuples. *)
   in set_nref_of ort ref_;
   Hashtbl.replace ort.the_ort ref_ {v = OVTNil; refc = Uint64.zero};
-  ort.tuple_stk := (ref_::(!ort.tuple_stk));
+  ort.tuple_stk := (ref_::(!(ort.tuple_stk)));
   ref_;;
 
 let _append_list_elem ort r =
-  let lref = List.hd !ort.list_stk
+  let lref = List.hd !(ort.list_stk)
   (* lref represents the list we are constructing at this very moment. *)
   in let nval = match (lookup_val ort lref).v with
       OVLNil -> {v = OVList([r]); refc = Uint64.zero}
@@ -153,22 +155,22 @@ let new_list_tuple ort =
   let nref = new_tuple ort
   in _append_list_elem ort nref; nref;;
 let end_list ort =
-  ort.list_stk := List.tl !ort.list_stk;;
+  ort.list_stk := List.tl !(ort.list_stk);;
 
 (* As you can see, this part below is somewhat similar to the part above,
    and the sad thing is I can't do anything about it except merging Lists and
    Tuples. *)
 let _append_tuple_elem ort r =
-  let lref = List.hd !ort.tuple_stk
+  let lref = List.hd !(ort.tuple_stk)
   in let nval = match (lookup_val ort lref).v with
       OVTNil -> {v = OVTuple([r]); refc = Uint64.zero}
     | OVTuple(rs) -> {v = OVTuple(r::rs); refc = Uint64.zero}
     | _ -> failwith "Wrong type of tuple constructor."
   in Hashtbl.replace ort.the_ort lref nval;;
 
-let _new_tuple_item nfun ort lref lit =
+let _new_tuple_item nfun ort lit =
   let nref = nfun ort lit
-  in _append_tuple_elem ort lref nref; nref;;
+  in _append_tuple_elem ort nref; nref;;
 
 let new_tuple_int = _new_tuple_item new_int;;
 let new_tuple_fint = _new_tuple_item new_fint;;
@@ -186,7 +188,7 @@ let new_tuple_tuple ort =
   let nref = new_tuple ort
   in _append_tuple_elem ort nref; nref;;
 let end_tuple ort =
-  ort.tuple_stk := List.tl !ort.tuple_stk;;
+  ort.tuple_stk := List.tl !(ort.tuple_stk);;
 
 let new_name_backquote ort bqn =
   let nref = ort.tick ()
