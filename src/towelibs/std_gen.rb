@@ -1,6 +1,6 @@
 require 'stringio'
 
-def gen_make_inline_fun(w, e, st_line_=0, nid_=1)
+def gen_make_inline_fun(w, e, st_line_=1, nid_=1)
   st_line = st_line_
   nid = nid_
 
@@ -14,7 +14,7 @@ def gen_make_inline_fun(w, e, st_line_=0, nid_=1)
 
     e.puts "(#{name} #{nid}u)"
 
-    st_line += 3
+    st_line = end_line
     nid += 1
   end
 end
@@ -42,9 +42,11 @@ if __FILE__ == $0
   end
 
   make_inline_fun.call '!print', ['show']
+  make_inline_fun.call '!println', ['show', "push-lit '\n'", 'show']
+  make_inline_fun.call '!pop', ['pop']
 
   w.puts 'terminate'
 
-  puts w.string
-  puts e.string
+  File.open 'std.w', 'w' do |f| f.puts w.string end
+  File.open 'std.e', 'w' do |f| f.puts e.string end
 end
