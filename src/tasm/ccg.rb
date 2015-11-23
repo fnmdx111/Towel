@@ -158,6 +158,7 @@ let p_arg = function
     ArgLabel(l) -> p_label l
   | ArgLit(v) -> (match v with
       VString(s) -> Printf.sprintf "'%s'" s
+    | VAtom(a) -> Printf.sprintf "%sa" @@ Uint64.to_string a
     | VInt(i) -> Printf.sprintf "%sl" @@ Big_int.string_of_big_int i
     | VFixedInt(i) -> Int64.to_string i
     | VUFixedInt(u) -> Printf.sprintf "%su" @@ Uint64.to_string u
