@@ -101,7 +101,7 @@ if_sform:
     $startpos($3) $startofs($1) $endofs($3)
   }
 | IFLEZ word error {
-    err "expected a comma for else branch"    
+    err "expected a comma for else branch"
     $startpos($3) $startofs($1) $endofs($3)
   }
 | IFLZ word error {
@@ -255,14 +255,14 @@ idle: IDLE { }
 
 restricted_word:
   name { WName($1) }
-| idle { }
+| idle { WIdle }
 | backquote { WBackquote($1) }
 | literal { WLiteral($1) }
 | sequence { WSequence($1) }
 
 function_:
   FUNCTION list(arg_def) COMMA word { Function($2, $4) }
-| FUNCTION BQUOTE list(arg_def) COMMA word { BQFunction($2, $4) }
+| FUNCTION BQUOTE list(arg_def) COMMA word { BQFunction($3, $5) }
 | FUNCTION list(arg_def) error {
     err "expected a comma for function special form"
     $startpos($3) $startofs($1) $endofs($3)
