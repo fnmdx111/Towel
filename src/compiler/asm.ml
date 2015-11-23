@@ -55,8 +55,8 @@ let atom_dict = Hashtbl.create 512;;
 let atom_repr_tick = Common.counter ();;
 (* Atoms are just names in another universe where mappings are different. *)
 
-ignore @@ atom_repr_tick ();; (* tick tock for false - 0 *)
-ignore @@ atom_repr_tick ();; (* tick tock for true - 1 *)
+Hashtbl.replace atom_dict "false" Uint64.zero;;
+Hashtbl.replace atom_dict "true" @@ atom_repr_tick ();;
 
 let name_repr_tick = Common.counter ();;
 (* 2**64 names should be enough. I can switch to Stdint.Uint128 if it's
