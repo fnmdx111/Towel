@@ -118,6 +118,7 @@ def gen_ast
     wl.call "open Stdint;;
 
 type lit = VString of string
+         | VAtom of uint64
          | VInt of Big_int.big_int
          | VFixedInt of int64
          | VUFixedInt of uint64
