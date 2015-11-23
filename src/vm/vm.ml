@@ -70,7 +70,6 @@ let exec should_trace should_warn insts =
     (* FYI, "Linux has four levels of paging". I think it's ok we have three levels
        of data stacking. *)
     in let is_todss_empty () = List.length (dss ()) = 0
-    in let is_dsss_empty () = List.length dsss = 0
 
     in let push_calc nr =
          (((nr::((dss ()) |> tos |> ntos |> ntos))
@@ -258,7 +257,7 @@ let exec should_trace should_warn insts =
                Maybe a warning here? *)
 
       in (match (glookup_val ref_).v with
-            OVFunction(st, _, _) as ovf ->
+            OVFunction(st, _, _) ->
             __exec ctxs dsss scpss {flags with (* Modules should stay the same. *)
                                     is_tail_recursive_call = true}
               (Uint64.succ (Uint64.succ st))
