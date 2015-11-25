@@ -12,6 +12,7 @@ module Inst
     'make-backquote',
     'end-list', 'end-tuple',
     'pop',
+    'list-hd', 'list-tl',
     'unpack',
     'push-stack', 'share-stack', 'pop-stack',
     'ret', 'shared-ret',
@@ -36,7 +37,8 @@ module Inst
   ]
 
   binary_instructions = [
-    'push-name', 'make-name', 'patpush-name', 'push-tail-name', 'patpush-tail-name',
+    'push-name', 'make-name', 'make-tail-name',
+    'patpush-name', 'push-tail-name', 'patpush-tail-name',
     'import-explicit', 'import-implicit'
   ]
 

@@ -444,41 +444,23 @@ and g_fun ctx inst_ctx =
           (tu64 @@ lookup_name scp_stk pn)
           (tu64 Uint64.zero)
 
-  in function
-    Function(arg_defs, body)
-    -> cnil
-       |~~| inst_ctx.pre _UID
+  in let _g_fun arg_defs body is_backquoted_fun =
+       cnil
+       |~~| inst_ctx.pre _UID (* I don't think this is used. *)
        |~~| (cone1 lead_inst @@ st_label)
-       |~~| inst_ctx.post _UID false
+       |~~| (if is_backquoted_fun
+             then cone1 "jump" real_end_label
+             else cnil)
        |~~| preamble
-       |~~| let r = csnl (List.rev @@ List.map _g_arg_def arg_defs) in r
-         (* The bug stated at 383 is also causing problem here leading the
-            name pushing code running later than name resolving code. This
-            results in failures in names resolving.
-
-            Irrelevantly, for tail calls, its start label is always two
-            instructions behind the canonical start label. *)
-       |~~| let r = csnl (List.map _g_arg_push arg_defs) in r
-       |~~| LabeledCodeSegment([_UID -- "tail-call"], [])
-       |~~| (let r = g_word
-                 {ctx with mode = PushMake; scp_stk = scp_stk}
-                 IsBody
-                 inst_nil_ctx body in r)
-          (* I think an OCaml bug lies here:
-             1. I have checked that infix operators starting with | are
-             left-associative, so this expression is evaluated top-down
-             rather than the other way around;
-             2. So by (1) this "ret" CSeg and the big CSeg before it are
-             going to be called as (|~~|) big-CSeg ret-CSeg, but by
-             printing all these, I reckon that OCaml calls
-             (|~~|) ret-CSeg big-CSeg, so certain labels won't align in
-             one line;
-             3. By explicitly evaluate this g_word blah blah, I get to
-             have (|~~|) big-CSeg ret-CSeg. Hope this isn't
-             something I did wrongly.
-             4. OCaml is sometimes *super* stupid. *)
+       |~~| (let r = csnl (List.rev @@ List.map _g_arg_def arg_defs) in r)
+       |~~| (let r = g_word {ctx with mode = PushMake; scp_stk = scp_stk}
+                 IsBody inst_nil_ctx body in r)
        |~~| LabeledCodeSegment([end_label], [cone0 "pop-scope"; cone0 "ret"])
        |~~| LabeledCodeSegment([real_end_label], [])
+
+  in function
+      BQFunction(arg_defs, body) -> _g_fun arg_defs body true
+    | Function(arg_defs, body) -> _g_fun arg_defs body false
 
 and g_bind ctx =
   let _g_bind_body =

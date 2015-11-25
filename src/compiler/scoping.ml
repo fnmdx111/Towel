@@ -15,7 +15,7 @@ open Stdint
 let is_DEBUG = ref false;;
 
 type name_t = uint64;;
-type scope = Scope of (string, name_t) Hashtbl.t * string;;
+type scope_t = Scope of (string, name_t) Hashtbl.t * string;;
 
 type external_scope = ExtScope of (string, external_scope) Hashtbl.t (* path table *)
                                   * (string, name_t) Hashtbl.t       (* scope *)
