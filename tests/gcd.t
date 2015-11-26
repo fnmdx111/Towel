@@ -8,7 +8,7 @@ Mainly tests tail recursive calls.
 
 import 'std' @
 
-bind GCD fun A B,
+bind GCD fun` A B,
   (- if=0 A,
      if>0 (!pop A A B - GCD@),
      if<0 (!pop B A - B GCD@),
