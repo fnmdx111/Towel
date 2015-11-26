@@ -4,7 +4,7 @@ open Stdint;;
 let lbl:(string, uint64) Hashtbl.t = Hashtbl.create ~random:true 512;;
 
 let replace_label =
-  function (* I could have generate this with Python3 again. But,... nah... *)
+  function (* I could have generate this with again. But,... nah... *)
     MATCH(ArgLabel(Label(s)))
     -> MATCH(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
   | HMATCH(ArgLabel(Label(s)))
@@ -53,35 +53,45 @@ let replace_label =
     -> JE(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
   | JNE(ArgLabel(Label(s)))
     -> JNE(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
+  | HJE(ArgLabel(Label(s)))
+    -> HJE(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
+  | HJNE(ArgLabel(Label(s)))
+    -> HJNE(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
+
 
   | MAKE_FUN(ArgLabel(Label(s)))
     -> MAKE_FUN(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
   | PUSH_FUN(ArgLabel(Label(s)))
     -> PUSH_FUN(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
-  | PATPUSH_FUN(ArgLabel(Label(s)))
-    -> PATPUSH_FUN(ArgLabel(Label(s)))
 
   | _ as x -> x;;
 
 let rec _inflate cnt =
   let to_strs = List.map (fun x -> match x with Label(l) -> l)
-  in function
-    [] -> ()
-  | Line(labels, inst)::rest
-    -> let none_of_the_labels_are_registered =
+  in let _reg labels rest =
+       let none_of_the_labels_are_registered =
          List.fold_left (&&) true
          @@ List.map (fun x -> not (Hashtbl.mem lbl x)) @@ to_strs labels
-    in if none_of_the_labels_are_registered
-    then let () =
-           List.iter (fun x -> Hashtbl.add lbl x cnt) @@ to_strs labels
-      in _inflate (Uint64.succ cnt) rest
-    else failwith "Redefining labels, exiting.";;
+       in if none_of_the_labels_are_registered
+       then let () =
+              List.iter (fun x -> Hashtbl.add lbl x cnt) @@ to_strs labels
+         in _inflate (Uint64.succ cnt) rest
+       else failwith "Redefining labels, exiting."
 
-let unlabel asm =
+  in function
+      [] -> ()
+    | CLine(labels, _)::rest ->
+      _reg labels rest
+    | Line(labels, _)::rest ->
+      _reg labels rest;;
+
+let assemble asm =
   match asm with
     Asm(ls) ->
     let () = _inflate Uint64.zero ls
     in Asm(List.map
              (fun x -> match x with
-                  Line(_, inst) -> Line([], replace_label inst))
+                  Line(_, inst) -> Line([], replace_label inst)
+                | CLine(_, Some(inst)) -> Line([], replace_label inst)
+                | CLine(_, None) -> CLine([], None))
              ls)

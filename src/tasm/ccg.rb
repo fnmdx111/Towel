@@ -135,7 +135,8 @@ type inst =
 #{unless BIINST.empty? then " | " else "" end}#{gen_defs.call "%s of arg * arg", BIINST}
 #{unless MAINST.empty? then " | " else "" end}#{gen_defs.call "%s of arg list", MAINST};;
 
-type line = Line of label list * inst;;
+type line = Line of label list * inst
+          | CLine of label list * inst option;;
 
 type asm = Asm of line list;;
 "
@@ -181,7 +182,11 @@ let p_inst =
  "#{x.in2id}(args) -> _p_inst_ma \"#{x}\" args"}.join " | "}
 
 let p_line = function
-  Line(ls, inst) -> (p_labels ls) ^ " " ^ (p_inst inst);;
+  Line(ls, inst) -> (p_labels ls) ^ " " ^ (p_inst inst)
+| CLine(ls, maybe_inst) -> (p_labels ls) ^
+    (match maybe_inst with
+       Some(inst) -> " " ^ (p_inst inst)
+     | None -> "");;
 
 let p_asm = function
   Asm(lines) -> String.concat "\n" (List.map p_line lines);;

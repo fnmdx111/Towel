@@ -1,101 +1,67 @@
+open Tasm_ast;;
 
-type code_segment =
-    LabeledCodeSegment of string list * (* start labels *)
-                          code_segment list (* code *)
-  | CodeOneliner of string;;
+let make_labels =
+  let labelize x = Label(x)
+  in List.map labelize;;
 
-let cone1 inst arg =
-  CodeOneliner(String.concat " " [inst; arg]);;
+let cnil = Asm([CLine([], None)]);;
+let line x = Asm([Line([], x)]);;
+let lline lbs x = Asm([Line(make_labels lbs, x)]);;
+let cline lbs inst = Asm([CLine(make_labels lbs, inst)]);;
+let put_label lbs = cline lbs None;;
 
-let cone0 inst =
-  CodeOneliner(inst);;
-
-let csnl cs = LabeledCodeSegment([], cs);;
-
-let cnil = csnl [];;
-
-let (|>>) x y =
-  if x = "" then y
-  else if y = "" then x
-  else x ^ "\n" ^ y;;
-
-let (|=>) x y =
-  if x = "" then y
-  else if y = "" then x
-  else x ^ " " ^ y;;
-
-let assemble_labels = List.fold_left (|=>) "";;
-
-let (|~~|) cs ocs = match cs, ocs with
-    (* TODO NEEDS REWORK since I have fixed the asm parser
-       issue on newlines and labels. *)
-    LabeledCodeSegment([], []), _
-    -> ocs
-  | LabeledCodeSegment(st1, []),
-    LabeledCodeSegment(st2, csl)
-    -> LabeledCodeSegment(st1 @ st2, csl)
-  | LabeledCodeSegment(st1, csl1),
-    LabeledCodeSegment([], csl2)
-    -> let rrest = List.rev @@ List.tl @@ List.rev csl1
-    in let rfirst = List.hd @@ List.rev csl1
-    in (match rfirst with
-          LabeledCodeSegment(l_st, []) ->
-          LabeledCodeSegment(st1, rrest @ [LabeledCodeSegment(l_st, csl2)])
-        | LabeledCodeSegment(l_st, l_csl) ->
-          LabeledCodeSegment(st1, rrest @ [LabeledCodeSegment(l_st,
-                                                              l_csl @ csl2)])
-        | CodeOneliner(_) ->
-          LabeledCodeSegment(st1, csl1 @ csl2))
-  | LabeledCodeSegment(st1, csl1),
-    LabeledCodeSegment(st2, csl2)
-    -> let rrest = List.rev @@ List.tl @@ List.rev csl1
-    in let rfirst = List.hd @@ List.rev csl1
-    in (match rfirst with
-          LabeledCodeSegment(l_st, []) ->
-          LabeledCodeSegment(st1, rrest
-                                  @ [LabeledCodeSegment(l_st @ st2, csl2)])
-        | LabeledCodeSegment(_, _)
-        | CodeOneliner(_) ->
-          LabeledCodeSegment(st1, csl1 @ [ocs]))
-  | LabeledCodeSegment(st1, []),
-    CodeOneliner(co)
-    -> LabeledCodeSegment(st1, [ocs])
-  | LabeledCodeSegment(st1, csl1),
-    CodeOneliner(co)
-    -> let rrest = List.rev @@ List.tl @@ List.rev csl1
-    in let rfirst = List.hd @@ List.rev csl1
-    in (match rfirst with
-          LabeledCodeSegment(l_st, l_cs) ->
-          LabeledCodeSegment(st1, rrest
-                                  @ [LabeledCodeSegment(l_st,
-                                                        l_cs @ [ocs])])
-        | CodeOneliner(_) as lco ->
-          LabeledCodeSegment(st1, rrest @ [lco; ocs]))
-  | CodeOneliner(_), CodeOneliner(_)
-    -> csnl @@ cs::[ocs]
-  | CodeOneliner(_), LabeledCodeSegment([], [])
-    -> cs
-  | CodeOneliner(_), LabeledCodeSegment([], csl)
-    -> csnl ([cs] @ csl)
-  | CodeOneliner(_), LabeledCodeSegment(_, _)
-    -> csnl [cs; ocs]
-
-let aggregate = List.fold_left (|~~|) cnil
-
-let rec comp = function
-    CodeOneliner(c) -> c
-  | LabeledCodeSegment(st, [])
-    -> assemble_labels st
-  | LabeledCodeSegment(st, c::cs) ->
-    ""
-    |>> assemble_labels st |=> comp c
-    |>> List.fold_left (|>>) "" @@ List.map comp cs
-
-let rec compose = comp;;
-
-let rec dump_cs = function
-    LabeledCodeSegment(ss, css)
-    -> Printf.sprintf "start: %s -> [\n%s] dump ends here\n" (assemble_labels ss)
-         (String.concat "\n" @@ List.map dump_cs css)
-  | CodeOneliner(c)
-    -> Printf.sprintf "co: %s" c
+let (|~~|) a1 a2 =
+  let lr = List.rev
+  in let lh = List.hd
+  in let lt = List.tl
+  in let lfirstn xs = xs |> lr |> lt |> lr
+  in match a1, a2 with
+    Asm([]), Asm(_) ->
+    a2 (* If a1 is empty, who cares about a1? *)
+  | Asm(ls1), Asm(ls2) ->
+    let last1 = lh (lr ls1)
+    in let first2 = lh ls2
+    in let reject_empty = List.filter
+           (fun x -> (Pervasives.compare x (CLine([], None))) <> 0)
+    in let content = match last1, first2 with
+          CLine([], None), CLine([], None) ->
+          (* 0 + 0 = 0 *)
+          (lfirstn ls1) @ (lt ls2)
+        | Line(_, _), Line(_, _) ->
+          (* non-0 + non-0 = non-0 *)
+          ls1 @ ls2
+        | _, CLine([], None) ->
+          (* non-0 + 0 = non-0 *)
+          ls1 @ (lt ls2)
+        | CLine([], None), _ ->
+          (* 0 + non-0 = non-0 *)
+          (lfirstn ls1) @ ls2
+        | Line([], inst1), CLine(lbs2, Some(inst2)) ->
+          (* Transform all the CLine into Line. *)
+          ls1 @ ((Line(lbs2, inst2))::(lt ls2))
+        | Line(_, _), CLine([], Some(inst2)) ->
+          (* Can't merge. *)
+          ls1 @ ((Line([], inst2))::(lt ls2))
+        | Line(_, _), CLine(lbs2, Some(inst2)) ->
+          (* Can't merge. *)
+          ls1 @ ((Line(lbs2, inst2))::(lt ls2))
+        | Line(lbs1, inst1), CLine(lbs2, None) ->
+          (* Can't merge. Can't transform. *)
+          ls1 @ ls2
+        | CLine([], Some(inst1)), Line(_, _) ->
+          (lfirstn ls1) @ [Line([], inst1)] @ ls2
+        | CLine(lbs1, None), Line([], inst2) ->
+          (lfirstn ls1) @ [Line(lbs1, inst2)] @ (lt ls2)
+        | CLine(lbs1, None), Line(lbs2, inst2) ->
+          (lfirstn ls1) @ [Line(lbs1 @ lbs2, inst2)] @ (lt ls2)
+        | CLine(lbs1, None), CLine(lbs2, None) ->
+          (lfirstn ls1) @ [CLine(lbs1 @ lbs2, None)] @ (lt ls2)
+        | CLine(lbs1, None), CLine(lbs2, Some(inst2)) ->
+          (lfirstn ls1) @ [Line(lbs1 @ lbs2, inst2)] @ (lt ls2)
+        | CLine(lbs1, Some(inst1)), Line(_, _) ->
+          (lfirstn ls1) @ [Line(lbs1, inst1)] @ ls2
+        | CLine(lbs1, Some(inst1)), CLine(lbs2, Some(inst2)) ->
+          (lfirstn ls1) @ [Line(lbs1, inst1); Line(lbs2, inst2)] @ (lt ls2)
+        | CLine(lbs1, Some(inst1)), CLine(lbs2, None) ->
+          (lfirstn ls1) @ [Line(lbs1 @ lbs2, inst1)] @ (lt ls2)
+    in Asm(reject_empty content)
