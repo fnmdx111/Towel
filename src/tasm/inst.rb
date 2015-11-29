@@ -23,11 +23,12 @@ module Inst
     'terminate',
     'push-lnil',
     'push-tnil',
+    'reverse',
+    'pack',
   ]
 
   unary_instructions = [
-    'bind', 'fun-arg', 'reverse',
-    'pack',
+    'bind', 'fun-arg',
     'jump',
     'match',
     'hmatch',
