@@ -1,6 +1,6 @@
 open Tasm_ast;;
 open Batteries;;
-open Vm;;
+open Nvm;;
 
 let src_file_r = ref "";;
 let trace_r = ref false;;

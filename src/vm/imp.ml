@@ -1,6 +1,6 @@
 open Stdint;;
 open Tasm_ast;;
-open Scoping;;
+open Dscoping;;
 
 (* ==========================================
      Woven file parser

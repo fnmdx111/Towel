@@ -1,17 +1,16 @@
 
 prelude = "open Tasm_ast;;
-open Ort;;
 open T;;
 open Stdint;;
 open Vm_t;;
 
-let branch glookup_val tods next_ip =
+let branch v next_ip =
   function"
 
 assemble_big = lambda {|x| "Big_int.#{x}_big_int i Big_int.zero_big_int"}
 
-match = 'let _ip = match (glookup_val tods).v with'
-clause = 'then j else next_ip'
+match = 'let j_ = Uint64.to_int j in let _ip = match v with'
+clause = 'then j_ else next_ip'
 
 numerical_conditionals = [
   ['JNEZ', '<>',
@@ -66,29 +65,7 @@ nonnumerical_conditionals = [
 end
 nncs = nonnumerical_conditionals.join "\n\n"
 
-e_and_ne_conditionals = [
-  ['JE',
-   ['OVTNil', 'OVLNil'],
-   ['OVTuple(_)', 'OVList(_)']],
-  ['JNE',
-   ['OVTuple(_)', 'OVList(_)'],
-   ['OVTNil', 'OVLNil']]
-].map do |xs|
-  jn, ts, fs = xs
-
-  "| #{jn}(ArgLit(VUFixedInt(j)))
-| H#{jn}(ArgLit(VUFixedInt(j))) ->
-  #{match}
-      #{ts[0]}
-    | #{ts[1]} -> j
-    | #{fs[0]}
-    | #{fs[1]} -> next_ip
-    | _ -> failwith \"Unsupported data type.\"
-  in _ip"
-end
-eancs = e_and_ne_conditionals.join "\n\n"
-
-conditionals = [ncs, nncs, eancs].join "\n\n"
+conditionals = [ncs, nncs].join "\n\n"
 
 File.open "#{ARGV[0]}/jumps.ml", 'w' do |f|
   f.write prelude
