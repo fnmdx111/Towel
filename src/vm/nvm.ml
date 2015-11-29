@@ -9,6 +9,7 @@ open Config;;
 open Vm_t;;
 open Nstack;;
 open Printf;;
+open Common;;
 
 let vm_name = Uint64.to_int;;
 let to_pc = Uint64.to_int;;
@@ -17,6 +18,8 @@ let modules:module_table_t = Hashtbl.create 512;;
 
 let _MAIN_MODULE_ID = Uint64.one;;
 let _SELF_MODULE_ID = Uint64.zero;;
+let module_id_tick = Common.counter ();;
+ignore (module_id_tick ());; (* tick for _MAIN_MODULE_ID *)
 
 let tos = List.hd;;
 let ntos = List.tl;;
@@ -86,6 +89,8 @@ let exec should_trace should_warn insts =
 
     in let curmod = flags.curmod
 
+    in let abs_mod_id mid = Hashtbl.find curmod.imports mid
+
     in let dss = flags.dss
 
     in let push_cur_ip cur_fun =
@@ -106,15 +111,20 @@ let exec should_trace should_warn insts =
         __exec (ntos ctxs) {flags with curmod = tmod} tctx.ret_addr
       end
 
-    in let do_import uid mod_str type_ =
+    in let do_import rel_uid mod_str type_ =
          let w_insts = find_module mod_str libpaths
-         in let module_ = {id = uid;
+         in let abs_uid = module_id_tick ()
+
+         in let module_ = {id = abs_uid;
                            insts = w_insts;
+                           imports = Hashtbl.create 512;
                            exs = Hashtbl.create 512;
                            scps = ref []}
-         in (Hashtbl.replace modules uid module_);
+         in (Hashtbl.replace modules abs_uid module_);
+         (Hashtbl.replace curmod.imports rel_uid abs_uid);
+         (* Update the imports proxy for mapping from rel to abs. *)
          (__exec
-            (push_cur_ip (OVFunction(0, _SELF_MODULE_ID, Hashtbl.create 1,
+            (push_cur_ip (OVFunction(0, curmod.id, Hashtbl.create 1,
                                      false)))
             {flags with import_stack = type_::flags.import_stack;
                         is_init_ext_mod = true;
@@ -254,11 +264,11 @@ let exec should_trace should_warn insts =
       in (match dstop dss with
             OVFunction(_, _, closure, _) ->
             if mid = _SELF_MODULE_ID
-            then Hashtbl.replace closure (nid, _SELF_MODULE_ID)
+            then Hashtbl.replace closure (nid, curmod.id)
                 (dval dss (nlookup !(curmod.scps) nid))
-            else Hashtbl.replace closure (nid, mid)
+            else Hashtbl.replace closure (nid, abs_mod_id mid)
                 (Hashtbl.find
-                   (Hashtbl.find modules mid).exs
+                   (Hashtbl.find modules (abs_mod_id mid)).exs
                    nid)
           | _ -> failwith "Add captured value to non-function.
 Something is wrong with the compiler.");
@@ -303,8 +313,8 @@ Something is wrong with the compiler.");
 
       in let is_partial, stolen_arg =
            if partialized
-           then if Hashtbl.mem closure (nid, _SELF_MODULE_ID)
-             then false, Hashtbl.find closure (nid, _SELF_MODULE_ID)
+           then if Hashtbl.mem closure (nid, curmod.id)
+             then false, Hashtbl.find closure (nid, curmod.id)
              (* We found what we want in the closure set. Just get the
                 argument from it.
 
@@ -318,16 +328,16 @@ Something is wrong with the compiler.");
       then begin
         let new_closure = Hashtbl.copy closure
         in Hashtbl.iter (fun name idx -> Hashtbl.replace new_closure
-                            (name, Uint64.zero)
+                            (name, curmod.id)
                             (* Fun-args are bound by default in current
-                               module, i.e. Uint64.zero. *)
+                               module. *)
                             (dval dss idx))
           (tos !(curmod.scps));
         let nf = OVFunction(st, mod_id, new_closure, true)
         in dspush dss nf;
         return ()
       end else begin
-        Hashtbl.replace closure (nid, Uint64.zero) stolen_arg;
+        Hashtbl.replace closure (nid, curmod.id) stolen_arg;
         __exec ctxs flags next_ip
       end
 
@@ -354,13 +364,13 @@ Something is wrong with the compiler.");
                OVFunction(_, _, closure, _) ->
                (try dval dss (nlookup !(curmod.scps) nid)
                 with Exc.NameNotFoundError _ ->
-                  Hashtbl.find closure (nid, mid))
+                  Hashtbl.find closure (nid, curmod.id))
              | _ -> failwith "Non-function put in curfun. Something is wrong."
 
            else begin
              tvm_warning "Not tail calling a module-local name!
  Maybe a mutual tail call?";
-             let mod_ = Hashtbl.find modules mid
+             let mod_ = Hashtbl.find modules (abs_mod_id mid)
              in Hashtbl.find mod_.exs nid
            end
 
@@ -387,9 +397,9 @@ Something is wrong with the compiler.");
                  OVFunction(_, _, closure, _) ->
                  (try dval dss (nlookup !(curmod.scps) nid)
                   with Exc.NameNotFoundError _ ->
-                    Hashtbl.find closure (nid, mid))
+                    Hashtbl.find closure (nid, curmod.id))
                | _ -> failwith "Non-function value put in curfun field."
-             else let mod_ = Hashtbl.find modules mid
+             else let mod_ = Hashtbl.find modules (abs_mod_id mid)
                in Hashtbl.find mod_.exs nid
         in (match v with
               OVFunction(st, mod_id, _, _) as f ->
@@ -504,6 +514,7 @@ Something is wrong with the compiler.");
   in Hashtbl.replace modules _MAIN_MODULE_ID
     {id = _MAIN_MODULE_ID;
      insts = insts;
+     imports = Hashtbl.create 64;
      exs = Hashtbl.create 1;
      scps = ref []};
 

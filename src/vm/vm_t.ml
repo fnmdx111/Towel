@@ -4,9 +4,11 @@ open Stdint;;
 open Dscoping;;
 open Nstack;;
 
-type ctx_t = {mod_id: uint64; ret_addr: line_no_t; curfun: value_t};;
-type module_t = {id: uint64; insts: line array;
+type ctx_t = {mod_id: module_id_t; ret_addr: line_no_t; curfun: value_t};;
+type module_t = {id: module_id_t; insts: line array;
                  exs: (name_t, value_t) Hashtbl.t;
+                 imports: (module_id_t, module_id_t) Hashtbl.t;
+                 (* Map from relative module id to absolute module id. *)
                  scps: scope_t list ref}
 
 let print_module m =
@@ -16,7 +18,7 @@ let print_module m =
 }" (Uint64.to_string m.id) "<exs>"
     (sprint_dscope_stack !(m.scps));;
 
-(* In tail recursive calls, push-tail-name jumps two more lines,
+(* In tail recursive calls, eval-tail jumps two more lines,
    also fun-arg fetches from current data stack rather than parent
    data stack. *)
 type flags_t = {is_tail_recursive_call: bool;
