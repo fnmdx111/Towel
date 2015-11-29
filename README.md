@@ -2,9 +2,9 @@ The Towel Programming Language
 ====
 
 Towel is a typed stack-based postfix-syntaxed general-purposed functional
-language. A Towel compiler that compiles source code in Towel to Towel assembly
-language (TAL) which runs on Towel virtual machine written in OCaml. More
-robust design and implementation will be scheduled. A TAL to C compiler is also
+language. A Towel compiler `weave` that compiles source code in Towel to Towel assembly
+language (Tasm) which runs on the Towel virtual machine written in OCaml. More
+robust design and implementation will be scheduled. A Tasm to C compiler is also
 scheduled.
 
 
@@ -39,15 +39,16 @@ See `towel -h`.
 Roadmap
 ----
 
-* Implement some key standard libraries. Priority 5.
+* Implement some key standard libraries. Priority 4.
 
-* Implement type checking algorithm! Priority 4.
+* Implement type checking algorithm! Priority 5.
 
-* The module system needs to be detailed designed. Priority 3.5.
+* The module system needs to be detailed designed. Priority 2.5.
 This is done by now. Parts missing: libpath mechanism, and maybe something else.
 
 * A script that generates std.w and std.e. Module `Std` generally covers all the
-assembly instructions that aren't covered in `asm`. Priority 4.
+assembly instructions that aren't covered in `asm`. Priority 2.
+This is also done by now. Parts missing: IDK.
 
 The Future
 ----
