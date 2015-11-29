@@ -30,3 +30,12 @@ let rec nlookup scp_stk name =
   | scp::rest ->
     try Hashtbl.find scp name
     with Not_found -> nlookup rest name;;
+
+let sprint_dscope dscope =
+  Printf.sprintf "{%s}"
+    (String.concat ", "
+       (Hashtbl.fold (fun k v acc -> (Printf.sprintf "%d: (%d,%d)" k
+                         (fst v) (snd v))::acc) dscope []));;
+
+let sprint_dscope_stack scp_stk =
+  String.concat "; " (List.map (fun x -> sprint_dscope x) scp_stk);;

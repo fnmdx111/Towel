@@ -43,6 +43,8 @@ let name_repr_tick = Common.counter ();;
  *)
 
 let ext_scope_tick = Common.counter ();;
+ignore (ext_scope_tick ());; (* Module id: 0 for self, 1 for main,
+                                2 .. for ext modules. *)
 
 let fun_tick = Common.counter ();;
 
@@ -548,21 +550,6 @@ and g_fun ctx inst_ctx fun_ =
        in let snippet = cnil
                         |~~| preamble
                         |~~| fun_args
-                        |~~| (line (REVERSE(ArgLit(VUFixedInt(
-                            Uint64.of_int (List.length arg_defs))))))
-                        (* Reverse the arguments that are already on the stack.
-                           E.g. if we have:
-                           [| A | B |]
-
-                           then, we call a function with 2 arguments:
-                           [| |]
-                           [| A | B |]
-
-                           after two fun-args:
-                           [| B | A |]
-                           [| |]
-
-                           and you see why a reverse instruction is needed. *)
                         |~~| body_inst
                         |~~| (cline [end_label] (Some(POP_SCOPE)))
                         |~~| (line RET)
