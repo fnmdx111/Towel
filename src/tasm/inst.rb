@@ -64,7 +64,7 @@ module Inst
   end
 
   for i in ['fint', 'ufint', 'int', 'float']
-    for j in ['add', 'sub', 'mul', 'div', 'pow', 'equ']
+    for j in ['add', 'sub', 'mul', 'div', 'pow']
       nullary_instructions.push "#{i}-#{j}"
     end
   end

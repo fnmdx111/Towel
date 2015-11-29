@@ -34,8 +34,7 @@ if __FILE__ == $0
               ['sub', '-'],
               ['mul', '*'],
               ['div', '/'],
-              ['pow', '**'],
-              ['equ', '=']]
+              ['pow', '**']]
       instn, funn = j
 
       make_inline_fun.call "#{funn}#{pfix}", ["#{ctg}-#{instn}"]
