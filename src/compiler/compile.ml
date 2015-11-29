@@ -406,7 +406,7 @@ and g_if ctx inst =
          | Ast.IfNEZ(ib) -> ib, if is_hungry then HJEZ(lbl) else JEZ(lbl)
          | Ast.IfT(ib) -> ib, if is_hungry then HJF(lbl) else JF(lbl)
          | Ast.IfF(ib) -> ib, if is_hungry then HJT(lbl) else JT(lbl)
-         | Ast.IfEmpty(ib) -> ib, if is_hungry then HJNE(lbl) else JNE(lbl)
+         | Ast.IfEmpty(ib) -> ib, JNE(lbl)
          | Ast.IfNonEmpty(ib) -> ib, if is_hungry then HJE(lbl) else JE(lbl)
 
   in let body, ins = parse inst
