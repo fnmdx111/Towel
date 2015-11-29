@@ -539,6 +539,8 @@ and g_word ctx is_body_ inst_ctx = function
 
   | WFunction(f) -> g_fun ctx inst_ctx f
 
+  | WPhony -> cone0 "push-phony"
+
   | WBind(b) -> g_bind ctx b
 
   | WImport(is) -> g_import ctx is

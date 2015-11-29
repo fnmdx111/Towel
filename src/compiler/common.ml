@@ -174,6 +174,7 @@ and word_stringify w =
   | WBind(b) -> _w (bind_stringify b) "bind"
   | WImport(is) -> "some imports"
   | WExport(ns) -> "some exports"
+  | WPhony -> "phony"
   | WAlType(alt) -> _w (altype_stringify alt) "al-type"
   | WIdle -> "idle"
   | WPhony -> "phony"
