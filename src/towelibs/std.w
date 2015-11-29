@@ -1,140 +1,146 @@
 push-scope
-make-fun 4u
+push-stack
+make-fun 5u
 bind 1u "+"
-jump 6u
+jump 7u
 fint-add
 shared-ret
-make-fun 9u
+make-fun 10u
 bind 2u "-"
-jump 11u
+jump 12u
 fint-sub
 shared-ret
-make-fun 14u
+make-fun 15u
 bind 3u "*"
-jump 16u
+jump 17u
 fint-mul
 shared-ret
-make-fun 19u
+make-fun 20u
 bind 4u "/"
-jump 21u
+jump 22u
 fint-div
 shared-ret
-make-fun 24u
+make-fun 25u
 bind 5u "**"
-jump 26u
+jump 27u
 fint-pow
 shared-ret
-make-fun 29u
+make-fun 30u
 bind 6u "="
-jump 31u
+jump 32u
 fint-equ
 shared-ret
-make-fun 34u
+make-fun 35u
 bind 7u "+u"
-jump 36u
+jump 37u
 ufint-add
 shared-ret
-make-fun 39u
+make-fun 40u
 bind 8u "-u"
-jump 41u
+jump 42u
 ufint-sub
 shared-ret
-make-fun 44u
+make-fun 45u
 bind 9u "*u"
-jump 46u
+jump 47u
 ufint-mul
 shared-ret
-make-fun 49u
+make-fun 50u
 bind 10u "/u"
-jump 51u
+jump 52u
 ufint-div
 shared-ret
-make-fun 54u
+make-fun 55u
 bind 11u "**u"
-jump 56u
+jump 57u
 ufint-pow
 shared-ret
-make-fun 59u
+make-fun 60u
 bind 12u "=u"
-jump 61u
+jump 62u
 ufint-equ
 shared-ret
-make-fun 64u
+make-fun 65u
 bind 13u "+f"
-jump 66u
+jump 67u
 float-add
 shared-ret
-make-fun 69u
+make-fun 70u
 bind 14u "-f"
-jump 71u
+jump 72u
 float-sub
 shared-ret
-make-fun 74u
+make-fun 75u
 bind 15u "*f"
-jump 76u
+jump 77u
 float-mul
 shared-ret
-make-fun 79u
+make-fun 80u
 bind 16u "/f"
-jump 81u
+jump 82u
 float-div
 shared-ret
-make-fun 84u
+make-fun 85u
 bind 17u "**f"
-jump 86u
+jump 87u
 float-pow
 shared-ret
-make-fun 89u
+make-fun 90u
 bind 18u "=f"
-jump 91u
+jump 92u
 float-equ
 shared-ret
-make-fun 94u
+make-fun 95u
 bind 19u "+i"
-jump 96u
+jump 97u
 int-add
 shared-ret
-make-fun 99u
+make-fun 100u
 bind 20u "-i"
-jump 101u
+jump 102u
 int-sub
 shared-ret
-make-fun 104u
+make-fun 105u
 bind 21u "*i"
-jump 106u
+jump 107u
 int-mul
 shared-ret
-make-fun 109u
+make-fun 110u
 bind 22u "/i"
-jump 111u
+jump 112u
 int-div
 shared-ret
-make-fun 114u
+make-fun 115u
 bind 23u "**i"
-jump 116u
+jump 117u
 int-pow
 shared-ret
-make-fun 119u
+make-fun 120u
 bind 24u "=i"
-jump 121u
+jump 122u
 int-equ
 shared-ret
-make-fun 124u
+make-fun 125u
 bind 25u "!print"
-jump 126u
+jump 127u
 show
 shared-ret
-make-fun 129u
+make-fun 130u
 bind 26u "!println"
-jump 133u
+jump 134u
 show
 push-lit '
 '
 show
 shared-ret
-make-fun 136u
+make-fun 137u
 bind 27u "!pop"
-jump 138u
+jump 139u
 pop
+shared-ret
+make-fun 142u
+bind 28u "!rev"
+jump 144u
+reverse
 shared-ret
 terminate

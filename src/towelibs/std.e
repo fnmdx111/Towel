@@ -25,3 +25,4 @@
 (!print 25u)
 (!println 26u)
 (!pop 27u)
+(!rev 28u)
