@@ -495,13 +495,28 @@ and g_seq ctx inst_ctx seq =
            in acc |~~| line (CLOSURE(ArgLit(VUFixedInt(nid)),
                                      ArgLit(VUFixedInt(esid)))))
          closure cnil
+
+  in let () =
+       if is_shared
+       then ()
+       else if ctx.is_body
+       then ()
+       else global_snippets := seq_insts::(!global_snippets)
+
+  in let body_main = if is_shared
+       then seq_insts
+       else if ctx.is_body
+       then seq_insts
+       else cnil
+       (* We cannot put shared seq_insts in global_snippets like functions,
+          because shared sequences don't have return instruction to go back
+          to where we began. *)
+
   in inst_ctx.pre (Word(Ast.WSequence(seq)))
      |~~| (opt_cs lead_inst)
      |~~| inst_ctx.post (Word(Ast.WSequence(seq)))
      |~~| closure_insts
-     |~~| seq_insts (* We cannot put seq_insts in global_snippets like functions,
-                       because sequences might not necessarily have a return
-                       instruction so that we can return to where we began. *)
+     |~~| body_main
 
 and g_fun ctx inst_ctx fun_ =
   let _UID = uniq64 ()

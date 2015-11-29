@@ -168,7 +168,6 @@ let exec should_trace should_warn insts =
       let nf = OVFunction(to_pc st,
                           flags.curmod.id, Hashtbl.create 512, false)
       in begin
-        dspush dss nf;
         __exec (push_cur_ip nf) {flags with is_tail_recursive_call = false}
           (to_pc st)
       end
@@ -332,8 +331,10 @@ Something is wrong with the compiler.");
         __exec ctxs flags next_ip
       end
 
-    | REVERSE(ArgLit(VUFixedInt(_n))) -> trace "reversing";
-      let n = Uint64.to_int _n
+    | REVERSE -> trace "reversing";
+      let n = Uint64.to_int (match dspop dss with
+            OVUFixedInt(u) -> u
+          | _ -> failwith "Non-compatible type for reverse.")
       in let end_ = (BatDynArray.length (BatDynArray.last dss)) - 1
       in let st = if end_ - n + 1 >= 0 then end_ - n + 1 else 0
       in let rec _swap_them_all idx1 idx2 =
