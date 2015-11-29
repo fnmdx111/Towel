@@ -52,7 +52,7 @@ let fn_digest = src_content
                        |> Sha1.to_hex
                        |> fun x -> String.sub x 0 9;;
 
-let asm, exp_scope =
+let ir, exp_scope =
   let in_src, fn = src_content, src_file
 
   in let sw, has_sw_preamble = Switches.parse(in_src)
@@ -68,7 +68,7 @@ let asm, exp_scope =
 
     let cst = Parser.sentence Scanner.token lexbuf
     in if (* type checking *) true
-    then Asm.assemble cst fn_digest sw
+    then Compile.compile cst fn_digest sw
     else raise TypeError
 
   with
@@ -83,12 +83,8 @@ let asm, exp_scope =
     Printf.printf "type error\n"; exit 0
 
 in let text =
-     if raw_asm then asm
-     else let lexbuf = Lexing.from_string asm
-       in let cst = Tasm_parser.asm Tasm_scanner.token lexbuf
-       in cst
-          |> Unlabel.unlabel
-          |> Tasm_stringify.p_asm
+     Tasm_stringify.p_asm (if raw_asm then ir
+                           else Assemble.assemble ir)
 
 in let () =
      let compose_exp_file x =

@@ -10,9 +10,9 @@ module Inst
   nullary_instructions = [
     'push-phony',
     'push-scope', 'pop-scope',
-    'make-backquote',
     'end-list', 'end-tuple',
-    'pop',
+    'pop', 'push-phony',
+    'list-hd', 'list-tl',
     'unpack',
     'push-stack', 'share-stack', 'pop-stack',
     'ret', 'shared-ret',
@@ -21,39 +21,32 @@ module Inst
     'type',
     'not-implemented',
     'idle',
-    'backquote-name',
-    'backquote',
-    'patbackquote',
     'terminate',
+    'push-lnil',
+    'push-tnil',
+    'reverse',
+    'pack',
   ]
 
   unary_instructions = [
     'bind', 'fun-arg',
-    'pack',
     'jump',
     'match',
     'hmatch',
     'rjump',
+    'push-lit',
+    'make-fun', 'push-fun',
   ]
 
   binary_instructions = [
-    'push-name', 'make-name', 'patpush-name', 'push-tail-name', 'patpush-tail-name',
-    'import-explicit', 'import-implicit'
+    'eval-and-push', 'push-name', 'closure',
+    'eval-tail',
+    'import-explicit', 'import-implicit',
   ]
 
   multiarity_instructions = [
   ]
 
-  for i in ['make', 'push', 'patpush']
-    unary_instructions.push "#{i}-lit"
-
-    for j in ['list', 'tuple']
-      nullary_instructions.push "#{i}-#{j}"
-    end
-    for j in ['fun']
-      unary_instructions.push "#{i}-#{j}"
-    end
-  end
 
   inst_that_supports_label_as_arguments = Set.new [
     'jump', 'match', 'hmatch'
@@ -72,7 +65,7 @@ module Inst
   end
 
   for i in ['fint', 'ufint', 'int', 'float']
-    for j in ['add', 'sub', 'mul', 'div', 'pow', 'equ']
+    for j in ['add', 'sub', 'mul', 'div', 'pow']
       nullary_instructions.push "#{i}-#{j}"
     end
   end

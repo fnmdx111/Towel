@@ -22,11 +22,11 @@ cmxn = lambda n: _c(n, 'cmx')
 def build(ctx):
     mlis = ['ast', 'tasm_ast']
     lib_mls = ['exc', 'common', 'scoping', 'cseg', 'switches', 'config',
-               'unlabel', 'tasm_stringify', ]
+               'assemble', 'tasm_stringify', ]
     aff_mlis = ['parser', 'tasm_parser']
     non_exec_mls = ['parser', 'scanner',
                     'tasm_parser', 'tasm_scanner',
-                    'exp', 'asm']
+                    'exp', 'compile']
     target_mls = ['weave']
 
     external_libs = ','.join(ctx.env.LIBS)

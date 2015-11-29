@@ -1,6 +1,6 @@
 require 'stringio'
 
-def gen_make_inline_fun(w, e, st_line_=1, nid_=1)
+def gen_make_inline_fun(w, e, st_line_=2, nid_=1)
   st_line = st_line_
   nid = nid_
 
@@ -26,6 +26,7 @@ if __FILE__ == $0
   make_inline_fun = gen_make_inline_fun w, e
 
   w.puts 'push-scope'
+  w.puts 'push-stack'
 
   for i in [['fint', ''], ['ufint', 'u'], ['float', 'f'], ['int', 'i']]
     ctg, pfix = i
@@ -33,8 +34,7 @@ if __FILE__ == $0
               ['sub', '-'],
               ['mul', '*'],
               ['div', '/'],
-              ['pow', '**'],
-              ['equ', '=']]
+              ['pow', '**']]
       instn, funn = j
 
       make_inline_fun.call "#{funn}#{pfix}", ["#{ctg}-#{instn}"]
@@ -44,6 +44,7 @@ if __FILE__ == $0
   make_inline_fun.call '!print', ['show']
   make_inline_fun.call '!println', ['show', "push-lit '\n'", 'show']
   make_inline_fun.call '!pop', ['pop']
+  make_inline_fun.call '!rev', ['reverse']
 
   w.puts 'terminate'
 

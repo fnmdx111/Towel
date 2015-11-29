@@ -21,12 +21,12 @@ cmxn = lambda n: _c(n, 'cmx')
 
 def build(ctx):
     mlis = ['t', 'tasm_ast']
-    lib_mls = ['exc', 'scoping', 'common', 'config', 'tasm_stringify']
+    lib_mls = ['exc', 'nstack', 'common', 'config', 'tasm_stringify']
     aff_mlis = ['tasm_parser']
-    non_exec_mls = ['tasm_parser', 'tasm_scanner', 'ort']
+    non_exec_mls = ['tasm_parser', 'tasm_scanner', 'dscoping']
     some_more_mls0 = ['vm_t']
     some_more_mls1 = ['imp', 'jumps']
-    some_more_mls2 = ['vm']
+    some_more_mls2 = ['nvm']
     target_mls = ['tvm']
 
     external_libs = ','.join(ctx.env.TVM_LIBS)
