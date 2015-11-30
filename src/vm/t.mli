@@ -20,10 +20,9 @@ and value_t = OVInt of Big_int.big_int
             | OVFloat of float
             | OVList of value_t list
             | OVPhony
-            | OVLNil
             | OVFunction of line_no_t * module_id_t * closure_t * bool
             | OVTuple of value_t list
-            | OVTNil
+            | OVNil
             | OVType of type_hint_t
             | OVAlType of unit
             | OVAlTypeValue of unit * unit;;
