@@ -172,9 +172,7 @@ let exec should_trace should_warn insts =
             in let tos_list = dval dss vidx
             in let new_tos_list =
                  match tos_list with
-                   OVLNil -> OVList([nv])
-                 | OVList(l) -> OVList(nv::l)
-                 | OVTNil -> OVTuple([nv])
+                   OVList(l) -> OVList(nv::l)
                  | OVTuple(l) -> OVTuple(nv::l)
                  | _ -> failwith "Cannot append value to non-list values."
             in let the_ds = BatDynArray.get dss (snd vidx)
@@ -182,10 +180,10 @@ let exec should_trace should_warn insts =
       __exec ctxs flags next_ip
 
     | PUSH_LNIL -> trace "pushing lnil";
-      push_new_list OVLNil
+      push_new_list (OVList([]))
 
     | PUSH_TNIL -> trace "pushing tnil";
-      push_new_list OVTNil
+      push_new_list (OVTuple([]))
 
     | END_LIST -> trace "ending list";
       end_list ()
@@ -210,10 +208,16 @@ let exec should_trace should_warn insts =
     | PUSH_FUN(ArgLit(VUFixedInt(st))) -> trace "pushing function";
       let nf = OVFunction(to_pc st,
                           flags.curmod.id, Hashtbl.create 512, false)
-      in begin
-        __exec (push_cur_ip nf) {flags with is_tail_recursive_call = false}
+      in __exec (push_cur_ip nf) {flags with is_tail_recursive_call = false}
           (to_pc st)
-      end
+
+    | INVOKE -> trace "invoking tos";
+      let f = dspop dss
+      in (match f with
+            OVFunction(st, _, _, _) ->
+            __exec (push_cur_ip f)
+              {flags with is_tail_recursive_call = false} st
+          | _ -> failwith "invoking non-function value")
 
     | SUB -> trace "substracting";
       let v1 = dspop dss
@@ -357,7 +361,7 @@ Something is wrong with the compiler.");
                (* The difference with non tail recursive functions is that
                   we steal arguments from different stacks. *)
                else ();
-               true, OVLNil
+               true, OVNil
              end else false, dspop dss
            else let second_level_stack = snd_ds dss
              in if dis_empty second_level_stack <> 0
@@ -365,7 +369,7 @@ Something is wrong with the compiler.");
                if dis_empty second_level_stack = 2
                then remove_phony_if_any second_level_stack
                else ();
-               true, OVLNil
+               true, OVNil
              end else
                false, dpop second_level_stack
 
@@ -473,9 +477,8 @@ Something is wrong with the compiler.");
             | OVString(_)
             | OVFloat(_)
             | OVList(_)
-            | OVLNil
             | OVTuple(_)
-            | OVTNil
+            | OVNil
             | OVType(_) ->
               dspush dss v;
               __exec ctxs flags next_ip

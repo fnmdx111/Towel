@@ -25,6 +25,7 @@ module Inst
     'push-tnil',
     'reverse',
     'pack',
+    'invoke',
     'add', 'sub', 'mul', 'div', 'pow',
     'and', 'or', 'xor', 'not', 'shl', 'shr', 'shll',
   ]

@@ -47,6 +47,7 @@ if __FILE__ == $0
   make_inline_fun.call '!pop', ['pop']
   make_inline_fun.call '!rev', ['reverse']
   make_inline_fun.call '!probe', ['dint']
+  make_inline_fun.call '!invoke', ['invoke']
 
   w.puts 'terminate'
 
