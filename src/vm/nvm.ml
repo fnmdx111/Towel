@@ -24,8 +24,8 @@ ignore (module_id_tick ());; (* tick for _MAIN_MODULE_ID *)
 let tos = List.hd;;
 let ntos = List.tl;;
 
-let ctxs_ = [{mod_id = _SELF_MODULE_ID; ret_addr = -1;
-              curfun = OVFunction(-1, _SELF_MODULE_ID, Hashtbl.create 1,
+let ctxs_ = [{mod_id = _MAIN_MODULE_ID; ret_addr = -1;
+              curfun = OVFunction(-1, _MAIN_MODULE_ID, Hashtbl.create 1,
                                   false)}];;
 
 let show_ctx c =
@@ -134,6 +134,17 @@ let exec should_trace should_warn insts =
     (* `dsp' points to the next slot of TOS. *)
     in let tos_idx () = ((dsp (BatDynArray.last dss)),
                          (dsp dss))
+
+    in let push_new_list nil_value = dspush dss nil_value;
+         __exec ctxs {flags with list_make_stack =
+                                   (tos_idx ())::flags.list_make_stack}
+           next_ip
+
+    in let end_list () =
+         __exec ctxs {flags with list_make_stack =
+                                   (tos_idx ())::flags.list_make_stack}
+           next_ip
+
     in let inst =
          match line with
            Line(_, i) -> i
@@ -155,10 +166,32 @@ let exec should_trace should_warn insts =
         | VUFixedInt(uf) -> OVUFixedInt(uf)
         | VFixedInt(f) -> OVFixedInt(f)
         | VAtom(a) -> OVAtom(a)
-      in begin
-        dspush dss nv;
-        __exec ctxs flags next_ip
-      end
+      in (if List.length flags.list_make_stack = 0
+          then dspush dss nv
+          else let vidx = tos flags.list_make_stack
+            in let tos_list = dval dss vidx
+            in let new_tos_list =
+                 match tos_list with
+                   OVLNil -> OVList([nv])
+                 | OVList(l) -> OVList(nv::l)
+                 | OVTNil -> OVTuple([nv])
+                 | OVTuple(l) -> OVTuple(nv::l)
+                 | _ -> failwith "Cannot append value to non-list values."
+            in let the_ds = BatDynArray.get dss (snd vidx)
+            in BatDynArray.set the_ds (fst vidx) new_tos_list);
+      __exec ctxs flags next_ip
+
+    | PUSH_LNIL -> trace "pushing lnil";
+      push_new_list OVLNil
+
+    | PUSH_TNIL -> trace "pushing tnil";
+      push_new_list OVTNil
+
+    | END_LIST -> trace "ending list";
+      end_list ()
+
+    | END_TUPLE -> trace "ending tuple";
+      end_list ()
 
     | POP -> trace "popping";
       (try
