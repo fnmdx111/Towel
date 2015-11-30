@@ -3,124 +3,79 @@ push-stack
 make-fun 5u
 bind 1u "+"
 jump 7u
-fint-add
+add
 shared-ret
 make-fun 10u
 bind 2u "-"
 jump 12u
-fint-sub
+sub
 shared-ret
 make-fun 15u
 bind 3u "*"
 jump 17u
-fint-mul
+mul
 shared-ret
 make-fun 20u
 bind 4u "/"
 jump 22u
-fint-div
+div
 shared-ret
 make-fun 25u
 bind 5u "**"
 jump 27u
-fint-pow
+pow
 shared-ret
 make-fun 30u
-bind 6u "+u"
+bind 6u "To-fint"
 jump 32u
-ufint-add
+to-fint
 shared-ret
 make-fun 35u
-bind 7u "-u"
+bind 7u "To-ufint"
 jump 37u
-ufint-sub
+to-ufint
 shared-ret
 make-fun 40u
-bind 8u "*u"
+bind 8u "To-int"
 jump 42u
-ufint-mul
+to-int
 shared-ret
 make-fun 45u
-bind 9u "/u"
+bind 9u "To-float"
 jump 47u
-ufint-div
+to-float
 shared-ret
 make-fun 50u
-bind 10u "**u"
+bind 10u "To-str"
 jump 52u
-ufint-pow
+to-str
 shared-ret
 make-fun 55u
-bind 11u "+f"
+bind 11u "!print"
 jump 57u
-float-add
-shared-ret
-make-fun 60u
-bind 12u "-f"
-jump 62u
-float-sub
-shared-ret
-make-fun 65u
-bind 13u "*f"
-jump 67u
-float-mul
-shared-ret
-make-fun 70u
-bind 14u "/f"
-jump 72u
-float-div
-shared-ret
-make-fun 75u
-bind 15u "**f"
-jump 77u
-float-pow
-shared-ret
-make-fun 80u
-bind 16u "+i"
-jump 82u
-int-add
-shared-ret
-make-fun 85u
-bind 17u "-i"
-jump 87u
-int-sub
-shared-ret
-make-fun 90u
-bind 18u "*i"
-jump 92u
-int-mul
-shared-ret
-make-fun 95u
-bind 19u "/i"
-jump 97u
-int-div
-shared-ret
-make-fun 100u
-bind 20u "**i"
-jump 102u
-int-pow
-shared-ret
-make-fun 105u
-bind 21u "!print"
-jump 107u
 show
 shared-ret
-make-fun 110u
-bind 22u "!println"
-jump 114u
+make-fun 60u
+bind 12u "!println"
+jump 64u
 show
 push-lit '
 '
 show
 shared-ret
-make-fun 117u
-bind 23u "!pop"
-jump 119u
+make-fun 67u
+bind 13u "!pop"
+jump 69u
 pop
 shared-ret
-make-fun 122u
-bind 24u "!rev"
-jump 124u
+make-fun 72u
+bind 14u "!rev"
+jump 74u
 reverse
+shared-ret
+make-fun 77u
+bind 15u "!probe"
+jump 79u
+dint
 shared-ret
 terminate

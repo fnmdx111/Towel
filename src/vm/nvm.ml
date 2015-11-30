@@ -182,14 +182,39 @@ let exec should_trace should_warn insts =
           (to_pc st)
       end
 
-    | FINT_SUB -> trace "fint substracting";
+    | SUB -> trace "substracting";
       let v1 = dspop dss
       in let v2 = dspop dss
       in dspush dss (match v1, v2 with
           (* [| v2 | v1 |], when evaluating v2 v1 -, we want v2 - v1. *)
             OVFixedInt(i), OVFixedInt(j) ->
             OVFixedInt(Int64.sub j i)
-          | _ -> failwith "Incompatible type to do FINT substraction.");
+          | OVUFixedInt(i), OVUFixedInt(j) ->
+            OVUFixedInt(Uint64.sub j i)
+          | OVFloat(i), OVFloat(j) ->
+            OVFloat(j -. i)
+          | OVInt(i), OVInt(j) ->
+            OVInt(Big_int.sub_big_int j i)
+          | _ -> failwith "Incompatible type to do substraction.");
+      __exec ctxs flags next_ip
+
+    | TO_FINT -> trace "casting to fint";
+      let v = dspop dss
+      in dspush dss (OVFixedInt (match v with
+            OVFixedInt(i) ->
+            tvm_warning "casting from fint to fint!";
+            i
+          | OVUFixedInt(i) ->
+            Int64.of_uint64 i
+          | OVFloat(i) ->
+            Int64.of_float i
+          | OVString(s) ->
+            (* It is really not casting here, but you get the idea. *)
+            Int64.of_string s
+          | OVFunction(st, _, _, _) ->
+            (* Leave it for debugging purposes. *)
+            Int64.of_int st
+          | _ -> failwith "casting unsupported value to fint."));
       __exec ctxs flags next_ip
 
     | JUMP(ArgLit(VUFixedInt(p))) -> trace "jumping";

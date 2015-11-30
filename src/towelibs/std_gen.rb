@@ -28,23 +28,25 @@ if __FILE__ == $0
   w.puts 'push-scope'
   w.puts 'push-stack'
 
-  for i in [['fint', ''], ['ufint', 'u'], ['float', 'f'], ['int', 'i']]
-    ctg, pfix = i
-    for j in [['add', '+'],
-              ['sub', '-'],
-              ['mul', '*'],
-              ['div', '/'],
-              ['pow', '**']]
-      instn, funn = j
+  for i in [['add', '+'],
+            ['sub', '-'],
+            ['mul', '*'],
+            ['div', '/'],
+            ['pow', '**']]
+    instn, funn = i
 
-      make_inline_fun.call "#{funn}#{pfix}", ["#{ctg}-#{instn}"]
-    end
+    make_inline_fun.call "#{funn}", ["#{instn}"]
+  end
+
+  for i in ['fint', 'ufint', 'int', 'float', 'str']
+    make_inline_fun.call "To-#{i}", ["to-#{i}"]
   end
 
   make_inline_fun.call '!print', ['show']
   make_inline_fun.call '!println', ['show', "push-lit '\n'", 'show']
   make_inline_fun.call '!pop', ['pop']
   make_inline_fun.call '!rev', ['reverse']
+  make_inline_fun.call '!probe', ['dint']
 
   w.puts 'terminate'
 

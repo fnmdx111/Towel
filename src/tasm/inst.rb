@@ -8,7 +8,6 @@ require 'set'
 
 module Inst
   nullary_instructions = [
-    'push-phony',
     'push-scope', 'pop-scope',
     'end-list', 'end-tuple',
     'pop', 'push-phony',
@@ -26,6 +25,8 @@ module Inst
     'push-tnil',
     'reverse',
     'pack',
+    'add', 'sub', 'mul', 'div', 'pow',
+    'and', 'or', 'xor', 'not', 'shl', 'shr', 'shll',
   ]
 
   unary_instructions = [
@@ -47,7 +48,6 @@ module Inst
   multiarity_instructions = [
   ]
 
-
   inst_that_supports_label_as_arguments = Set.new [
     'jump', 'match', 'hmatch'
   ]
@@ -64,16 +64,8 @@ module Inst
     inst_that_supports_label_as_arguments.add "hj#{i}"
   end
 
-  for i in ['fint', 'ufint', 'int', 'float']
-    for j in ['add', 'sub', 'mul', 'div', 'pow']
-      nullary_instructions.push "#{i}-#{j}"
-    end
-  end
-
-  for i in ['fint', 'ufint']
-    for j in ['and', 'or', 'xor', 'not', 'shl', 'shr', 'shll']
-      nullary_instructions.push "#{i}-#{j}"
-    end
+  for i in ['fint', 'ufint', 'int', 'float', 'str']
+    nullary_instructions.push "to-#{i}"
   end
 
   NUINST = nullary_instructions
