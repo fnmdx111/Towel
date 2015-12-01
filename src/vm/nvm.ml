@@ -127,6 +127,8 @@ let exec should_trace should_warn insts =
          in let module_ = {id = abs_uid;
                            insts = w_insts;
                            imports = Hashtbl.create 512;
+                           name_id_tick = (let x = Common.counter ()
+                                           in fun () -> vm_name (x ()));
                            exs = Hashtbl.create 512;
                            scps = ref []}
          in (Hashtbl.replace modules abs_uid module_);
@@ -169,6 +171,14 @@ let exec should_trace should_warn insts =
          __exec ctxs {flags with list_make_stack =
                                    ntos flags.list_make_stack}
            next_ip
+
+    in let tick_name required_name =
+         let n = curmod.name_id_tick ()
+         in if should_trace
+         then if n = required_name
+           then trace "module name ticker agrees with asm"
+           else tvm_warning "module name ticker does not agree with asm"
+         else ()
 
     in let inst =
          match line with
@@ -411,6 +421,7 @@ Something is wrong with the compiler.");
 
     | FUN_ARG(ArgLit(VUFixedInt(_nid))) -> trace "fun argumenting";
       let nid = vm_name _nid
+      in let () = tick_name nid
       in let f = (tos ctxs).curfun
       in let remove_phony_if_any ds =
            let r = dis_empty ds
@@ -567,7 +578,8 @@ Something is wrong with the compiler.");
       | BIND(ArgLit(VUFixedInt(uid))) -> trace "binding";
         trace (Printf.sprintf "(%d,%d)" (fst @@ tos_idx ()) (snd @@ tos_idx ()));
         npush !(curmod.scps) (vm_name uid) (tos_idx ());
-        __exec ctxs flags next_ip
+        let () = tick_name (vm_name uid)
+        in __exec ctxs flags next_ip
 
       | IDLE -> trace "idling";
         __exec ctxs flags next_ip
@@ -617,12 +629,15 @@ Something is wrong with the compiler.");
             dspurge dss
           in begin
             if (tos flags.import_stack) = 1
-            then Hashtbl.iter (fun name value ->
-                let top_of_tmod_scps = tos (!(tmod.scps))
-                in let new_vidx =
-                     dspush dss value; tos_idx ()
-                in Hashtbl.replace top_of_tmod_scps name new_vidx)
-                curmod.exs
+            then let sorted_ext_scope = List.sort (fun x y ->
+                Pervasives.compare (fst x) (fst y))
+                @@ Hashtbl.fold (fun name value acc -> (name, value)::acc)
+                  curmod.exs []
+              in List.iter (fun x ->
+                  let _, value = x
+                  in let new_vidx = dspush dss value; tos_idx ()
+                  in npush !(tmod.scps) (tmod.name_id_tick ()) new_vidx)
+                sorted_ext_scope
                 (* If it is implicit import, we have to copy whatever is in
                    the exs table of current module to the top scope of module
                    that imported this module. Beside that, we have to copy
@@ -646,6 +661,8 @@ Something is wrong with the compiler.");
     {id = _MAIN_MODULE_ID;
      insts = insts;
      imports = Hashtbl.create 64;
+     name_id_tick = (let x = Common.counter ()
+                     in fun () -> vm_name (x ()));
      exs = Hashtbl.create 1;
      scps = ref []};
 
