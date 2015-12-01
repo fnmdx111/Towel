@@ -4,7 +4,7 @@ open Stdint;;
 open Dscoping;;
 open Nstack;;
 
-type ctx_t = {mod_id: module_id_t; ret_addr: line_no_t; curfun: value_t};;
+type ctx_t = {mod_id: module_id_t; ret_addr: line_no_t; curfun: fun_t};;
 type module_t = {id: module_id_t; insts: line array;
                  exs: (name_t, value_t) Hashtbl.t;
                  imports: (module_id_t, module_id_t) Hashtbl.t;
@@ -25,7 +25,7 @@ type flags_t = {is_tail_recursive_call: bool;
                 is_main: bool; is_init_ext_mod: bool;
                 import_stack: int list; (* 1 for implicit; 2 for explicit;
                                            0 for no *)
-                list_make_stack: vidx_t list; tuple_make_stack: vidx_t list;
+                list_make_stack: value_t list ref list;
                 curmod: module_t;
                 dss: value_t dstack_t dstack_t;
                 is_stepping: bool};;

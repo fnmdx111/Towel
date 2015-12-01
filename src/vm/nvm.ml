@@ -14,7 +14,7 @@ open Common;;
 let vm_name = Uint64.to_int;;
 let to_pc = Uint64.to_int;;
 
-let modules:module_table_t = Hashtbl.create 512;;
+let modules:module_table_t = Hashtbl.create 64;;
 
 let _MAIN_MODULE_ID = Uint64.one;;
 let _SELF_MODULE_ID = Uint64.zero;;
@@ -25,8 +25,11 @@ let tos = List.hd;;
 let ntos = List.tl;;
 
 let ctxs_ = [{mod_id = _MAIN_MODULE_ID; ret_addr = -1;
-              curfun = OVFunction(-1, _MAIN_MODULE_ID, Hashtbl.create 1,
-                                  false)}];;
+              curfun = {st = -1;
+                        mod_id = _MAIN_MODULE_ID;
+                        closure = Hashtbl.create 1;
+                        is_partial = false;
+                        args = Hashtbl.create 1}}];;
 
 let show_ctx c =
   fprintf stderr "{ctx: %s,%d}" (Uint64.to_string c.mod_id) c.ret_addr;;
@@ -53,14 +56,14 @@ let rec string_of_value v =
   | OVString(s) -> s
   | OVList(rs) ->
     sprintf "[%s]"
-      (String.concat " " (List.map string_of_value rs))
+      (String.concat " " (List.map string_of_value !rs))
   | OVTuple(rs) ->
     sprintf "[@ %s]"
-      (String.concat " " (List.map string_of_value rs))
-  | OVFunction(st, mod_id, cl, partial) ->
+      (String.concat " " (List.map string_of_value !rs))
+  | OVFunction(f) ->
     sprintf "**%s: %d,%s,<closure set>"
-      (if partial then "partial-fun" else "fun")
-      st (Uint64.to_string mod_id)
+      (if f.is_partial then "partial-fun" else "fun")
+      f.st (Uint64.to_string f.mod_id)
   | _ -> "**abstract value";;
 
 let exec should_trace should_warn insts =
@@ -103,6 +106,12 @@ let exec should_trace should_warn insts =
       in let ret = dspop dss
       in let tmod = Hashtbl.find modules tctx.mod_id
       in begin
+        Hashtbl.iter (fun n _ ->
+            Hashtbl.remove tctx.curfun.closure (n, curmod.id))
+          tctx.curfun.args;
+        (* Remove all the stolen argument from closure. *)
+        Hashtbl.clear tctx.curfun.args;
+        (* Forget about all the things I've stolen. *)
         dspurge dss; (* Wipe out current stack for GC. *)
         dspush dss ret; (* Copy return value to caller's dss. *)
         (* If we purge (and pop) the current stack then copy the return value
@@ -124,8 +133,10 @@ let exec should_trace should_warn insts =
          (Hashtbl.replace curmod.imports rel_uid abs_uid);
          (* Update the imports proxy for mapping from rel to abs. *)
          (__exec
-            (push_cur_ip (OVFunction(0, curmod.id, Hashtbl.create 1,
-                                     false)))
+            (push_cur_ip {st = 0; mod_id = curmod.id;
+                          closure = Hashtbl.create 1;
+                          is_partial = false;
+                          args = Hashtbl.create 32})
             {flags with import_stack = type_::flags.import_stack;
                         is_init_ext_mod = true;
                         curmod = module_}
@@ -135,14 +146,26 @@ let exec should_trace should_warn insts =
     in let tos_idx () = ((dsp (BatDynArray.last dss)),
                          (dsp dss))
 
-    in let push_new_list nil_value = dspush dss nil_value;
-         __exec ctxs {flags with list_make_stack =
-                                   (tos_idx ())::flags.list_make_stack}
-           next_ip
+    in let push_new_list type_ =
+         (* 1 for list, 2 for tuple *)
+         let nr = ref []
+         in let nv = if type_ = 1 then OVList(nr) else OVTuple(nr)
+         in if List.length flags.list_make_stack = 0
+         then begin
+           dspush dss nv;
+           __exec ctxs {flags with list_make_stack =
+                                     nr::flags.list_make_stack}
+             next_ip
+         end else let cur_ref = tos flags.list_make_stack
+           in let () = cur_ref := nv::(!cur_ref)
+           in (* No push operation in this situation. *)
+           __exec ctxs {flags with list_make_stack =
+                                        nr::flags.list_make_stack}
+             next_ip
 
     in let end_list () =
          __exec ctxs {flags with list_make_stack =
-                                   (tos_idx ())::flags.list_make_stack}
+                                   ntos flags.list_make_stack}
            next_ip
 
     in let inst =
@@ -168,22 +191,15 @@ let exec should_trace should_warn insts =
         | VAtom(a) -> OVAtom(a)
       in (if List.length flags.list_make_stack = 0
           then dspush dss nv
-          else let vidx = tos flags.list_make_stack
-            in let tos_list = dval dss vidx
-            in let new_tos_list =
-                 match tos_list with
-                   OVList(l) -> OVList(nv::l)
-                 | OVTuple(l) -> OVTuple(nv::l)
-                 | _ -> failwith "Cannot append value to non-list values."
-            in let the_ds = BatDynArray.get dss (snd vidx)
-            in BatDynArray.set the_ds (fst vidx) new_tos_list);
+          else let cur_ref = tos flags.list_make_stack
+            in cur_ref := nv::(!cur_ref));
       __exec ctxs flags next_ip
 
     | PUSH_LNIL -> trace "pushing lnil";
-      push_new_list (OVList([]))
+      push_new_list 1
 
     | PUSH_TNIL -> trace "pushing tnil";
-      push_new_list (OVTuple([]))
+      push_new_list 2
 
     | END_LIST -> trace "ending list";
       end_list ()
@@ -197,26 +213,35 @@ let exec should_trace should_warn insts =
          __exec ctxs flags next_ip
        with PhonyEmptyStack -> failwith "popping from empty stack; phony.")
 
-    | MAKE_FUN(ArgLit(VUFixedInt(st))) -> trace "making function";
-      let nf = OVFunction(to_pc st,
-                          flags.curmod.id, Hashtbl.create 512, false)
+    | PUSH_FUN(ArgLit(VUFixedInt(st))) -> trace "making function";
+      let nf = OVFunction({
+          st = to_pc st;
+          mod_id = flags.curmod.id;
+          closure = Hashtbl.create 32;
+          is_partial = false;
+          args = Hashtbl.create 32
+        })
       in begin
         dspush dss nf;
         __exec ctxs flags next_ip
       end
 
-    | PUSH_FUN(ArgLit(VUFixedInt(st))) -> trace "pushing function";
-      let nf = OVFunction(to_pc st,
-                          flags.curmod.id, Hashtbl.create 512, false)
-      in __exec (push_cur_ip nf) {flags with is_tail_recursive_call = false}
-          (to_pc st)
+    | CALL(ArgLit(VUFixedInt(st))) -> trace "pushing function";
+      let nfrec = {st = to_pc st;
+                   mod_id = flags.curmod.id;
+                   closure = Hashtbl.create 32;
+                   is_partial = false;
+                   args = Hashtbl.create 32}
+      in __exec (push_cur_ip nfrec)
+        {flags with is_tail_recursive_call = false}
+        (to_pc st)
 
     | INVOKE -> trace "invoking tos";
       let f = dspop dss
       in (match f with
-            OVFunction(st, _, _, _) ->
-            __exec (push_cur_ip f)
-              {flags with is_tail_recursive_call = false} st
+            OVFunction(frec) ->
+            __exec (push_cur_ip frec)
+              {flags with is_tail_recursive_call = false} frec.st
           | _ -> failwith "invoking non-function value")
 
     | SUB -> trace "substracting";
@@ -248,9 +273,9 @@ let exec should_trace should_warn insts =
           | OVString(s) ->
             (* It is really not casting here, but you get the idea. *)
             Int64.of_string s
-          | OVFunction(st, _, _, _) ->
+          | OVFunction(frec) ->
             (* Leave it for debugging purposes. *)
-            Int64.of_int st
+            Int64.of_int frec.st
           | _ -> failwith "casting unsupported value to fint."));
       __exec ctxs flags next_ip
 
@@ -324,11 +349,11 @@ let exec should_trace should_warn insts =
       trace "adding to closure";
       let nid = vm_name _nid
       in (match dstop dss with
-            OVFunction(_, _, closure, _) ->
+            OVFunction(f) ->
             if mid = _SELF_MODULE_ID
-            then Hashtbl.replace closure (nid, curmod.id)
+            then Hashtbl.replace f.closure (nid, curmod.id)
                 (dval dss (nlookup !(curmod.scps) nid))
-            else Hashtbl.replace closure (nid, abs_mod_id mid)
+            else Hashtbl.replace f.closure (nid, abs_mod_id mid)
                 (Hashtbl.find
                    (Hashtbl.find modules (abs_mod_id mid)).exs
                    nid)
@@ -338,11 +363,7 @@ Something is wrong with the compiler.");
 
     | FUN_ARG(ArgLit(VUFixedInt(_nid))) -> trace "fun argumenting";
       let nid = vm_name _nid
-      in let st, mod_id, closure, partialized = match (tos ctxs).curfun with
-            OVFunction(st, mod_id, closure, partialized)
-            -> st, mod_id, closure, partialized
-        | _ -> failwith "Not possible."
-
+      in let f = (tos ctxs).curfun
       in let remove_phony_if_any ds =
            let r = dis_empty ds
            in if r = 1
@@ -351,6 +372,9 @@ Something is wrong with the compiler.");
            then ignore (dpop ds)
 
       in let steal_arg () =
+           Hashtbl.replace f.args nid 1;
+           (* Make a note that we stole this argument, and are going to
+              erase it from the closure set after we exit this function. *)
            if flags.is_tail_recursive_call
            then if dsis_empty dss <> 0
              then begin
@@ -374,9 +398,9 @@ Something is wrong with the compiler.");
                false, dpop second_level_stack
 
       in let is_partial, stolen_arg =
-           if partialized
-           then if Hashtbl.mem closure (nid, curmod.id)
-             then false, Hashtbl.find closure (nid, curmod.id)
+           if f.is_partial
+           then if Hashtbl.mem f.closure (nid, curmod.id)
+             then false, Hashtbl.find f.closure (nid, curmod.id)
              (* We found what we want in the closure set. Just get the
                 argument from it.
 
@@ -388,18 +412,20 @@ Something is wrong with the compiler.");
            else steal_arg ()
       in if is_partial
       then begin
-        let new_closure = Hashtbl.copy closure
+        let new_closure = Hashtbl.copy f.closure
         in Hashtbl.iter (fun name idx -> Hashtbl.replace new_closure
                             (name, curmod.id)
                             (* Fun-args are bound by default in current
                                module. *)
                             (dval dss idx))
           (tos !(curmod.scps));
-        let nf = OVFunction(st, mod_id, new_closure, true)
+        let nf = OVFunction({f with closure = new_closure;
+                                    is_partial = true;
+                                    args = Hashtbl.create 32})
         in dspush dss nf;
         return ()
       end else begin
-        Hashtbl.replace closure (nid, curmod.id) stolen_arg;
+        Hashtbl.replace f.closure (nid, curmod.id) stolen_arg;
         __exec ctxs flags next_ip
       end
 
@@ -422,12 +448,10 @@ Something is wrong with the compiler.");
       trace "tail recursive call";
       let nid = vm_name _nid
       in let v = if mid = _SELF_MODULE_ID
-           then match (tos ctxs).curfun with
-               OVFunction(_, _, closure, _) ->
-               (try dval dss (nlookup !(curmod.scps) nid)
-                with Exc.NameNotFoundError _ ->
-                  Hashtbl.find closure (nid, curmod.id))
-             | _ -> failwith "Non-function put in curfun. Something is wrong."
+           then let f = (tos ctxs).curfun
+             in try dval dss (nlookup !(curmod.scps) nid)
+             with Exc.NameNotFoundError _ ->
+               Hashtbl.find f.closure (nid, curmod.id)
 
            else begin
              tvm_warning "Not tail calling a module-local name!
@@ -437,17 +461,17 @@ Something is wrong with the compiler.");
            end
 
       in (match v with
-            OVFunction(st, mod_id, _, _) as f ->
-            let new_ctxs = {(tos ctxs) with curfun = f}::(ntos ctxs)
-            in let tail_ip = st |> succ |> succ
+            OVFunction(frec) ->
+            let new_ctxs = {(tos ctxs) with curfun = frec}::(ntos ctxs)
+            in let tail_ip = frec.st |> succ |> succ
             (* Bypass both the push-scope and push-stack instructions. *)
-            in if mod_id = curmod.id
+            in if frec.mod_id = curmod.id
             then __exec new_ctxs
                 {flags with is_tail_recursive_call = true}
                 tail_ip
             else __exec new_ctxs
                 {flags with is_tail_recursive_call = true;
-                            curmod = Hashtbl.find modules mod_id}
+                            curmod = Hashtbl.find modules frec.mod_id}
                 tail_ip
           | _ -> failwith "Tail recursing a non-function.")
 
@@ -455,20 +479,19 @@ Something is wrong with the compiler.");
         trace "evaluating name";
         let nid = vm_name _nid
         in let v = if mid = _SELF_MODULE_ID
-             then match (tos ctxs).curfun with
-                 OVFunction(_, _, closure, _) ->
-                 (try dval dss (nlookup !(curmod.scps) nid)
-                  with Exc.NameNotFoundError _ ->
-                    Hashtbl.find closure (nid, curmod.id))
-               | _ -> failwith "Non-function value put in curfun field."
+             then let frec = (tos ctxs).curfun
+               in try dval dss (nlookup !(curmod.scps) nid)
+               with Exc.NameNotFoundError _ ->
+                 Hashtbl.find frec.closure (nid, curmod.id)
+
              else let mod_ = Hashtbl.find modules (abs_mod_id mid)
                in Hashtbl.find mod_.exs nid
         in (match v with
-              OVFunction(st, mod_id, _, _) as f ->
-              __exec (push_cur_ip f)
-                {flags with curmod = Hashtbl.find modules mod_id;
+              OVFunction(frec) ->
+              __exec (push_cur_ip frec)
+                {flags with curmod = Hashtbl.find modules frec.mod_id;
                             is_tail_recursive_call = false}
-                st
+                frec.st
 
             | OVInt(_)
             | OVAtom(_)
@@ -502,7 +525,7 @@ Something is wrong with the compiler.");
         __exec ctxs flags next_ip
 
       | SHOW -> trace "showing";
-        print_string (string_of_value (dstop dss));
+        print_string (string_of_value (dspop dss));
         __exec ctxs flags next_ip
 
       | PUSH_STACK -> trace "pushing stack";
@@ -585,7 +608,6 @@ Something is wrong with the compiler.");
                 dss = dinit ();
                 import_stack = [0];
                 list_make_stack = [];
-                tuple_make_stack = [];
                 is_stepping = false;
                 curmod = Hashtbl.find modules _MAIN_MODULE_ID}
     0;;

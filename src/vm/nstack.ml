@@ -20,16 +20,15 @@ let rec string_of_value v =
   | OVString(s) -> s
   | OVList(rs) ->
     sprintf "[%s]"
-      (String.concat " " (List.map string_of_value rs))
+      (String.concat " " (List.map string_of_value !rs))
   | OVTuple(rs) ->
     sprintf "[@ %s]"
-      (String.concat " " (List.map string_of_value rs))
-  | OVFunction(st, mod_id, cl, par) ->
+      (String.concat " " (List.map string_of_value !rs))
+  | OVFunction(f) ->
     sprintf "**%s: %d,%s,<closure set>"
-      (if par then "partial-fun" else "fun")
-      st (Uint64.to_string mod_id)
+      (if f.is_partial then "partial-fun" else "fun")
+      f.st (Uint64.to_string f.mod_id)
   | _ -> "**abstract value";;
-
 
 type 'a dstack_t = 'a BatDynArray.t;;
 exception PhonyEmptyStack;;
