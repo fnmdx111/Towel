@@ -472,8 +472,8 @@ and g_seq ctx inst_ctx seq =
       | Ast.SharedSequence(s) -> s, ctx.scp_stk
 
   in let lead_inst = if ctx.is_backquoted
-       then (line (MAKE_FUN(ArgLabel(Label(seq_st_id)))))
-       else (line (PUSH_FUN(ArgLabel(Label(seq_st_id)))))
+       then (line (PUSH_FUN(ArgLabel(Label(seq_st_id)))))
+       else (line (CALL(ArgLabel(Label(seq_st_id)))))
   in let body_insts = aggregate (lmap (g_word {ctx with is_body = false;
                                                         is_backquoted = false;
                                                         scp_stk = scp_stk}
@@ -548,8 +548,8 @@ and g_fun ctx inst_ctx fun_ =
               closure cnil
 
        in let fun_inst = if is_backquoted
-            then MAKE_FUN(ArgLabel(Label(st_label)))
-            else PUSH_FUN(ArgLabel(Label(st_label)))
+            then PUSH_FUN(ArgLabel(Label(st_label)))
+            else CALL(ArgLabel(Label(st_label)))
 
        in let main = cnil
                   |~~| inst_ctx.pre (Word(Ast.WFunction(fun_)))

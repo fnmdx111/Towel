@@ -6,7 +6,7 @@ def gen_make_inline_fun(w, e, st_line_=2, nid_=1)
 
   lambda do |name, body|
     end_line = body.size + st_line + 4
-    w.puts "make-fun #{(st_line + 3).to_s}u"
+    w.puts "push-fun #{(st_line + 3).to_s}u"
     w.puts "bind #{nid}u \"#{name}\""
     w.puts "jump #{end_line}u"
     body.each {|inst| w.puts inst}
@@ -39,7 +39,7 @@ if __FILE__ == $0
   end
 
   for i in ['fint', 'ufint', 'int', 'float', 'str']
-    make_inline_fun.call "To-#{i}", ["to-#{i}"]
+    make_inline_fun.call "!2#{i}", ["to-#{i}"]
   end
 
   make_inline_fun.call '!print', ['show']

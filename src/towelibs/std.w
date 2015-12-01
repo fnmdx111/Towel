@@ -1,61 +1,61 @@
 push-scope
 push-stack
-make-fun 5u
+push-fun 5u
 bind 1u "+"
 jump 7u
 add
 shared-ret
-make-fun 10u
+push-fun 10u
 bind 2u "-"
 jump 12u
 sub
 shared-ret
-make-fun 15u
+push-fun 15u
 bind 3u "*"
 jump 17u
 mul
 shared-ret
-make-fun 20u
+push-fun 20u
 bind 4u "/"
 jump 22u
 div
 shared-ret
-make-fun 25u
+push-fun 25u
 bind 5u "**"
 jump 27u
 pow
 shared-ret
-make-fun 30u
-bind 6u "To-fint"
+push-fun 30u
+bind 6u "!2fint"
 jump 32u
 to-fint
 shared-ret
-make-fun 35u
-bind 7u "To-ufint"
+push-fun 35u
+bind 7u "!2ufint"
 jump 37u
 to-ufint
 shared-ret
-make-fun 40u
-bind 8u "To-int"
+push-fun 40u
+bind 8u "!2int"
 jump 42u
 to-int
 shared-ret
-make-fun 45u
-bind 9u "To-float"
+push-fun 45u
+bind 9u "!2float"
 jump 47u
 to-float
 shared-ret
-make-fun 50u
-bind 10u "To-str"
+push-fun 50u
+bind 10u "!2str"
 jump 52u
 to-str
 shared-ret
-make-fun 55u
+push-fun 55u
 bind 11u "!print"
 jump 57u
 show
 shared-ret
-make-fun 60u
+push-fun 60u
 bind 12u "!println"
 jump 64u
 show
@@ -63,19 +63,24 @@ push-lit '
 '
 show
 shared-ret
-make-fun 67u
+push-fun 67u
 bind 13u "!pop"
 jump 69u
 pop
 shared-ret
-make-fun 72u
+push-fun 72u
 bind 14u "!rev"
 jump 74u
 reverse
 shared-ret
-make-fun 77u
+push-fun 77u
 bind 15u "!probe"
 jump 79u
 dint
+shared-ret
+push-fun 82u
+bind 16u "!invoke"
+jump 84u
+invoke
 shared-ret
 terminate

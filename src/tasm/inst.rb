@@ -37,7 +37,7 @@ module Inst
     'hmatch',
     'rjump',
     'push-lit',
-    'make-fun', 'push-fun',
+    'call', 'push-fun',
   ]
 
   binary_instructions = [

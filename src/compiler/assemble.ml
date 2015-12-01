@@ -59,10 +59,10 @@ let replace_label =
     -> HJNE(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
 
 
-  | MAKE_FUN(ArgLabel(Label(s)))
-    -> MAKE_FUN(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
   | PUSH_FUN(ArgLabel(Label(s)))
     -> PUSH_FUN(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
+  | CALL(ArgLabel(Label(s)))
+    -> CALL(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
 
   | _ as x -> x;;
 
