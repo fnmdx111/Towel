@@ -278,23 +278,28 @@ and g_bind ctx =
              inst_nil_ctx b
       in bind_inst |~~| then_inst
 
-and g_name ctx =
+and g_name ctx inst_ctx n =
   let get_args ns = if List.length ns = 1
     then ArgLit(VUFixedInt(lookup_name ctx.scp_stk (List.hd ns))),
          ArgLit(VUFixedInt(Uint64.zero))
     else let n_uid, es_uid = lookup_ext_name ctx.ext_scope_meta ns
       in ArgLit(VUFixedInt(n_uid)), ArgLit(VUFixedInt(es_uid))
-  in function
-      Ast.NRegular(ns) ->
-      let arg1, arg2 = get_args ns
-      in if ctx.is_backquoted
-      then line (PUSH_NAME(arg1, arg2))
-      else line (EVAL_AND_PUSH(arg1, arg2))
-    | Ast.NTailCall(ns) ->
-      let arg1, arg2 = get_args ns
-      in if ctx.is_backquoted
-      then line (PUSH_NAME(arg1, arg2)) (* This is a weird case. *)
-      else line (EVAL_TAIL(arg1, arg2))
+  in let inst = match n with
+        Ast.NRegular(ns) ->
+        let arg1, arg2 = get_args ns
+        in if ctx.is_backquoted
+        then line (PUSH_NAME(arg1, arg2))
+        else line (EVAL_AND_PUSH(arg1, arg2))
+
+      | Ast.NTailCall(ns) ->
+        let arg1, arg2 = get_args ns
+        in if ctx.is_backquoted
+        then line (PUSH_NAME(arg1, arg2)) (* This is a weird case. *)
+        else line (EVAL_TAIL(arg1, arg2))
+  in cnil
+     |~~| inst_ctx.pre (Word(Ast.WName(n)))
+     |~~| inst
+     |~~| inst_ctx.post (Word(Ast.WName(n)))
 
 and g_ctrl ctx =
   function
@@ -414,13 +419,13 @@ and g_if ctx inst =
   in let body, ins = parse inst
   in _g_body body ins
 
-and g_backquote ctx =
+and g_backquote ctx inst_ctx =
   let new_ctx = {ctx with is_backquoted = true}
   in function
-    Ast.BQValue(pv) -> g_lit new_ctx inst_nil_ctx pv
-  | Ast.BQName(n) -> g_name new_ctx n
-  | Ast.BQSeq(seq) -> g_seq new_ctx inst_nil_ctx seq
-  | Ast.BQBackquote(bq) -> g_backquote ctx bq
+    Ast.BQValue(pv) -> g_lit new_ctx inst_ctx pv
+  | Ast.BQName(n) -> g_name new_ctx inst_ctx n
+  | Ast.BQSeq(seq) -> g_seq new_ctx inst_ctx seq
+  | Ast.BQBackquote(bq) -> g_backquote ctx inst_ctx bq
 
 and g_seq ctx inst_ctx seq =
   let _UID =
@@ -577,8 +582,8 @@ and g_fun ctx inst_ctx fun_ =
 
 and g_word ctx inst_ctx = function
     Ast.WLiteral(pv) -> g_lit ctx inst_ctx pv
-  | Ast.WName(n) -> g_name ctx n
-  | Ast.WBackquote(bq) -> g_backquote ctx bq
+  | Ast.WName(n) -> g_name ctx inst_ctx n
+  | Ast.WBackquote(bq) -> g_backquote ctx inst_ctx bq
   | Ast.WSequence(seq) -> g_seq ctx inst_ctx seq
   | Ast.WControl(ctrl) -> g_ctrl ctx ctrl
   | Ast.WFunction(f) -> g_fun ctx inst_ctx f
