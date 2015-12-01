@@ -3,6 +3,6 @@ Tests the pop instruction.
 !>> 
 !<< 42
 "
-import 'std' @
+import '.w' \
 
-(42 24 .!pop .!println)
+(42 24 .!pop\.w .!println\.w)

@@ -264,6 +264,16 @@ let exec should_trace should_warn insts =
         __exec ctxs flags next_ip
       end
 
+    | PUSH_NAME(ArgLit(VUFixedInt(_nid)), ArgLit(VUFixedInt(mid))) ->
+      trace "pushing name";
+      let nid = vm_name _nid
+      in let v = if mid = _SELF_MODULE_ID
+           then dval dss (nlookup !(curmod.scps) nid)
+           else Hashtbl.find (Hashtbl.find modules
+                                (Hashtbl.find curmod.imports mid)).exs nid
+      in dspush dss v;
+      __exec ctxs flags next_ip
+
     | CALL(ArgLit(VUFixedInt(st))) -> trace "pushing function";
       let nfrec = {st = to_pc st;
                    mod_id = flags.curmod.id;
@@ -607,19 +617,18 @@ Something is wrong with the compiler.");
             dspurge dss
           in begin
             if (tos flags.import_stack) = 1
-            then begin
-              Hashtbl.iter (fun name value ->
-                  let top_of_tmod_scps = tos (!(tmod.scps))
-                  in let new_vidx =
-                       dspush dss value; tos_idx ()
-                  in Hashtbl.replace top_of_tmod_scps name new_vidx)
-                curmod.exs;
+            then Hashtbl.iter (fun name value ->
+                let top_of_tmod_scps = tos (!(tmod.scps))
+                in let new_vidx =
+                     dspush dss value; tos_idx ()
+                in Hashtbl.replace top_of_tmod_scps name new_vidx)
+                curmod.exs
                 (* If it is implicit import, we have to copy whatever is in
                    the exs table of current module to the top scope of module
                    that imported this module. Beside that, we have to copy
                    whatever value is in the exs table of current module to
                    the top stack of dss, and redo the name-vidx mapping. *)
-            end else ();
+            else ();
             (* Pop the top scope. If nothing went wrong, it should be the
                only scope in the scope stack of the module. *)
             curmod.scps := ntos !(curmod.scps);

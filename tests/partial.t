@@ -5,7 +5,7 @@ Tests partial function application.
 41
 "
 
-import 'std' @
+import '.w' @
 
-bind Dec1 (1 fun A B, (A B ..-))
+bind Dec1 (1 fun . /, (. / ..-))
 then (43 Dec1 .!println 42 Dec1 .!println)

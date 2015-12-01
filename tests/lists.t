@@ -10,7 +10,7 @@ Tests various list actions.
 [1 2]
 "
 
-import 'std' @
+import '.w' @
 
 bind -my-list [1 2 3 [3 4] [42]]
 then (

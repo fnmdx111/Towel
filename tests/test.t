@@ -5,6 +5,6 @@ Wow! Such Hello! So World!
 !<< Hello world!
 "
 
-import 'std' @
+import 'std' \
 
-('Hello world!\n' .!print)
+('Hello world!\n' !print\Std)

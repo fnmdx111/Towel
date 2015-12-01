@@ -47,13 +47,13 @@ class Prefect
 Input: #{pretty_input}
 Output: #{pretty_output}"
 
-    _, err, status = Open3.capture3(@ctx[:weave_path],
+    out, err, status = Open3.capture3(@ctx[:weave_path],
                                     "#{@fp}.t",
                                     '-o',
                                     "temp/#{@fp}.w")
 
     if status.exitstatus != 0
-      [false, err]
+      [false, out]
       return
     end
 
