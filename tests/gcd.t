@@ -13,4 +13,4 @@ bind GCD fun` A B,
      if>0 (!pop A B - B GCD@),
      if<0 (!pop A B A - GCD@),
        idle)
-then (42 24 GCD !println).
+then (42 24 GCD !println)

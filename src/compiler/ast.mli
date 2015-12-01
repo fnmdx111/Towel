@@ -124,6 +124,6 @@ and altype_lit =
 and at_sform =
     At of word * word
 
-and terminator = Period | EOF
+and terminator = EOF
 
 type sentence = Sentence of word list;;

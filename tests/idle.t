@@ -3,4 +3,4 @@ Tests the idle instruction.
 !>> 
 !<< "
 
-idle.
+idle

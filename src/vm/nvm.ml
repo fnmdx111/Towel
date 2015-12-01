@@ -207,6 +207,33 @@ let exec should_trace should_warn insts =
     | END_TUPLE -> trace "ending tuple";
       end_list ()
 
+    | LIST_HD -> trace "pushing list head";
+      let tos = dspop dss
+      in (match tos with
+            OVList(rls)
+          | OVTuple(rls) -> dspush dss (List.hd !rls)
+          | _ -> failwith "Non hd-able value type.");
+      __exec ctxs flags next_ip
+
+    | LIST_TL -> trace "pushing list tail";
+      let tos = dspop dss
+      in (match tos with
+            OVList(rls) -> dspush dss (OVList(ref (List.tl !rls)))
+          | OVTuple(rls) -> dspush dss (OVTuple(ref (List.tl !rls)))
+          | _ -> failwith "Non tl-able value type.");
+      __exec ctxs flags next_ip
+
+    | LIST_EMPTY -> trace "pushing is_empty_list";
+      let tos = dspop dss
+      in let judge rls = if List.length !rls = 0
+           then OVAtom(Uint64.one)
+           else OVAtom(Uint64.zero)
+      in (match tos with
+            OVList(rls)
+          | OVTuple(rls) -> dspush dss (judge rls)
+          | _ -> failwith "Non is_empty-able value type.");
+      __exec ctxs flags next_ip
+
     | POP -> trace "popping";
       (try
          ignore (dspop dss);

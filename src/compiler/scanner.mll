@@ -47,7 +47,6 @@ let _DQUOTE = '"'
 let _BQUOTE = '`'
 let _COMMA = ','
 let _SEMICOLON = ';'
-let _PERIOD = '.'
 let _LPAREN = '('
 let _RPAREN = ')'
 let _LBRACKET = '['
@@ -69,13 +68,13 @@ let alpha = ['a'-'z']
 let reserved_char = [',' ';' '.' '\'' '\\' '`' '@'
                      '(' ')' '[' ']'
                      ' ' '\t' '\n' '\r']
-let common_valid_char = ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '='
+let common_valid_char = ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '.'
                          '|' ':' '<' '>' '?' '/' 'a'-'z' 'A'-'Z' '0'-'9']
 let common_valid_char_no_digits =
-  ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '='
+  ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '.'
    '|' ':' '<' '>' '?' '/' 'a'-'z' 'A'-'Z']
 
-let valid_upper_char = ['~' '!' '#' '$' '%' '^' '&' '*' '_' '='
+let valid_upper_char = ['~' '!' '#' '$' '%' '^' '&' '*' '_' '=' '.'
                         '|' ':' '<' '>' '?' '/' 'A'-'Z']
 
 let digit = ['0'-'9']
@@ -111,7 +110,6 @@ rule token = parse
 | _BQUOTE { BQUOTE }
 | _COMMA { COMMA }
 | _SEMICOLON { SEMICOLON }
-| _PERIOD { TERMINATOR(Ast.Period) }
 | _LPAREN { LPAREN }
 | _RPAREN { RPAREN }
 | _LBRACKET { LBRACKET }
