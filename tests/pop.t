@@ -5,4 +5,4 @@ Tests the pop instruction.
 "
 import 'std' @
 
-(42 24 !pop !println)
+(42 24 .!pop .!println)

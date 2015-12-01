@@ -6,7 +6,7 @@ Hello world!
 "
 
 import 'std' @
-('Hello world!' !println)
+('Hello world!' .!println)
 
 import 'std' \
-('Hello world!' !println\Std)
+('Hello world!' .!println\Std)
