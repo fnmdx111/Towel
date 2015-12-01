@@ -26,27 +26,27 @@ jump 27u
 pow
 shared-ret
 push-fun 30u
-bind 6u "!2fint"
+bind 6u ".2fint"
 jump 32u
 to-fint
 shared-ret
 push-fun 35u
-bind 7u "!2ufint"
+bind 7u ".2ufint"
 jump 37u
 to-ufint
 shared-ret
 push-fun 40u
-bind 8u "!2int"
+bind 8u ".2int"
 jump 42u
 to-int
 shared-ret
 push-fun 45u
-bind 9u "!2float"
+bind 9u ".2float"
 jump 47u
 to-float
 shared-ret
 push-fun 50u
-bind 10u "!2str"
+bind 10u ".2str"
 jump 52u
 to-str
 shared-ret
