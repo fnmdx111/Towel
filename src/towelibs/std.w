@@ -83,4 +83,37 @@ bind 16u "!invoke"
 jump 84u
 invoke
 shared-ret
+push-fun 87u
+bind 17u ".hd"
+jump 89u
+car
+shared-ret
+push-fun 92u
+bind 18u ".tl"
+jump 94u
+cdr
+shared-ret
+push-fun 97u
+bind 19u "?empty"
+jump 99u
+list-empty
+shared-ret
+push-fun 102u
+bind 20u ".t1"
+jump 104u
+car
+shared-ret
+push-fun 107u
+bind 21u ".t2"
+jump 110u
+cdr
+car
+shared-ret
+push-fun 113u
+bind 22u ".t3"
+jump 117u
+cdr
+cdr
+car
+shared-ret
 terminate

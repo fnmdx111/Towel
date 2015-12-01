@@ -48,6 +48,12 @@ if __FILE__ == $0
   make_inline_fun.call '!rev', ['reverse']
   make_inline_fun.call '!probe', ['dint']
   make_inline_fun.call '!invoke', ['invoke']
+  make_inline_fun.call '.hd', ['car']
+  make_inline_fun.call '.tl', ['cdr']
+  make_inline_fun.call '?empty', ['list-empty']
+  make_inline_fun.call '.t1', ['car']
+  make_inline_fun.call '.t2', ['cdr', 'car']
+  make_inline_fun.call '.t3', ['cdr', 'cdr', 'car']
 
   w.puts 'terminate'
 

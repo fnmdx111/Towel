@@ -164,6 +164,8 @@ let exec should_trace should_warn insts =
              next_ip
 
     in let end_list () =
+         let tos = tos flags.list_make_stack
+         in tos := List.rev !tos;
          __exec ctxs {flags with list_make_stack =
                                    ntos flags.list_make_stack}
            next_ip
@@ -207,7 +209,7 @@ let exec should_trace should_warn insts =
     | END_TUPLE -> trace "ending tuple";
       end_list ()
 
-    | LIST_HD -> trace "pushing list head";
+    | CAR -> trace "pushing list head";
       let tos = dspop dss
       in (match tos with
             OVList(rls)
@@ -215,7 +217,7 @@ let exec should_trace should_warn insts =
           | _ -> failwith "Non hd-able value type.");
       __exec ctxs flags next_ip
 
-    | LIST_TL -> trace "pushing list tail";
+    | CDR -> trace "pushing list tail";
       let tos = dspop dss
       in (match tos with
             OVList(rls) -> dspush dss (OVList(ref (List.tl !rls)))

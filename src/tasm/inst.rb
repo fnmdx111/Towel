@@ -11,7 +11,7 @@ module Inst
     'push-scope', 'pop-scope',
     'end-list', 'end-tuple',
     'pop', 'push-phony',
-    'list-hd', 'list-tl',
+    'car', 'cdr', 'list-empty',
     'unpack',
     'push-stack', 'share-stack', 'pop-stack',
     'ret', 'shared-ret',
