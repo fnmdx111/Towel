@@ -47,7 +47,15 @@ class Prefect
 Input: #{pretty_input}
 Output: #{pretty_output}"
 
-    _, _ = Open3.capture2 @ctx[:weave_path], "#{@fp}.t", '-o', "temp/#{@fp}.w"
+    _, err, status = Open3.capture3(@ctx[:weave_path],
+                                    "#{@fp}.t",
+                                    '-o',
+                                    "temp/#{@fp}.w")
+
+    if status.exitstatus != 0
+      [false, err]
+      return
+    end
 
     if ARGV[0] == '-t'
       puts "Tracing #{@fp}.w =>"
@@ -55,9 +63,14 @@ Output: #{pretty_output}"
           @ctx[:tvm_path], "temp/#{@fp}.w", '-t', :stdin_data=>@input
       )
     else
-      output, _ = Open3.capture2(
+      output, err, status = Open3.capture3(
           @ctx[:tvm_path], "temp/#{@fp}.w", :stdin_data=>@input
       )
+    end
+
+    if status.exitstatus != 0
+      [false, err]
+      return
     end
 
     if output == @expected_output
