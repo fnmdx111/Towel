@@ -222,7 +222,16 @@ let exec should_trace should_warn insts =
       in (match tos with
             OVList(rls) -> dspush dss (OVList(ref (List.tl !rls)))
           | OVTuple(rls) -> dspush dss (OVTuple(ref (List.tl !rls)))
+          (* You've got to cdr a tuple to access the elements of it. *)
           | _ -> failwith "Non tl-able value type.");
+      __exec ctxs flags next_ip
+
+    | CONS -> trace "consing list";
+      let l = dspop dss
+      in let elem = dspop dss
+      in (match l with
+            OVList(rls) -> dspush dss (OVList(ref (elem::(!rls))))
+          | _ -> failwith "Cons'ing a non-list value.");
       __exec ctxs flags next_ip
 
     | LIST_EMPTY -> trace "pushing is_empty_list";

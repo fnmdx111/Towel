@@ -12,7 +12,7 @@ out = 'build'
 def options(opt):
     opt.add_option('--docs', action='store_true', default=False,
                    dest='compile_docs')
-    opt.add_option('--compiler', action='store_true', default=True,
+    opt.add_option('--compiler', action='store_true', default=False,
                    dest='compile_compiler_stub')
     opt.add_option('--native', action='store_true', default=False,
                    dest='compile_natively')
@@ -135,5 +135,4 @@ def build(ctx):
     if ctx.options.compile_all:
         ctx.recurse('src/compiler src/vm')
         ctx.recurse('docs')
-
 
