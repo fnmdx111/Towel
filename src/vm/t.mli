@@ -4,7 +4,7 @@ type name_t = int;;
 type asm_name_t = uint64;;
 type asm_name_anno_t = string;;
 
-type module_id_t = uint64;;
+type module_id_t = int;;
 type line_no_t = int;;
 
 type closure_t = (name_t * module_id_t, value_t) Hashtbl.t

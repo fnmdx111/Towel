@@ -12,13 +12,21 @@ open Printf;;
 open Common;;
 
 let vm_name = Uint64.to_int;;
+let vm_mod_id = Uint64.to_int;;
 let to_pc = Uint64.to_int;;
 
 let modules:module_table_t = Hashtbl.create 64;;
 
-let _MAIN_MODULE_ID = Uint64.one;;
-let _SELF_MODULE_ID = Uint64.zero;;
-let module_id_tick = Common.counter ();;
+let name_id_tick_gen () =
+  let table = Hashtbl.create 512
+  in fun name ->
+    try Hashtbl.find table name
+    with Not_found -> Hashtbl.replace table name name; name;;
+
+let _MAIN_MODULE_ID = 1;;
+let _SELF_MODULE_ID = 0;;
+let module_id_tick = let c = Common.counter ()
+  in fun () -> vm_mod_id (c ());;
 ignore (module_id_tick ());; (* tick for _MAIN_MODULE_ID *)
 
 let tos = List.hd;;
@@ -32,7 +40,7 @@ let ctxs_ = [{mod_id = _MAIN_MODULE_ID; ret_addr = -1;
                         args = Hashtbl.create 1}}];;
 
 let show_ctx c =
-  fprintf stderr "{ctx: %s,%d}" (Uint64.to_string c.mod_id) c.ret_addr;;
+  fprintf stderr "{ctx: %d,%d}" c.mod_id c.ret_addr;;
 
 let rec show_ctxs = function
     ctx::rest -> (show_ctx ctx; fprintf stderr " "; show_ctxs rest)
@@ -61,9 +69,9 @@ let rec string_of_value v =
     sprintf "[@ %s]"
       (String.concat " " (List.map string_of_value !rs))
   | OVFunction(f) ->
-    sprintf "**%s: %d,%s,<closure set>"
+    sprintf "**%s: %d,%d,<closure set>"
       (if f.is_partial then "partial-fun" else "fun")
-      f.st (Uint64.to_string f.mod_id)
+      f.st f.mod_id
   | _ -> "**abstract value";;
 
 let exec should_trace should_warn insts =
@@ -75,8 +83,8 @@ let exec should_trace should_warn insts =
          if should_trace
          then begin
            show_ctxs ctxs;
-           fprintf stderr "**(%s,%d) -- %s\n"
-             (Uint64.to_string flags.curmod.id) ip msg
+           fprintf stderr "**(%d,%d) -- %s\n"
+             flags.curmod.id ip msg
          end else ()
 
     (* in let trace_u64 u = *)
@@ -86,13 +94,11 @@ let exec should_trace should_warn insts =
 
     in let tvm_warning msg =
          if should_warn
-         then fprintf stderr "xx(%s,%d) -- %s\n"
-             (Uint64.to_string flags.curmod.id) ip msg
+         then fprintf stderr "xx(%d,%d) -- %s\n"
+             flags.curmod.id ip msg
          else ()
 
     in let curmod = flags.curmod
-
-    in let abs_mod_id mid = Hashtbl.find curmod.imports mid
 
     in let dss = flags.dss
 
@@ -119,30 +125,6 @@ let exec should_trace should_warn insts =
            module. *)
         __exec (ntos ctxs) {flags with curmod = tmod} tctx.ret_addr
       end
-
-    in let do_import rel_uid mod_str type_ =
-         let w_insts = find_module mod_str libpaths
-         in let abs_uid = module_id_tick ()
-
-         in let module_ = {id = abs_uid;
-                           insts = w_insts;
-                           imports = Hashtbl.create 512;
-                           name_id_tick = (let x = Common.counter ()
-                                           in fun () -> vm_name (x ()));
-                           exs = Hashtbl.create 512;
-                           scps = ref []}
-         in (Hashtbl.replace modules abs_uid module_);
-         (Hashtbl.replace curmod.imports rel_uid abs_uid);
-         (* Update the imports proxy for mapping from rel to abs. *)
-         (__exec
-            (push_cur_ip {st = 0; mod_id = curmod.id;
-                          closure = Hashtbl.create 1;
-                          is_partial = false;
-                          args = Hashtbl.create 32})
-            {flags with import_stack = type_::flags.import_stack;
-                        is_init_ext_mod = true;
-                        curmod = module_}
-            0)
 
     (* `dsp' points to the next slot of TOS. *)
     in let tos_idx () = ((dsp (BatDynArray.last dss)),
@@ -172,13 +154,19 @@ let exec should_trace should_warn insts =
                                    ntos flags.list_make_stack}
            next_ip
 
-    in let tick_name required_name =
-         let n = curmod.name_id_tick ()
-         in if should_trace
-         then if n = required_name
-           then trace "module name ticker agrees with asm"
-           else tvm_warning "module name ticker does not agree with asm"
-         else ()
+    in let resolve_name n m =
+         let m = Hashtbl.find curmod.imports m
+         in try if m = curmod.id
+           then dval dss (nlookup !(curmod.scps) n)
+           else Hashtbl.find (Hashtbl.find modules m).exs n
+         (* Check local scope first, because names captured in closure
+            might be shadowed in current scope. *)
+         with Exc.NameNotFoundError(_)
+            | Not_found ->
+           if List.length ctxs > 0
+           then Hashtbl.find (tos ctxs).curfun.closure (n, m)
+           else
+             failwith "external name not found in exs and tctx.curfun.closure"
 
     in let inst =
          match line with
@@ -274,13 +262,11 @@ let exec should_trace should_warn insts =
         __exec ctxs flags next_ip
       end
 
-    | PUSH_NAME(ArgLit(VUFixedInt(_nid)), ArgLit(VUFixedInt(mid))) ->
+    | PUSH_NAME(ArgLit(VUFixedInt(_nid)), ArgLit(VUFixedInt(_mid))) ->
       trace "pushing name";
       let nid = vm_name _nid
-      in let v = if mid = _SELF_MODULE_ID
-           then dval dss (nlookup !(curmod.scps) nid)
-           else Hashtbl.find (Hashtbl.find modules
-                                (Hashtbl.find curmod.imports mid)).exs nid
+      in let mid = vm_mod_id _mid
+      in let v = resolve_name nid mid
       in dspush dss v;
       __exec ctxs flags next_ip
 
@@ -316,6 +302,28 @@ let exec should_trace should_warn insts =
           | OVInt(i), OVInt(j) ->
             OVInt(Big_int.sub_big_int j i)
           | _ -> failwith "Incompatible type to do substraction.");
+      __exec ctxs flags next_ip
+
+    | EQU -> trace "testing equality";
+      let v1 = dspop dss
+      in let v2 = dspop dss
+      in let tf = (match v1, v2 with
+          (* [| v2 | v1 |], when evaluating v2 v1 -, we want v2 - v1. *)
+            OVFixedInt(i), OVFixedInt(j) ->
+            Int64.compare i j
+          | OVUFixedInt(i), OVUFixedInt(j) ->
+            Uint64.compare j i
+          | OVFloat(i), OVFloat(j) ->
+            tvm_warning "testing equality between float numbers.";
+            Pervasives.compare j i
+          | OVInt(i), OVInt(j) ->
+            if Big_int.eq_big_int j i then 0 else 1
+          | OVAtom(i), OVAtom(j) ->
+            Uint64.compare i j
+          | _ -> failwith "Incompatible type to do substraction.")
+      in dspush dss (if tf = 0
+                     then OVAtom(Uint64.one)
+                     else OVAtom(Uint64.zero));
       __exec ctxs flags next_ip
 
     | TO_FINT -> trace "casting to fint";
@@ -403,25 +411,21 @@ let exec should_trace should_warn insts =
       dspush dss OVPhony;
       __exec (ntos ctxs) flags next_ip
 
-    | CLOSURE(ArgLit(VUFixedInt(_nid)), ArgLit(VUFixedInt(mid))) ->
+    | CLOSURE(ArgLit(VUFixedInt(_nid)), ArgLit(VUFixedInt(_mid))) ->
       trace "adding to closure";
       let nid = vm_name _nid
+      in let mid = vm_mod_id _mid
       in (match dstop dss with
             OVFunction(f) ->
-            if mid = _SELF_MODULE_ID
-            then Hashtbl.replace f.closure (nid, curmod.id)
-                (dval dss (nlookup !(curmod.scps) nid))
-            else Hashtbl.replace f.closure (nid, abs_mod_id mid)
-                (Hashtbl.find
-                   (Hashtbl.find modules (abs_mod_id mid)).exs
-                   nid)
+            let v = resolve_name nid mid
+            in Hashtbl.replace f.closure (nid, curmod.id) v
           | _ -> failwith "Add captured value to non-function.
 Something is wrong with the compiler.");
       __exec ctxs flags next_ip
 
     | FUN_ARG(ArgLit(VUFixedInt(_nid))) -> trace "fun argumenting";
       let nid = vm_name _nid
-      in let () = tick_name nid
+      in let nid = curmod.name_id_tick nid
       in let f = (tos ctxs).curfun
       in let remove_phony_if_any ds =
            let r = dis_empty ds
@@ -434,6 +438,11 @@ Something is wrong with the compiler.");
            Hashtbl.replace f.args nid 1;
            (* Make a note that we stole this argument, and are going to
               erase it from the closure set after we exit this function. *)
+           (* I may not need this. Because every time I put a fun-arg into
+              the closure set, I'm copying the existing one to a new function
+              value and then begin to put new fun-args. So when this instance
+              of the function execution exits, the original one is left
+              untouched. *)
            if flags.is_tail_recursive_call
            then if dsis_empty dss <> 0
              then begin
@@ -503,21 +512,11 @@ Something is wrong with the compiler.");
       in _swap_them_all st end_;
       __exec ctxs flags next_ip
 
-    | EVAL_TAIL(ArgLit(VUFixedInt(_nid)), ArgLit(VUFixedInt(mid))) ->
+    | EVAL_TAIL(ArgLit(VUFixedInt(_nid)), ArgLit(VUFixedInt(_mid))) ->
       trace "tail recursive call";
       let nid = vm_name _nid
-      in let v = if mid = _SELF_MODULE_ID
-           then let f = (tos ctxs).curfun
-             in try dval dss (nlookup !(curmod.scps) nid)
-             with Exc.NameNotFoundError _ ->
-               Hashtbl.find f.closure (nid, curmod.id)
-
-           else begin
-             tvm_warning "Not tail calling a module-local name!
- Maybe a mutual tail call?";
-             let mod_ = Hashtbl.find modules (abs_mod_id mid)
-             in Hashtbl.find mod_.exs nid
-           end
+      in let mid = vm_mod_id _mid
+      in let v = resolve_name nid mid
 
       in (match v with
             OVFunction(frec) ->
@@ -534,17 +533,11 @@ Something is wrong with the compiler.");
                 tail_ip
           | _ -> failwith "Tail recursing a non-function.")
 
-      | EVAL_AND_PUSH(ArgLit(VUFixedInt(_nid)), ArgLit(VUFixedInt(mid))) ->
+      | EVAL_AND_PUSH(ArgLit(VUFixedInt(_nid)), ArgLit(VUFixedInt(_mid))) ->
         trace "evaluating name";
         let nid = vm_name _nid
-        in let v = if mid = _SELF_MODULE_ID
-             then let frec = (tos ctxs).curfun
-               in try dval dss (nlookup !(curmod.scps) nid)
-               with Exc.NameNotFoundError _ ->
-                 Hashtbl.find frec.closure (nid, curmod.id)
-
-             else let mod_ = Hashtbl.find modules (abs_mod_id mid)
-               in Hashtbl.find mod_.exs nid
+        in let mid = vm_mod_id _mid
+        in let v = resolve_name nid mid
         in (match v with
               OVFunction(frec) ->
               __exec (push_cur_ip frec)
@@ -567,18 +560,37 @@ Something is wrong with the compiler.");
             | _ ->
               __exec ctxs flags next_ip)
 
-      | IMPORT_IMPLICIT(ArgLit(VString(mod_str)), ArgLit(VUFixedInt(uid))) ->
-        trace "implicit importing";
-        do_import uid mod_str 1
+      | IMPORT(ArgLit(VString(mod_str)), ArgLit(VUFixedInt(uid))) ->
+        trace "importing";
+        (try let _ = Hashtbl.find curmod.imports (vm_mod_id uid)
+           in __exec ctxs flags next_ip (* Do nothing since we have already
+                                           imported the module before. *)
+         with Not_found ->
+           let w_insts = find_module mod_str libpaths
+           in let abs_uid = module_id_tick ()
 
-      | IMPORT_EXPLICIT(ArgLit(VString(mod_str)), ArgLit(VUFixedInt(uid))) ->
-        trace "import explicit";
-        do_import uid mod_str 2
+           in let module_ = {id = abs_uid;
+                             insts = w_insts;
+                             imports = Hashtbl.create 512;
+                             name_id_tick = name_id_tick_gen ();
+                             exs = Hashtbl.create 512;
+                             scps = ref []}
+           in (Hashtbl.replace modules abs_uid module_);
+           (Hashtbl.replace curmod.imports (vm_mod_id uid) abs_uid);
+           (Hashtbl.replace module_.imports _SELF_MODULE_ID abs_uid);
+           (* Update the imports proxy for mapping from rel to abs. *)
+           (__exec
+              (push_cur_ip {st = 0; mod_id = curmod.id;
+                            closure = Hashtbl.create 1;
+                            is_partial = false;
+                            args = Hashtbl.create 32})
+              {flags with curmod = module_}
+              0))
 
       | BIND(ArgLit(VUFixedInt(uid))) -> trace "binding";
         trace (Printf.sprintf "(%d,%d)" (fst @@ tos_idx ()) (snd @@ tos_idx ()));
         npush !(curmod.scps) (vm_name uid) (tos_idx ());
-        let () = tick_name (vm_name uid)
+        let _ = curmod.name_id_tick (vm_name uid)
         in __exec ctxs flags next_ip
 
       | IDLE -> trace "idling";
@@ -608,14 +620,14 @@ Something is wrong with the compiler.");
         __exec ctxs {flags with is_stepping = not flags.is_stepping} next_ip
 
       | TERMINATE -> trace "terminating";
-        if tos flags.import_stack <> 0
+        if List.length ctxs <> 1 (* May become a bug? Maybe not? *)
         then let tctx = tos ctxs
           in let tmod = Hashtbl.find modules tctx.mod_id
 
           in let cur_base_scope = tos (List.rev (!(curmod.scps)))
 
-          in trace (sprintf "terminating: %s, ip -> %d"
-                      (Uint64.to_string tctx.mod_id) tctx.ret_addr);
+          in trace (sprintf "terminating: %d, ip -> %d"
+                      tctx.mod_id tctx.ret_addr);
 
           (* This implementation assumes the imported module only increase
              SP of dss by one, i.e. it pops all the stacks it created
@@ -628,49 +640,28 @@ Something is wrong with the compiler.");
             (* Then purge it. *)
             dspurge dss
           in begin
-            if (tos flags.import_stack) = 1
-            then let sorted_ext_scope = List.sort (fun x y ->
-                Pervasives.compare (fst x) (fst y))
-                @@ Hashtbl.fold (fun name value acc -> (name, value)::acc)
-                  curmod.exs []
-              in List.iter (fun x ->
-                  let _, value = x
-                  in let new_vidx = dspush dss value; tos_idx ()
-                  in npush !(tmod.scps) (tmod.name_id_tick ()) new_vidx)
-                sorted_ext_scope
-                (* If it is implicit import, we have to copy whatever is in
-                   the exs table of current module to the top scope of module
-                   that imported this module. Beside that, we have to copy
-                   whatever value is in the exs table of current module to
-                   the top stack of dss, and redo the name-vidx mapping. *)
-            else ();
             (* Pop the top scope. If nothing went wrong, it should be the
                only scope in the scope stack of the module. *)
             curmod.scps := ntos !(curmod.scps);
-
             __exec (ntos ctxs)
-              {flags with import_stack = ntos flags.import_stack;
-                          curmod = tmod}
+              {flags with curmod = tmod}
               tctx.ret_addr
           end
         else exit 0
 
       | _ -> fprintf stderr "Not implemented yet.\n"; exit 0
 
-  in Hashtbl.replace modules _MAIN_MODULE_ID
-    {id = _MAIN_MODULE_ID;
-     insts = insts;
-     imports = Hashtbl.create 64;
-     name_id_tick = (let x = Common.counter ()
-                     in fun () -> vm_name (x ()));
-     exs = Hashtbl.create 1;
-     scps = ref []};
+  in let main = {id = _MAIN_MODULE_ID;
+                 insts = insts;
+                 imports = Hashtbl.create 64;
+                 name_id_tick = name_id_tick_gen ();
+                 exs = Hashtbl.create 1;
+                 scps = ref []}
+  in Hashtbl.replace modules _MAIN_MODULE_ID main;
+  Hashtbl.replace main.imports _SELF_MODULE_ID _MAIN_MODULE_ID;
 
   __exec ctxs_ {is_tail_recursive_call = false;
-                is_main = true;
-                is_init_ext_mod = false;
                 dss = dinit ();
-                import_stack = [0];
                 list_make_stack = [];
                 is_stepping = false;
                 curmod = Hashtbl.find modules _MAIN_MODULE_ID}

@@ -25,9 +25,9 @@ let rec string_of_value v =
     sprintf "[@ %s]"
       (String.concat " " (List.map string_of_value !rs))
   | OVFunction(f) ->
-    sprintf "**%s: %d,%s,<closure set>"
+    sprintf "**%s: %d,%d,<closure set>"
       (if f.is_partial then "partial-fun" else "fun")
-      f.st (Uint64.to_string f.mod_id)
+      f.st f.mod_id
   | _ -> "**abstract value";;
 
 type 'a dstack_t = 'a BatDynArray.t;;

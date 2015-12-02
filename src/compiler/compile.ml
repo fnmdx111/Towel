@@ -34,7 +34,9 @@ let atom_repr_tick = Common.counter ();;
 Hashtbl.replace atom_dict "false" Uint64.zero;;
 Hashtbl.replace atom_dict "true" @@ atom_repr_tick ();;
 
-let name_repr_tick = Common.counter ();;
+let mod_uid = name_repr_tick_gen ();;
+
+let name_uid = name_repr_tick_gen ();;
 (* 2**64 names should surely be enough. Or I'll say it's more than enough. And
    may cause problem in bytecode generation.
    The reasons that I'm reluctant to change it to int or uint16 are that
@@ -224,7 +226,7 @@ and g_import ctx imp =
   let is_explicit, ss = match imp with Ast.ExplicitImport(ss) -> true, ss
                                      | Ast.ImplicitImport(ss) -> false, ss
 
-  in let uid = ext_scope_tick ()
+  in let bindings = ref []
 
   in let push_into_scope ext_scope =
        let sorted_ext_scope =
@@ -233,17 +235,23 @@ and g_import ctx imp =
        in List.iter (fun x ->
            let k, v = x
            in push_name ctx.scp_stk {nil_name with Ast.name_repr = k}
-             (name_repr_tick ())) sorted_ext_scope
+             (name_uid k)) sorted_ext_scope
 
   in let rec find_module mod_str = function
         path::rest ->
         let possible_mod_path = Filename.concat path (mod_str ^ ".e")
         in if BatSys.file_exists possible_mod_path
         then let ext_scope = open_export possible_mod_path
-
-          in if is_explicit
-          then push_ext_scope ctx.ext_scope_meta ext_scope uid mod_str
-          else push_into_scope ext_scope
+          in begin
+            push_ext_scope ctx.ext_scope_meta ext_scope
+              (mod_uid mod_str) mod_str;
+            bindings := Hashtbl.fold (fun name uid acc ->
+                ((line (PUSH_NAME(ArgLit(VUFixedInt(uid)),
+                                  ArgLit(VUFixedInt(mod_uid mod_str)))))
+                 |~~| (line (BIND(ArgLit(VUFixedInt(name_uid name))))))::acc)
+                ext_scope [];
+            push_into_scope ext_scope
+          end
 
         else find_module mod_str rest
       | [] -> failwith (Printf.sprintf "Requested module `%s' not found." mod_str)
@@ -251,15 +259,17 @@ and g_import ctx imp =
   in let () = List.iter (fun x -> find_module x Config.libpaths) ss
   in List.fold_left (|~~|) cnil
   @@ lmap (fun x ->
-      line (if is_explicit
-            then IMPORT_EXPLICIT(ArgLit(VString(x)), ArgLit(VUFixedInt(uid)))
-            else IMPORT_IMPLICIT(ArgLit(VString(x)), ArgLit(VUFixedInt(uid))))) ss
+      (line (IMPORT(ArgLit(VString(x)),
+                    ArgLit(VUFixedInt(mod_uid x)))))
+      |~~| (if is_explicit
+            then cnil
+            else aggregate !bindings)) ss
 
 and g_bind ctx =
   let _g_bind_body =
     function
       Ast.BindBody(pn, b) ->
-      (push_name ctx.scp_stk pn @@ name_repr_tick ());
+      (push_name ctx.scp_stk pn @@ name_uid pn.Ast.name_repr);
       (cnil
        |~~| (g_word {ctx with is_body = false;
                               is_backquoted = false}
@@ -334,11 +344,11 @@ and g_match ctx =
                       x::[] ->
                       (try if lookup_name ctx.scp_stk x = Uint64.zero
                          then (new_names := x::!new_names;
-                               push_name ctx.scp_stk x @@ name_repr_tick ())
+                               push_name ctx.scp_stk x @@ name_uid x.Ast.name_repr)
                          else ()
                        with Exc.NameNotFoundError(_) ->
                          (new_names := x::!new_names);
-                         (push_name ctx.scp_stk x @@ name_repr_tick ()))
+                         (push_name ctx.scp_stk x @@ name_uid x.Ast.name_repr))
                     (* Users might bind some new names in this pattern,
                              so if I don't deal with these new names, it
                              might result in a NameNotFoundError. *)
@@ -538,7 +548,7 @@ and g_fun ctx inst_ctx fun_ =
   in let _g_arg_def = function
         Ast.ArgDef(pn)
       | Ast.ArgDefWithType(pn, _) ->
-        push_name scp_stk pn @@ name_repr_tick ();
+        push_name scp_stk pn @@ name_uid pn.Ast.name_repr;
         line (FUN_ARG(ArgLit(VUFixedInt(lookup_name scp_stk pn))))
 
   in let _g_fun arg_defs body is_backquoted =

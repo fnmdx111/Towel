@@ -26,8 +26,8 @@ module Inst
     'reverse',
     'pack',
     'invoke',
-    'add', 'sub', 'mul', 'div', 'pow',
-    'and', 'or', 'xor', 'not', 'shl', 'shr', 'shll',
+    'add', 'sub', 'mul', 'div', 'pow', 'mod', 'equ',
+    'and', 'or', 'xor', 'not', 'shl', 'shr', 'lshr',
   ]
 
   unary_instructions = [
@@ -43,7 +43,7 @@ module Inst
   binary_instructions = [
     'eval-and-push', 'push-name', 'closure',
     'eval-tail',
-    'import-explicit', 'import-implicit',
+    'import',
   ]
 
   multiarity_instructions = [
