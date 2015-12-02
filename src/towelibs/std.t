@@ -6,6 +6,10 @@ also - fun` ~1 ~2, (~1 ~2 ..-\.w)
 also * fun` ~1 ~2, (~1 ~2 ..*\.w)
 also / fun` ~1 ~2, (~1 ~2 ../\.w)
 also ** fun` ~1 ~2, (~1 ~2 ..**\.w)
+also % fun` ~1 ~2, (~1 ~2 ..%\.w)
+also = fun` ~1 ~2, (~1 ~2 ..=\.w)
+also :and fun` ~1 ~2, (~1 ~2 ..and\.w)
+also :or fun` ~1 ~2, (~1 ~2 ..or\.w)
 also ~fint fun` ~1, (~1 ..2fint\.w)
 "Use tilde as prefix for all the conversion functions."
 also ~ufint fun` ~1, (~1 ..2ufint\.w)
@@ -34,6 +38,11 @@ also :foldl fun` ~p ~l ~f, (
 also #rev fun` ~1, ([] ~1 fun` ~acc ~x, (~x ~acc #cons) :foldl)
 also :map fun` ~l ~f, (
   [] ~l fun` ~acc ~x, (~x ~f ~acc #cons) :foldl #rev)
-then export + - * / ** ~fint ~ufint ~int ~float ~str !print !println
-#hd #tl #cons #?empty #t1 #t2 #t3 :id :foldl #rev :map @
+also :filter fun` ~l ~pred, (
+  [] ~l
+  fun` ~acc ~x, (~x ~pred ift ~acc,
+                 (~x ~acc #cons))
+  :foldl #rev)
+then export + - * / ** % = :and :or ~fint ~ufint ~int ~float ~str !print
+!println #hd #tl #cons #?empty #t1 #t2 #t3 :id :foldl #rev :map :filter @
 

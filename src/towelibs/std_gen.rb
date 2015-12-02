@@ -34,7 +34,9 @@ if __FILE__ == $0
             ['div', '../'],
             ['pow', '..**'],
             ['mod', '..%'],
-            ['equ', '..=']]
+            ['equ', '..='],
+            ['and', '..and'],
+            ['or', '..or']]
     instn, funn = i
 
     make_inline_fun.call "#{funn}", ["#{instn}"]

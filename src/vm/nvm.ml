@@ -60,7 +60,12 @@ let rec string_of_value v =
   | OVFixedInt(i) -> Int64.to_string i
   | OVUFixedInt(i) -> Uint64.to_string i
   | OVFloat(f) -> string_of_float f
-  | OVAtom(a) -> Uint64.to_string a
+  | OVAtom(a) ->
+    if Uint64.compare a Uint64.one = 0
+    then "true"
+    else if Uint64.compare a Uint64.zero = 0
+    then "false"
+    else sprintf "%sa" (Uint64.to_string a)
   | OVString(s) -> s
   | OVList(rs) ->
     sprintf "[%s]"
@@ -320,7 +325,7 @@ let exec should_trace should_warn insts =
             if Big_int.eq_big_int j i then 0 else 1
           | OVAtom(i), OVAtom(j) ->
             Uint64.compare i j
-          | _ -> failwith "Incompatible type to do substraction.")
+          | _ -> 1 (* Equality of non-equal values are 1. *))
       in dspush dss (if tf = 0
                      then OVAtom(Uint64.one)
                      else OVAtom(Uint64.zero));
