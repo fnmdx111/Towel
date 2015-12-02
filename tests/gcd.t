@@ -6,12 +6,12 @@ Mainly tests tail recursive calls.
 !<< 6
 "
 
-import 'std' \
-import '.w' \
+import 'std' @
+import '.w' @
 
 bind GCD fun` A B,
-  (A B -\Std if=0 A,
-     if>0 (.!pop\.w A B -\Std B GCD@),
-     if<0 (.!pop\.w A B A -\Std GCD@),
+  (A B - if=0 A,
+     if>0 (.!pop A B - B GCD@),
+     if<0 (.!pop A B A - GCD@),
        idle)
-then (42 24 GCD !println\Std)
+then (42 24 GCD !println)
