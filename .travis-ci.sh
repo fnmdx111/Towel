@@ -8,6 +8,7 @@ opam init
 opam install ${OPAM_DEPENDS}
 eval `opam config env`
 sudo apt-get install rbenv
+git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
 rbenv install 2.2.3
 rbenv local 2.2.3
 sudo apt-get install python3
