@@ -24,6 +24,16 @@ also #?empty fun` ~1, (~1 .?empty\.w)
 also #t1 fun` ~1, (~1 ..t1\.w)
 also #t2 fun` ~1, (~1 ..t2\.w)
 also #t3 fun` ~1, (~1 ..t3\.w)
+also :id fun` ~1, ~1
+also :foldl fun` ~p ~l ~f, (
+  ~l .?empty\.w ift ~p,
+  (~p ~l ..hd\.w ~f "accumulated value"
+   ~l ..tl\.w "rest of the list"
+   ~f`
+   :foldl@))
+also #rev fun` ~1, ([] ~1 fun` ~acc ~x, (~x ~acc #cons) :foldl)
+also :map fun` ~l ~f, (
+  [] ~l fun` ~acc ~x, (~x ~f ~acc #cons) :foldl #rev)
 then export + - * / ** ~fint ~ufint ~int ~float ~str !print !println
-#hd #tl #cons #?empty #t1 #t2 #t3 @
+#hd #tl #cons #?empty #t1 #t2 #t3 :id :foldl #rev :map @
 
