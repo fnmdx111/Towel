@@ -32,7 +32,9 @@ if __FILE__ == $0
             ['sub', '..-'],
             ['mul', '..*'],
             ['div', '../'],
-            ['pow', '..**']]
+            ['pow', '..**'],
+            ['mod', '..%'],
+            ['equ', '..=']]
     instn, funn = i
 
     make_inline_fun.call "#{funn}", ["#{instn}"]
