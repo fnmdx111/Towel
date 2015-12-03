@@ -34,9 +34,9 @@ let atom_repr_tick = Common.counter ();;
 Hashtbl.replace atom_dict "false" Uint64.zero;;
 Hashtbl.replace atom_dict "true" @@ atom_repr_tick ();;
 
-let mod_uid = name_repr_tick_gen ();;
+let mod_uid, _ = name_repr_tick_gen ();;
 
-let name_uid = name_repr_tick_gen ();;
+let name_uid, _ = name_repr_tick_gen ();;
 (* 2**64 names should surely be enough. Or I'll say it's more than enough. And
    may cause problem in bytecode generation.
    The reasons that I'm reluctant to change it to int or uint16 are that
@@ -245,12 +245,15 @@ and g_import ctx imp =
           in begin
             push_ext_scope ctx.ext_scope_meta ext_scope
               (mod_uid mod_str) mod_str;
-            bindings := Hashtbl.fold (fun name uid acc ->
-                ((line (PUSH_NAME(ArgLit(VUFixedInt(uid)),
-                                  ArgLit(VUFixedInt(mod_uid mod_str)))))
-                 |~~| (line (BIND(ArgLit(VUFixedInt(name_uid name))))))::acc)
-                ext_scope [];
-            push_into_scope ext_scope
+            if not is_explicit
+            then begin
+              bindings := Hashtbl.fold (fun name uid acc ->
+                  ((line (PUSH_NAME(ArgLit(VUFixedInt(uid)),
+                                    ArgLit(VUFixedInt(mod_uid mod_str)))))
+                   |~~| (line (BIND(ArgLit(VUFixedInt(name_uid name))))))::acc)
+                  ext_scope [];
+              push_into_scope ext_scope
+            end else ()
           end
 
         else find_module mod_str rest
