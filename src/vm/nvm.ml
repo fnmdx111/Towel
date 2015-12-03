@@ -492,9 +492,8 @@ Something is wrong with the compiler.");
         return ()
       end else begin
         Hashtbl.replace f.closure (nid, curmod.id) stolen_arg;
-        (* New arguments can shadow previously bound arguments,
-           but definitely cannot override them. *)
         __exec ({(tos ctxs) with curfun = f}::(ntos ctxs))
+          (* Modify the toctx with the newly modified function. *)
           flags next_ip
       end
 
