@@ -21,10 +21,14 @@ also !print .!print\.w`
 "Use .! as prefix for functions with serious stack-effects."
 also !println .!println\.w`
 also #hd fun` ~1, (~1 ..hd\.w)
+also <# #hd`
 "Use # as prefix for list/tuple functions."
 also #tl fun` ~1, (~1 ..tl\.w)
+also #> #tl`
 also #cons fun` ~1 ~2, (~1 ~2 ..cons\.w)
-also #?empty fun` ~1, (~1 .?empty\.w)
+also <#> #cons`
+also ?#empty fun` ~1, (~1 .?empty\.w)
+also ?# ?#empty`
 also #t1 fun` ~1, (~1 ..t1\.w)
 also #t2 fun` ~1, (~1 ..t2\.w)
 also #t3 fun` ~1, (~1 ..t3\.w)
@@ -42,6 +46,9 @@ also /foldr fun` ~p ~l ~f, (
    ~l ..hd\.w
    ~f))
 also #rev fun` ~1, ([] ~1 fun` ~acc ~x, (~x ~acc ..cons\.w) /foldl@)
+also <<# #rev`
+also |#| fun` ~1 ~2, (~2 ~1 #rev fun` ~acc ~x, (~x ~acc ..cons\.w) /foldl@)
+also #concat |#|`
 also /map fun` ~l ~f, (
   [] ~l fun` ~acc ~x, (~x ~f ~acc ..cons\.w) /foldl #rev@)
 also /filter fun` ~l ~pred, (
@@ -52,6 +59,6 @@ also /filter fun` ~l ~pred, (
 also /flip fun` ~1 ~2 ~f, (~2 ~1 ~f)
 also #len fun` ~1, (0 ~1 fun` ~acc _, (~acc 1 ..+\.w) /foldl@)
 then export + - * / ** % = :and :or ~fint ~ufint ~int ~float ~str !print
-!println #hd #tl #cons #?empty #t1 #t2 #t3 /id /foldl #rev /map /filter
-/flip /foldr @
+!println #hd #tl #cons ?#empty #t1 #t2 #t3 /id /foldl #rev /map /filter
+/flip /foldr |#| #concat <# #> <#> ?# <<# @
 
