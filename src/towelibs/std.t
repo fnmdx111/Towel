@@ -8,18 +8,22 @@ also / fun` ~1 ~2, (~1 ~2 ../\.w)
 also ** fun` ~1 ~2, (~1 ~2 ..**\.w)
 also % fun` ~1 ~2, (~1 ~2 ..%\.w)
 also = fun` ~1 ~2, (~1 ~2 ..=\.w)
+
 also :and fun` ~1 ~2, (~1 ~2 ..and\.w)
 also :or fun` ~1 ~2, (~1 ~2 ..or\.w)
+
 also ~fint fun` ~1, (~1 ..2fint\.w)
 "Use tilde as prefix for all the conversion functions."
 also ~ufint fun` ~1, (~1 ..2ufint\.w)
 also ~int fun` ~1, (~1 ..2int\.w)
 also ~float fun` ~1, (~1 ..2float\.w)
 also ~str fun` ~1, (~1 ..2str\.w)
+
 also !print .!print\.w`
 "Use exclamation mark as prefix for functions with side-effects."
 "Use .! as prefix for functions with serious stack-effects."
 also !println .!println\.w`
+
 also #hd fun` ~1, (~1 ..hd\.w)
 also <# #hd`
 "Use # as prefix for list/tuple functions."
@@ -32,6 +36,7 @@ also ?# ?#empty`
 also #t1 fun` ~1, (~1 ..t1\.w)
 also #t2 fun` ~1, (~1 ..t2\.w)
 also #t3 fun` ~1, (~1 ..t3\.w)
+
 also /id fun` ~1, ~1
 "/\ -> lambda, since \ is reserved, we use /"
 also /foldl fun` ~p ~l ~f, (
@@ -58,7 +63,8 @@ also /filter fun` ~l ~pred, (
   /foldl #rev@)
 also /flip fun` ~1 ~2 ~f, (~2 ~1 ~f)
 also #len fun` ~1, (0 ~1 fun` ~acc _, (~acc 1 ..+\.w) /foldl@)
+also !# #len`
 then export + - * / ** % = :and :or ~fint ~ufint ~int ~float ~str !print
 !println #hd #tl #cons ?#empty #t1 #t2 #t3 /id /foldl #rev /map /filter
-/flip /foldr |#| #concat <# #> <#> ?# <<# @
+/flip /foldr |#| #concat <# #> <#> ?# <<# !# @
 
