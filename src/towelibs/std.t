@@ -23,6 +23,7 @@ also !print .!print\.w`
 "Use exclamation mark as prefix for functions with side-effects."
 "Use .! as prefix for functions with serious stack-effects."
 also !println .!println\.w`
+also !read .!read\.w`
 
 also #hd fun` ~1, (~1 ..hd\.w)
 also <# #hd`
@@ -64,7 +65,10 @@ also /filter fun` ~l ~pred, (
 also /flip fun` ~1 ~2 ~f, (~2 ~1 ~f)
 also #len fun` ~1, (0 ~1 fun` ~acc _, (~acc 1 ..+\.w) /foldl@)
 also !# #len`
+
+also /apply fun` ~args ~f, (~args .!unpack\.w ~f)
+
 then export + - * / ** % = :and :or ~fint ~ufint ~int ~float ~str !print
 !println #hd #tl #cons ?#empty #t1 #t2 #t3 /id /foldl #rev /map /filter
-/flip /foldr |#| #concat <# #> <#> ?# <<# !# @
+/flip /foldr |#| #concat <# #> <#> ?# <<# !# /apply @
 

@@ -10,6 +10,7 @@ open Vm_t;;
 open Nstack;;
 open Printf;;
 open Common;;
+open Built_in;;
 
 let vm_name = Uint64.to_int;;
 let vm_mod_id = Uint64.to_int;;
@@ -113,11 +114,14 @@ let exec should_trace should_warn insts =
 
     in let return () =
       let tctx = tos ctxs
-      in let ret = dspop dss
       in let tmod = Hashtbl.find modules tctx.mod_id
       in begin
-        dspurge dss; (* Wipe out current stack for GC. *)
-        dspush dss ret; (* Copy return value to caller's dss. *)
+         (* Wipe out current stack for GC. *)
+        if dsis_empty dss = 0
+        then let r = dspop dss
+          in begin dspurge dss;
+            dspush dss r (* Copy return value to caller's dss. *)
+          end else dspurge dss;
         (* If we purge (and pop) the current stack then copy the return value
            there won't be a problem if the two contexts are in the same
            module. *)
@@ -204,6 +208,48 @@ let exec should_trace should_warn insts =
 
     | END_TUPLE -> trace "ending tuple";
       end_list ()
+
+    | PACK -> trace "packing";
+      let n = match (dspop dss) with
+          OVUFixedInt(i) -> Uint64.to_int i
+        | OVFixedInt(i) -> let r = Int64.to_int i
+          in if r < 0
+          then failwith "Invalid argument to pack (arg < 0)."
+          else r
+        | OVInt(i) -> let r = Big_int.int_of_big_int i
+          in if r < 0
+          then failwith "Invalid argument to pack (arg < 0)."
+          else r
+        | _ -> failwith "Invalid type of argument to pack."
+      in let nl = List.fold_left (fun acc _ ->
+          (dspop dss)::acc) [] (BatList.range 1 `To n)
+      in dspush dss (OVList(ref nl));
+      __exec ctxs flags next_ip
+
+    | UNPACK -> trace "unpacking";
+      let ns = match (dspop dss) with
+          OVList(rls) -> !rls
+        | OVTuple(rls) -> !rls
+        | _ -> failwith "Invalid type of argument to unpack."
+      in List.iter (fun x -> dspush dss x) ns;
+      __exec ctxs flags next_ip
+
+    | DUP -> trace "duplicating";
+      let v = dstop dss
+      in dspush dss v;
+      __exec ctxs flags next_ip
+
+    | BUILT_IN -> trace "calling built-in";
+      let syscall = match dspop dss with
+          OVUFixedInt(i) -> Uint64.to_int i
+        | _ -> failwith "Invalid type of argument to built-in."
+      in call_built_in syscall dss flags;
+      __exec ctxs flags next_ip
+
+    | READ -> trace "reading";
+      let n = Pervasives.input_line Pervasives.stdin
+      in dspush dss (OVString(n));
+      __exec ctxs flags next_ip
 
     | CAR -> trace "pushing list head";
       let tos = dspop dss

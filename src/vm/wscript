@@ -25,7 +25,7 @@ def build(ctx):
     aff_mlis = ['tasm_parser']
     non_exec_mls = ['tasm_parser', 'tasm_scanner', 'dscoping']
     some_more_mls0 = ['vm_t']
-    some_more_mls1 = ['imp', 'jumps']
+    some_more_mls1 = ['imp', 'jumps', 'built_in']
     some_more_mls2 = ['nvm']
     target_mls = ['tvm']
 

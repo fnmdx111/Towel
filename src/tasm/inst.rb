@@ -28,6 +28,7 @@ module Inst
     'invoke',
     'add', 'sub', 'mul', 'div', 'pow', 'mod', 'equ',
     'and', 'or', 'xor', 'not', 'shl', 'shr', 'lshr',
+    'built-in', 'dup',
   ]
 
   unary_instructions = [

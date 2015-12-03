@@ -5,6 +5,7 @@ Tests some of the functional functions.
 [41 40]
 -123
 [1 3 false]
+-1
 "
 import 'std' @
 
@@ -17,3 +18,5 @@ then ([42 41] :dec-1` /map !println
 
 bind ?not-true ,\ ~x, (~x ift true, false)
 then ([1 3 true false true] ?not-true` /filter !println)
+
+([1 2] -` /apply !println)
