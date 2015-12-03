@@ -407,7 +407,7 @@ let exec should_trace should_warn insts =
 
     | PUSH_PHONY -> trace "pushing phony";
       dspush dss OVPhony;
-      __exec (ntos ctxs) flags next_ip
+      __exec ctxs flags next_ip
 
     | CLOSURE(ArgLit(VUFixedInt(_nid)), ArgLit(VUFixedInt(_mid))) ->
       trace "adding to closure";
@@ -431,7 +431,7 @@ Something is wrong with the compiler.");
            in if r = 1
            then () (* It's really empty. *)
            else if r = 2
-           then ignore (dpop ds)
+           then BatDynArray.delete_last ds
 
       in let steal_arg () =
            (* Hashtbl.replace f.args nid 1; *)

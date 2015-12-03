@@ -50,7 +50,7 @@ let dtop ds =
 
 let dis_empty ds = if BatDynArray.length ds = 0
     then 1
-    else if dtop ds = OVPhony
+    else if BatDynArray.last ds = OVPhony
     then 2
     else 0;;
 
