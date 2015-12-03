@@ -438,12 +438,7 @@ and g_backquote ctx inst_ctx =
   | Ast.BQBackquote(bq) -> g_backquote ctx inst_ctx bq
 
 and g_seq ctx inst_ctx seq =
-  let _UID =
-    if sw_opt_seq ctx.sw
-    then if ctx.is_body
-      then uniq64 ()
-      else "na"
-    else uniq64 ()
+  let _UID = uniq64 ()
 
   in let seq_st_id = Printf.sprintf "%s-st" _UID
   in let seq_end_id = Printf.sprintf "%s-end" _UID
@@ -478,7 +473,7 @@ and g_seq ctx inst_ctx seq =
               |~~| (line RET)
          else (put_label [seq_end_id])
               |~~| (line SHARED_RET)
-       in (opt_cs _x) |~~| (put_label [seq_real_end_id])
+       in (opt_cs (_x |~~| (put_label [seq_real_end_id])))
 
   in let body, scp_stk = match seq with
         Ast.Sequence(s) -> s, if _UID = "na"
