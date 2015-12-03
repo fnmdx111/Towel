@@ -36,8 +36,7 @@ let ctxs_ = [{mod_id = _MAIN_MODULE_ID; ret_addr = -1;
               curfun = {st = -1;
                         mod_id = _MAIN_MODULE_ID;
                         closure = Hashtbl.create 1;
-                        is_partial = false;
-                        args = Hashtbl.create 1}}];;
+                        is_partial = false}}];;
 
 let show_ctx c =
   fprintf stderr "{ctx: %d,%d}" c.mod_id c.ret_addr;;
@@ -117,12 +116,6 @@ let exec should_trace should_warn insts =
       in let ret = dspop dss
       in let tmod = Hashtbl.find modules tctx.mod_id
       in begin
-        Hashtbl.iter (fun n _ ->
-            Hashtbl.remove tctx.curfun.closure (n, curmod.id))
-          tctx.curfun.args;
-        (* Remove all the stolen argument from closure. *)
-        Hashtbl.clear tctx.curfun.args;
-        (* Forget about all the things I've stolen. *)
         dspurge dss; (* Wipe out current stack for GC. *)
         dspush dss ret; (* Copy return value to caller's dss. *)
         (* If we purge (and pop) the current stack then copy the return value
@@ -260,7 +253,6 @@ let exec should_trace should_warn insts =
           mod_id = flags.curmod.id;
           closure = Hashtbl.create 32;
           is_partial = false;
-          args = Hashtbl.create 32
         })
       in begin
         dspush dss nf;
@@ -279,8 +271,7 @@ let exec should_trace should_warn insts =
       let nfrec = {st = to_pc st;
                    mod_id = flags.curmod.id;
                    closure = Hashtbl.create 32;
-                   is_partial = false;
-                   args = Hashtbl.create 32}
+                   is_partial = false}
       in __exec (push_cur_ip nfrec)
         {flags with is_tail_recursive_call = false}
         (to_pc st)
@@ -290,7 +281,9 @@ let exec should_trace should_warn insts =
       in (match f with
             OVFunction(frec) ->
             __exec (push_cur_ip frec)
-              {flags with is_tail_recursive_call = false} frec.st
+              {flags with is_tail_recursive_call = false;
+                          curmod = Hashtbl.find modules frec.mod_id}
+              frec.st
           | _ -> failwith "invoking non-function value")
 
     | SUB -> trace "substracting";
@@ -431,7 +424,8 @@ Something is wrong with the compiler.");
     | FUN_ARG(ArgLit(VUFixedInt(_nid))) -> trace "fun argumenting";
       let nid = vm_name _nid
       in let nid = curmod.name_id_tick nid
-      in let f = (tos ctxs).curfun
+      in let _f = (tos ctxs).curfun
+      in let f = {_f with closure = Hashtbl.copy _f.closure}
       in let remove_phony_if_any ds =
            let r = dis_empty ds
            in if r = 1
@@ -440,7 +434,7 @@ Something is wrong with the compiler.");
            then ignore (dpop ds)
 
       in let steal_arg () =
-           Hashtbl.replace f.args nid 1;
+           (* Hashtbl.replace f.args nid 1; *)
            (* Make a note that we stole this argument, and are going to
               erase it from the closure set after we exit this function. *)
            (* I may not need this. Because every time I put a fun-arg into
@@ -493,13 +487,15 @@ Something is wrong with the compiler.");
                             (dval dss idx))
           (tos !(curmod.scps));
         let nf = OVFunction({f with closure = new_closure;
-                                    is_partial = true;
-                                    args = Hashtbl.create 32})
+                                    is_partial = true})
         in dspush dss nf;
         return ()
       end else begin
         Hashtbl.replace f.closure (nid, curmod.id) stolen_arg;
-        __exec ctxs flags next_ip
+        (* New arguments can shadow previously bound arguments,
+           but definitely cannot override them. *)
+        __exec ({(tos ctxs) with curfun = f}::(ntos ctxs))
+          flags next_ip
       end
 
     | REVERSE -> trace "reversing";
@@ -587,8 +583,7 @@ Something is wrong with the compiler.");
            (__exec
               (push_cur_ip {st = 0; mod_id = curmod.id;
                             closure = Hashtbl.create 1;
-                            is_partial = false;
-                            args = Hashtbl.create 32})
+                            is_partial = false})
               {flags with curmod = module_}
               0))
 

@@ -15,8 +15,7 @@ and type_hint_t = THInt | THAtom | THFixedInt | THUFixedInt | THString
 and fun_t = {st: line_no_t;
              mod_id: module_id_t;
              closure: closure_t;
-             is_partial: bool;
-             args: (name_t, int) Hashtbl.t}
+             is_partial: bool}
 and value_t = OVInt of Big_int.big_int
             | OVAtom of uint64
             | OVFixedInt of int64
