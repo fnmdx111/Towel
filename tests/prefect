@@ -99,6 +99,10 @@ if __FILE__ == $0
   results = {}
   Dir.foreach '.' do |entry|
     if entry =~ /[^.]*\.#{SUFFIX}/
+      if entry.start_with? '__'
+        next
+      end
+
       cnt += 1
       ok, out = make_prefect.call(entry).execute_ok cnt
 
