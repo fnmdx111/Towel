@@ -247,16 +247,16 @@ let exec should_trace should_warn insts =
        | Dynlink.Unsafe_file -> failwith (sprintf "4%s\n" "unsafe file")
        | Dynlink.Linking_error(a, b) ->
          (match b with
-            Undefined_global(c) -> failwith (sprintf "5%s\n" c)
-          | Unavailable_primitive(c) -> failwith (sprintf "5%s\n" c)
-          | Uninitialized_global(c) -> failwith (sprintf "5%s\n" c))
+            Dynlink.Undefined_global(c)
+            -> failwith (sprintf "5%s\n" c)
+          | Dynlink.Unavailable_primitive(c)
+            -> failwith (sprintf "5%s\n" c)
+          | Dynlink.Uninitialized_global(c)
+            -> failwith (sprintf "5%s\n" c))
        | Dynlink.Corrupted_interface(a) -> failwith (sprintf "6%s\n" a)
        | Dynlink.File_not_found(a) -> failwith (sprintf "7%s\n" a)
        | Dynlink.Cannot_open_dll(a) -> failwith (sprintf "8%s\n" a)
-       | Dynlink.Inconsistent_implementation(a) -> failwith (sprintf "9%s\n" a)
-
-         failwith (sprintf "dynlink error")
-          | _ -> failwith "Unknown error while linking extension.");
+       | Dynlink.Inconsistent_implementation(a) -> failwith (sprintf "9%s\n" a));
 
       let uid = ext_id_tick fn
       in let module ThisModule = (val __get_ext () : TowelExtTemplate)
