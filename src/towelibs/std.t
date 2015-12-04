@@ -57,9 +57,9 @@ also |#| fun` ~1 ~2, (~2 ~1 #rev fun` ~acc ~x, (~x ~acc ..cons\.w) /foldl@)
 also #concat |#|`
 also /map fun` ~l ~f, (
   [] ~l fun` ~acc ~x, (~x ~f ~acc ..cons\.w) /foldl #rev@)
-also /filter fun` ~l ~pred, (
+also /filter fun` ~l ?pred, (
   [] ~l
-  fun` ~acc ~x, (~x ~pred ift ~acc,
+  fun` ~acc ~x, (~x ?pred ift ~acc,
                  (~x ~acc ..cons\.w))
   /foldl #rev@)
 also /flip fun` ~1 ~2 ~f, (~2 ~1 ~f)
