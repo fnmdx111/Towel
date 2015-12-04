@@ -1,3 +1,10 @@
+# This file generates raw wrapper functions for the instructions.
+# Most of the raw wrappers have their corresponding partial
+# applicable high-level wrappers in module Std.
+# However, wrappers for some of the stack instructions are not
+# high-level available, because they are designed to work on
+# primitive stacks (`pop', for example).
+
 require 'stringio'
 
 def gen_make_inline_fun(w, e, st_line_=2, nid_=1)
