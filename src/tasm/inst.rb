@@ -28,7 +28,7 @@ module Inst
     'invoke',
     'add', 'sub', 'mul', 'div', 'pow', 'mod', 'equ',
     'and', 'or', 'xor', 'not', 'shl', 'shr', 'lshr',
-    'built-in', 'dup',
+    'dup',
     'load-ext', 'extcall',
   ]
 
@@ -37,7 +37,6 @@ module Inst
     'jump',
     'match',
     'hmatch',
-    'rjump',
     'push-lit',
     'call', 'push-fun',
   ]
@@ -55,7 +54,7 @@ module Inst
     'jump', 'match', 'hmatch'
   ]
 
-  for i in ['make', 'push']
+  for i in ['push']
     inst_that_supports_label_as_arguments.add "#{i}-fun"
   end
   inst_that_supports_label_as_arguments.add "call"

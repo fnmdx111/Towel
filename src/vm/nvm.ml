@@ -307,13 +307,6 @@ let exec should_trace should_warn insts =
       in dspush dss v;
       __exec ctxs flags next_ip
 
-    | BUILT_IN -> trace "calling built-in";
-      let syscall = match dspop dss with
-          OVUFixedInt(i) -> Uint64.to_int i
-        | _ -> failwith "Invalid type of argument to built-in."
-      in call_built_in syscall dss flags;
-      __exec ctxs flags next_ip
-
     | READ -> trace "reading";
       let n = Pervasives.input_line Pervasives.stdin
       in dspush dss (OVString(n));
@@ -465,8 +458,11 @@ let exec should_trace should_warn insts =
         in if r = 1
         then (to_pc p)
         else if r = 2 (* Phony empty stack. *)
-        then (to_pc p)
-        else next_ip
+        then begin
+          let ds = BatDynArray.last dss
+          in BatDynArray.delete_last ds;
+          (to_pc p)
+        end else next_ip
       in __exec ctxs flags j
 
     | HJE(ArgLit(VUFixedInt(p))) -> trace "hje";
@@ -476,7 +472,8 @@ let exec should_trace should_warn insts =
         then (to_pc p)
         else if r = 2
         then begin
-          ignore (dspop dss); (* Pop the OVPhony. *)
+          let ds = BatDynArray.last dss
+          in BatDynArray.delete_last ds; (* Pop the OVPhony. *)
           (to_pc p)
         end else next_ip
       in __exec ctxs flags j

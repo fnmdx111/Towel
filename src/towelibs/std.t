@@ -70,5 +70,5 @@ also /apply fun` ~args ~f, (~args .!unpack\.w ~f)
 
 then export + - * / ** % = :and :or ~fint ~ufint ~int ~float ~str !print
 !println #hd #tl #cons ?#empty #t1 #t2 #t3 /id /foldl #rev /map /filter
-/flip /foldr |#| #concat <# #> <#> ?# <<# !# /apply @
+/flip /foldr |#| #concat <# #> <#> ?# <<# !# /apply !read @
 

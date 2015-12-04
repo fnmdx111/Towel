@@ -52,7 +52,6 @@ if __FILE__ == $0
   make_inline_fun.call '.!println', ['show', "push-lit '\n'", 'show']
   make_inline_fun.call '.!read', ['read']
   make_inline_fun.call '.!dup', ['dup']
-  make_inline_fun.call '.!!', ['built-in']
   make_inline_fun.call '.!pop', ['pop']
   make_inline_fun.call '.!rev', ['reverse']
   make_inline_fun.call '.!probe', ['dint']
