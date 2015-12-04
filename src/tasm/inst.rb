@@ -8,7 +8,7 @@ require 'set'
 
 module Inst
   nullary_instructions = [
-    'push-scope', 'pop-scope',
+    'push-scope', 'pop-scope', 'share-scope',
     'end-list', 'end-tuple',
     'pop', 'push-phony',
     'car', 'cdr', 'list-empty', 'cons',
