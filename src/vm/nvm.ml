@@ -462,8 +462,9 @@ let exec should_trace should_warn insts =
       in (match dstop dss with
             OVFunction(f) ->
             let v = resolve_name nid mid
-            in Hashtbl.replace f.closure (nid, curmod.id) v
-          | _ -> failwith "Add captured value to non-function.
+            in Hashtbl.replace f.closure (nid,
+                                         Hashtbl.find curmod.imports mid) v
+          | _ -> failwith "Adding captured value to non-function.
 Something is wrong with the compiler.");
       __exec ctxs flags next_ip
 
