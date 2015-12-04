@@ -20,11 +20,11 @@
 
 The Towel virtual machine is basically a stack-based state machine that accepts and executes Towel Assembly Language. It reads instructions sequently from instruction buffer and does its computation on stacks. It has the following important parts:
 \begin{itemize}
-\item execution stack (or the activation record stack): \texttt{Vm\_t.ctx\_t list}
-\item data stack stack: \texttt{T.value\_t Nstack.dstack\_t Nstack.dstack\_t}
-\item flags record: \texttt{Vm\_t.flags\_t}
-\item module table: \texttt{(Vm\_t.module\_id\_t, Vm\_t.module\_t) Hashtbl.t}
-\item extension table: \texttt{(Vm\_t.module\_id\_t, module Ext.TowelExtTemplate) Hashtbl.t}
+\item execution stack (or the activation record stack): \texttt{ctx\_t list}\footnote{Note that, Towel Virtual Machine does not restricts itself to a single kind of implementation. The use of OCaml type notation here is for convenience and clarity.}
+\item data stack stack: \texttt{value\_t dstack\_t dstack\_t}
+\item flags record: \texttt{flags\_t}
+\item module table: \texttt{(module\_id\_t, module\_t) Hashtbl.t}
+\item extension table: \texttt{(module\_id\_t, module TowelExtTemplate) Hashtbl.t}
 \end{itemize}
 
 \subsection{Execution Stack}
@@ -376,5 +376,53 @@ Does absolutely nothing.
 \subsubsection{\inst{terminate}}
 
 Terminate the Towel Virtual Machine. Or when finishing importing modules, go back to original module.\footnote{Look at the similarities between (\inst{call}, \inst{invoke}, etc. \texttt{->} \inst{ret}) and (\inst{import} \texttt{->} \inst{terminate}).}
+
+\section{Extending the Towel Virtual Machine (OCaml Implementation)}
+
+By using the Extension interface (in \texttt{src/vm/ext.ml}), you can easily add new functionalities to TVM, enabling more powerful Towel programming experience.
+
+\subsection{Prerequisite}
+
+The library (no matter if it's third-party, or of your own) should be \textbf{OCaml-compliant}, because TVM is built on top of OCaml too. That is to say, you should be able to write OCaml programs with it, thus TVM will have access to it via dynamic linking.
+
+\subsection{Approach}
+
+Two instructions were implemented in TVM: \inst{load-ext} and \inst{extcall}.
+
+\inst{load-ext} takes an \texttt{ext\_str} from the stack and loads the corresponding extension module into TVM via OCaml standard module \texttt{Dynlink}. An \texttt{ext\_str} is a filename of the OCaml object file (always with the \texttt{.cmo} extension even if it's a \texttt{.cmxs} file). After successfully loading it, the instruction leaves an unsigned integer (\texttt{OVUFixedInt}) on the stack for future referencing the extension.
+
+\inst{extcall} takes two arguments from the stack: it first takes the TOS as the extension handle (the one \inst{load-ext} pushed), then it takes another unsigned integer as the extension function call number (although this integer will be converted into an OCaml \texttt{int}, but I think $2^{31}$ is fairly enough for ordinary libraries). The extension module then matchs against the call number to determine which action to perform on the data stack.
+
+\subsection{Howto}
+
+The following step illustrates how to build native extension rather than bytecode extension. If you want bytecode extension, use \texttt{ocamlc} instead, and probably lose some of the parameters.
+
+The first step, create a OCaml plugin. This plugin file is essentially a dynamic library (e.g. a \texttt{.so} file on *nix, a \texttt{.dll} file on Windows). When implementing this plugin, you must implement the module interface \texttt{TowelExtTemplate} laid out in \texttt{src/vm/ext.ml}. It's simple: one function - \texttt{extcall}. You will have to route individual call numbers to different routines using this function.
+
+The first argument of \texttt{extcall} is the call number, then the second one is the \texttt{dss} of the VM, for you to get specific arguments from the data stack or leave your result on it. But be careful, if you ruin this dss, TVM is doomed.
+
+After you finish your extcall function and other local functions, remember to register your module value in the \texttt{\_\_ext\_\_} slot so that when loading this extension, TVM will get to know of your extension.
+
+The second step, you compile your source code via the following command:\newline
+
+\texttt{ocamlfind ocamlopt -package \%1 \%2 -shared -linkall -I \%3 -o \%4}
+\newline
+
+Of these parameters:
+\begin{itemize}
+\item (\texttt{\%1}) the packages your extension module uses, take \texttt{ext\_random.ml} as an example, \texttt{\%1} will be replaced by stdint;
+\item (\texttt{\%2}) the extension module source file, \texttt{ext\_random.ml}, for example;
+\item (\texttt{\%3}) the directory where \texttt{t.cmi} and \texttt{nstack.cmi} are;
+\item (\texttt{\%4}) the output binary filename, \texttt{ext\_random.cmxs} for exmpale.
+\end{itemize}
+
+The command for compiling the Random extension module is like this:\newline
+
+\texttt{ocamlfind ocamlopt -package stdint ext\_random.ml -shared -linkall -I ../../build/src/vm -o ext\_random.cmxs}
+\newline
+
+Third, place the \texttt{.cmxs} file in the \texttt{libpaths} of TVM, default locations are \texttt{cwd} and where \texttt{towelib} is at. Modify \texttt{src/vm/config.ml} to change these locations.
+
+Last, write a Towel wrapper module for your extension module. In the \texttt{.w} instruction wrapper module, \texttt{!>ext} is for the \inst{load-ext} instruction and \texttt{!>>} is for \inst{extcall}. You should always bind a name to the extension handle pushed by \texttt{!>ext}. It is a good idea to bind a local partial function with the handle already applied. Not exporting both the handle and this function are highly recommended.
 
 \end{document}

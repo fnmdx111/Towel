@@ -11,11 +11,11 @@ The library (no matter if it's third-party, or of your own) should be **OCaml-co
 Approach
 ----
 
-Two instructions were implemented in TVM: `load_ext` and `extcall`.
+Two instructions were implemented in TVM: `load-ext` and `extcall`.
 
-`load_ext` takes an `ext_str` from the stack and loads the corresponding extension module into TVM via `Dynlink`. An `ext_str` is the filename of the OCaml object file (always with the `.cmo` extension even if it's a `.cmxs` file). After successfully loading it, the instruction leaves an unsigned integer (`OVUFixedInt`) on the stack for future referencing the extension.
+`load-ext` takes an `ext_str` from the stack and loads the corresponding extension module into TVM via `Dynlink`. An `ext_str` is a filename of the OCaml object file (always with the `.cmo` extension even if it's a `.cmxs` file). After successfully loading it, the instruction leaves an unsigned integer (`OVUFixedInt`) on the stack for future referencing the extension.
 
-`extcall` takes two arguments from the stack: it first takes the TOS as the extension handle (the one `load_ext` pushed), then it takes another unsigned integer as the extension function call number (although this integer will be converted into an OCaml `int`, but I think 2 ** 31 is fairly enough for ordinary libraries). The extension module then matchs against the call number to determine which action to perform on the data stack.
+`extcall` takes two arguments from the stack: it first takes the TOS as the extension handle (the one `load-ext` pushed), then it takes another unsigned integer as the extension function call number (although this integer will be converted into an OCaml `int`, but I think 2 ** 31 is fairly enough for ordinary libraries). The extension module then matchs against the call number to determine which action to perform on the data stack.
 
 Howto
 ----
