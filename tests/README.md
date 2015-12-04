@@ -1,4 +1,4 @@
-The Prefect Test Suite for Towel
+The Prefect Test Suite for Towel - the Test Suite from Betelgeuse
 ====
 
 Prefect reads testcases per file from within the embeded multi-line comment in each file.
