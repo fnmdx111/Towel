@@ -383,7 +383,7 @@ By using the Extension interface (in \texttt{src/vm/ext.ml}), you can easily add
 
 \subsection{Prerequisite}
 
-The library (no matter if it's third-party, or of your own) should be \textbf{OCaml-compliant}, because TVM is built on top of OCaml too. That is to say, you should be able to write OCaml programs with it, thus TVM will have access to it via dynamic linking.
+The library (no matter if it's third-party, or of your own) should be \textbf{OCaml-compliant}, because TVM is built on top of OCaml too. That is to say, you should be able to write OCaml programs with it, thus TVM will have access to it via dynamic linking.\footnote{I think plain C libraries with only thin OCaml wrappers (no \texttt{ml} files) would work too. Because \texttt{Dynlink} only needs it to be a OCaml-ware shared-library.}
 
 \subsection{Approach}
 
@@ -413,7 +413,8 @@ Of these parameters:
 \item (\texttt{\%1}) the packages your extension module uses, take \texttt{ext\_random.ml} as an example, \texttt{\%1} will be replaced by stdint;
 \item (\texttt{\%2}) the extension module source file, \texttt{ext\_random.ml}, for example;
 \item (\texttt{\%3}) the directory where \texttt{t.cmi} and \texttt{nstack.cmi} are;
-\item (\texttt{\%4}) the output binary filename, \texttt{ext\_random.cmxs} for exmpale.
+\item (\texttt{\%4}) the output binary filename, \texttt{ext\_random.cmxs}, for exmpale.
+\item If you use some libraries that are not included in standard library, you may want to use \texttt{-linkpkg} instead of \texttt{-linkall} (for example, when building binding library for Tk).
 \end{itemize}
 
 The command for compiling the Random extension module is like this:\newline
