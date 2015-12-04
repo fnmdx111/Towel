@@ -38,7 +38,7 @@ Of these %parameters:
         (%2) the extension module source file, `ext_random.ml`, for example;
         (%3) the directory where `t.cmi` and `nstack.cmi` are;
         (%4) the output binary filename, `ext_random.cmxs` for exmpale;
-        (5) If you make use of non-standard libraries, you may want to use `-linkpkg` instead of `-linkall`. However, if               you only use standard libraries, you may want to use `-linkall` rather than `-linkpkg`.
+        (5) If you make use of non-standard libraries, you may want to use `-linkpkg` instead of `-linkall`. However, if you only use standard libraries, you may want to use `-linkall` rather than `-linkpkg`.
 
 The command for compiling the Random extension module is like this:
 
