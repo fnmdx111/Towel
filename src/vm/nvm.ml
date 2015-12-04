@@ -11,12 +11,15 @@ open Nstack;;
 open Printf;;
 open Common;;
 open Built_in;;
+open Ext;;
 
 let vm_name = Uint64.to_int;;
 let vm_mod_id = Uint64.to_int;;
 let to_pc = Uint64.to_int;;
 
 let modules:module_table_t = Hashtbl.create 64;;
+
+let opened_exts = Hashtbl.create 64;;
 
 let name_id_tick_gen () =
   let table = Hashtbl.create 512
@@ -29,6 +32,18 @@ let _SELF_MODULE_ID = 0;;
 let module_id_tick = let c = Common.counter ()
   in fun () -> vm_mod_id (c ());;
 ignore (module_id_tick ());; (* tick for _MAIN_MODULE_ID *)
+
+let ext_id_tick_gen () =
+  let table = Hashtbl.create 512
+  in let ext_id_tick =
+       let c = Common.counter ()
+       in fun () -> vm_mod_id (c ())
+  in fun fn ->
+    try Hashtbl.find table fn
+    with Not_found -> let id = ext_id_tick ()
+      in Hashtbl.replace table fn id; id;;
+
+let ext_id_tick = ext_id_tick_gen ();;
 
 let tos = List.hd;;
 let ntos = List.tl;;
@@ -53,6 +68,14 @@ let rec find_module mod_str = function
     then open_woven possible_mod_path
     else find_module mod_str rest
   | [] -> failwith (sprintf "Requested module %s not found." mod_str);;
+
+let rec find_ext ext_str = function
+    path::rest ->
+    let possible_ext_path = Filename.concat path ext_str
+    in if BatSys.file_exists possible_ext_path
+    then possible_ext_path
+    else find_ext ext_str rest
+  | [] -> failwith (sprintf "Requested extension %s not found." ext_str);;
 
 let rec string_of_value v =
   match v with
@@ -208,6 +231,51 @@ let exec should_trace should_warn insts =
 
     | END_TUPLE -> trace "ending tuple";
       end_list ()
+
+    | LOAD_EXT -> trace "loading ext";
+      let name =  (match dspop dss with
+            OVString(s) -> s
+          | _ -> failwith "incompatible type of argument to load-ext")
+      in let fn = find_ext (Dynlink.adapt_filename name) libpaths
+      in (* Maybe need to query the table whether this ext has been loaded. *)
+      (try Dynlink.loadfile fn
+       with Dynlink.Error(s) ->
+       match s with
+         Dynlink.Not_a_bytecode_file(a) -> failwith (sprintf "1%s\n" a)
+       | Dynlink.Inconsistent_import(a) -> failwith (sprintf "2%s\n" a)
+       | Dynlink.Unavailable_unit(a) -> failwith (sprintf "3%s\n" a)
+       | Dynlink.Unsafe_file -> failwith (sprintf "4%s\n" "unsafe file")
+       | Dynlink.Linking_error(a, b) ->
+         (match b with
+            Undefined_global(c) -> failwith (sprintf "5%s\n" c)
+          | Unavailable_primitive(c) -> failwith (sprintf "5%s\n" c)
+          | Uninitialized_global(c) -> failwith (sprintf "5%s\n" c))
+       | Dynlink.Corrupted_interface(a) -> failwith (sprintf "6%s\n" a)
+       | Dynlink.File_not_found(a) -> failwith (sprintf "7%s\n" a)
+       | Dynlink.Cannot_open_dll(a) -> failwith (sprintf "8%s\n" a)
+       | Dynlink.Inconsistent_implementation(a) -> failwith (sprintf "9%s\n" a)
+
+         failwith (sprintf "dynlink error")
+          | _ -> failwith "Unknown error while linking extension.");
+
+      let uid = ext_id_tick fn
+      in let module ThisModule = (val __get_ext () : TowelExtTemplate)
+      in Hashtbl.replace opened_exts uid
+        (module ThisModule : TowelExtTemplate);
+      dspush dss (OVUFixedInt(Uint64.of_int uid));
+      __exec ctxs flags next_ip
+
+    | EXTCALL -> trace "loading ext";
+      let ext_id = match (dspop dss) with
+          OVUFixedInt(i) -> Uint64.to_int i
+        | _ -> failwith "incompatible type of argument 1 to extcall"
+      in let cn = match (dspop dss) with
+            OVUFixedInt(i) -> Uint64.to_int i
+          | _ -> failwith "incompatible type of argument 2 to extcall"
+      in let module E =
+           (val Hashtbl.find opened_exts ext_id : TowelExtTemplate)
+      in E.extcall cn dss;
+      __exec ctxs flags next_ip
 
     | PACK -> trace "packing";
       let n = match (dspop dss) with

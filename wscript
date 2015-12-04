@@ -63,7 +63,7 @@ def configure(ctx):
                 ctx.msg('Checking for library \'%s\'' % l, 'ok')
 
         ctx.env.LIBS = {'Batteries', 'Extlib', 'Stdint', 'Sha'}
-        ctx.env.TVM_LIBS = {'Stdint', 'Batteries', 'Extlib'}
+        ctx.env.TVM_LIBS = {'Stdint', 'Batteries', 'Extlib', 'Dynlink'}
         for l in libs:
             find_lib(l)
 

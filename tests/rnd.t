@@ -1,5 +1,5 @@
 "---
-Tests if built-in routines work.
+Tests if ext module works.
 !>>
 !<< 0.473146049408
 0.717511397385
@@ -7,10 +7,10 @@ Tests if built-in routines work.
 "
 
 import 'random' @
-import '.w' \
+import 'std' @
 
 (2u ~seed
- ~~ .!println\.w
- ~~ .!println\.w
+ ~~ !println
+ ~~ !println
  3u ~seed
- ~~ .!println\.w)
+ ~~ !println)

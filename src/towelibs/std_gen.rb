@@ -67,6 +67,9 @@ if __FILE__ == $0
   make_inline_fun.call '..t2', ['cdr', 'car']
   make_inline_fun.call '..t3', ['cdr', 'cdr', 'car']
 
+  make_inline_fun.call '!>ext', ['load-ext']
+  make_inline_fun.call '!>>', ['extcall']
+
   w.puts 'terminate'
 
   File.open '.w.w', 'w' do |f| f.puts w.string end

@@ -29,6 +29,7 @@ module Inst
     'add', 'sub', 'mul', 'div', 'pow', 'mod', 'equ',
     'and', 'or', 'xor', 'not', 'shl', 'shr', 'lshr',
     'built-in', 'dup',
+    'load-ext', 'extcall',
   ]
 
   unary_instructions = [
@@ -54,9 +55,10 @@ module Inst
     'jump', 'match', 'hmatch'
   ]
 
-  for i in ['make', 'push', 'patpush']
+  for i in ['make', 'push']
     inst_that_supports_label_as_arguments.add "#{i}-fun"
   end
+  inst_that_supports_label_as_arguments.add "call"
 
   for i in ['gez', 'gz', 'lez', 'lz', 'ez', 'nez', 't', 'f', 'e', 'ne']
     unary_instructions.push "j#{i}"
