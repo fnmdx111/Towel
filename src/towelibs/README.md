@@ -1,7 +1,7 @@
 Extending Towel as a General-Purposed Language
 ====
 
-I have recently added an interface for extending the Towel programming language with customized libraries.
+I have recently added an interface for extending the Towel programming language with custom libraries.
 
 Prerequisites
 ----
@@ -22,7 +22,7 @@ Howto
 
 (The following step illustrates how to build native extension rather than bytecode extension. If you want bytecode extension, use `ocamlc` instead, and probably lose some of the parameters.)
 
-The first step, create a OCaml plugin (don't know why `.cmxs` are called plugins). This plugin file is essentially a dynamic library (e.g. a `.so` file on *nix, a `.dll` file on Windows). When implementing this plugin, you must implement the module interface `TowelExtTemplate` layed out in `src/vm/ext.ml`. It's simple: it just has one function - `extcall`. You will have to route individual call numbers to different routines using this function.
+The first step, create a OCaml plugin (don't know why `.cmxs` are called plugins). This plugin file is essentially a dynamic library (e.g. a `.so` file on *nix, a `.dll` file on Windows). When implementing this plugin, you must implement the module interface `TowelExtTemplate` laid out in `src/vm/ext.ml`. It's simple: one function - `extcall`. You will have to route individual call numbers to different routines using this function.
 
 The first argument of `extcall` is the call number, then the second one is the `dss` of the VM, for you to get specific arguments from the data stack or leave your result on it. But be careful, if you ruin this dss, TVM is doomed.
 
@@ -35,9 +35,9 @@ The second step, you compile your source code via the following command:
 Of these %parameters:
 
         (%1) the packages your extension module uses, take `ext_random.ml` as an example, %1 will be replaced by stdint;
-	(%2) the extension module source file, `ext_random.ml`, for example;
-	(%3) the directory where `t.cmi` and `nstack.cmi` are;
-	(%4) the output binary filename, `ext_random.cmxs` for exmpale.
+        (%2) the extension module source file, `ext_random.ml`, for example;
+        (%3) the directory where `t.cmi` and `nstack.cmi` are;
+        (%4) the output binary filename, `ext_random.cmxs` for exmpale.
 
 The command for compiling the Random extension module is like this:
 
