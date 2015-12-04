@@ -14,6 +14,11 @@ tasm_ast.mli
 tasm_parser.mly
 tasm_scanner.mll
 tasm_stringify.ml
+*.w
+*.e
+*.elc
+.ruby-version
+*.sh
 __pycache__
 .lock*
 
