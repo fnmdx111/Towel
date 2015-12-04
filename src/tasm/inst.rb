@@ -8,10 +8,10 @@ require 'set'
 
 module Inst
   nullary_instructions = [
-    'push-scope', 'pop-scope',
+    'push-scope', 'pop-scope', 'share-scope',
     'end-list', 'end-tuple',
     'pop', 'push-phony',
-    'car', 'cdr', 'list-empty',
+    'car', 'cdr', 'list-empty', 'cons',
     'unpack',
     'push-stack', 'share-stack', 'pop-stack',
     'ret', 'shared-ret',
@@ -26,8 +26,10 @@ module Inst
     'reverse',
     'pack',
     'invoke',
-    'add', 'sub', 'mul', 'div', 'pow',
-    'and', 'or', 'xor', 'not', 'shl', 'shr', 'shll',
+    'add', 'sub', 'mul', 'div', 'pow', 'mod', 'equ',
+    'and', 'or', 'xor', 'not', 'shl', 'shr', 'lshr',
+    'dup',
+    'load-ext', 'extcall',
   ]
 
   unary_instructions = [
@@ -35,7 +37,6 @@ module Inst
     'jump',
     'match',
     'hmatch',
-    'rjump',
     'push-lit',
     'call', 'push-fun',
   ]
@@ -43,7 +44,7 @@ module Inst
   binary_instructions = [
     'eval-and-push', 'push-name', 'closure',
     'eval-tail',
-    'import-explicit', 'import-implicit',
+    'import',
   ]
 
   multiarity_instructions = [
@@ -53,9 +54,10 @@ module Inst
     'jump', 'match', 'hmatch'
   ]
 
-  for i in ['make', 'push', 'patpush']
+  for i in ['push']
     inst_that_supports_label_as_arguments.add "#{i}-fun"
   end
+  inst_that_supports_label_as_arguments.add "call"
 
   for i in ['gez', 'gz', 'lez', 'lz', 'ez', 'nez', 't', 'f', 'e', 'ne']
     unary_instructions.push "j#{i}"

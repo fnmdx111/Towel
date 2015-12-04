@@ -1,11 +1,17 @@
 "---
-Tests ift and iff instruction.
+Tests ift and iff instruction. And other ifs.
 !>> 
-!<< 1221"
+!<< 12211221"
 
-import 'std' @
+import 'std' \
+import '.w' @
 
-(true ift (1 !print), (2 !print))
-(false ift (1 !print), (2 !print))
-(true iff (1 !print), (2 !print))
-(false iff (1 !print), (2 !print))
+(@@ ife (1 !print\Std), (2 !print\Std))
+(@@ ifne (1 !print\Std), (2 !print\Std))
+(1 2 3 ife (1 !print\Std), (2 !print\Std))
+(1 2 3 ifne (1 !print\Std), (2 !print\Std))
+
+(true ift (1 !print\Std), (2 !print\Std)) .!pop\.w
+(false ift (1 !print\Std), (2 !print\Std)) .!pop\.w
+(true iff (1 !print\Std), (2 !print\Std)) .!pop\.w
+(false iff (1 !print\Std), (2 !print\Std)) .!pop\.w

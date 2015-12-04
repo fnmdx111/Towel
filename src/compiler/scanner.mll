@@ -139,6 +139,7 @@ rule token = parse
 | "type" { TYPE }
 | "import" { IMPORT }
 | "export" { EXPORT }
+| ",\\" { LAMBDA }
 
 | eof { TERMINATOR(Ast.EOF) }
 

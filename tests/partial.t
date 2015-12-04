@@ -7,5 +7,5 @@ Tests partial function application.
 
 import 'std' @
 
-bind Dec1 (1 fun A B, (A B -))
+bind Dec1 (1 -)
 then (43 Dec1 !println 42 Dec1 !println)

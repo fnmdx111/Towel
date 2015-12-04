@@ -21,7 +21,8 @@ cmxn = lambda n: _c(n, 'cmx')
 
 def build(ctx):
     mlis = ['ast', 'tasm_ast']
-    lib_mls = ['exc', 'common', 'scoping', 'cseg', 'switches', 'config',
+    metalib_mls = ['common']
+    lib_mls = ['exc', 'scoping', 'cseg', 'switches', 'config',
                'assemble', 'tasm_stringify', ]
     aff_mlis = ['parser', 'tasm_parser']
     non_exec_mls = ['parser', 'scanner',
@@ -74,6 +75,10 @@ def build(ctx):
             source=src_ext_f(n),
             target=tgt_ext_f(n))
 
+    ctx.add_group('metalib')
+    for it in metalib_mls:
+        cpl_oc(it, mln, obj_ext)
+
     ctx.add_group('lib')
     for it in lib_mls:
         cpl_oc(it, mln, obj_ext)
@@ -92,7 +97,7 @@ def build(ctx):
         ctx(rule='${OCAMLFIND} ${OC} ${DEBUG} -package %s -linkpkg'
                  ' -o %s${TGT} ${SRC}' %\
                  (external_libs, build_prefix),
-            source=obj_j(lib_mls + non_exec_mls + [n]),
+            source=obj_j(metalib_mls + lib_mls + non_exec_mls + [n]),
             target=n)
 
     ctx.add_group('tgt')

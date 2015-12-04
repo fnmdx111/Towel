@@ -93,7 +93,7 @@ in let () =
                          ^ (Printf.sprintf "(%s %su)" nstr (Uint64.to_string idx)))
          x ""
      in let content =
-          Printf.sprintf "\"Automatically generated .e for %s\"\n\n%s."
+          Printf.sprintf "\"Automatically generated .e for %s.\"\n\n%s"
             fn_digest (compose_exp_file exp_scope)
      in let ochan =
           if out_file = "-"

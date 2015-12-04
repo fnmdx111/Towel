@@ -34,7 +34,9 @@ let atom_repr_tick = Common.counter ();;
 Hashtbl.replace atom_dict "false" Uint64.zero;;
 Hashtbl.replace atom_dict "true" @@ atom_repr_tick ();;
 
-let name_repr_tick = Common.counter ();;
+let mod_uid, _ = name_repr_tick_gen ();;
+
+let name_uid, _ = name_repr_tick_gen ();;
 (* 2**64 names should surely be enough. Or I'll say it's more than enough. And
    may cause problem in bytecode generation.
    The reasons that I'm reluctant to change it to int or uint16 are that
@@ -224,7 +226,7 @@ and g_import ctx imp =
   let is_explicit, ss = match imp with Ast.ExplicitImport(ss) -> true, ss
                                      | Ast.ImplicitImport(ss) -> false, ss
 
-  in let uid = ext_scope_tick ()
+  in let bindings = ref []
 
   in let push_into_scope ext_scope =
        let sorted_ext_scope =
@@ -233,17 +235,26 @@ and g_import ctx imp =
        in List.iter (fun x ->
            let k, v = x
            in push_name ctx.scp_stk {nil_name with Ast.name_repr = k}
-             (name_repr_tick ())) sorted_ext_scope
+             (name_uid k)) sorted_ext_scope
 
   in let rec find_module mod_str = function
         path::rest ->
         let possible_mod_path = Filename.concat path (mod_str ^ ".e")
         in if BatSys.file_exists possible_mod_path
         then let ext_scope = open_export possible_mod_path
-
-          in if is_explicit
-          then push_ext_scope ctx.ext_scope_meta ext_scope uid mod_str
-          else push_into_scope ext_scope
+          in begin
+            push_ext_scope ctx.ext_scope_meta ext_scope
+              (mod_uid mod_str) mod_str;
+            if not is_explicit
+            then begin
+              bindings := Hashtbl.fold (fun name uid acc ->
+                  ((line (PUSH_NAME(ArgLit(VUFixedInt(uid)),
+                                    ArgLit(VUFixedInt(mod_uid mod_str)))))
+                   |~~| (line (BIND(ArgLit(VUFixedInt(name_uid name))))))::acc)
+                  ext_scope [];
+              push_into_scope ext_scope
+            end else ()
+          end
 
         else find_module mod_str rest
       | [] -> failwith (Printf.sprintf "Requested module `%s' not found." mod_str)
@@ -251,15 +262,17 @@ and g_import ctx imp =
   in let () = List.iter (fun x -> find_module x Config.libpaths) ss
   in List.fold_left (|~~|) cnil
   @@ lmap (fun x ->
-      line (if is_explicit
-            then IMPORT_EXPLICIT(ArgLit(VString(x)), ArgLit(VUFixedInt(uid)))
-            else IMPORT_IMPLICIT(ArgLit(VString(x)), ArgLit(VUFixedInt(uid))))) ss
+      (line (IMPORT(ArgLit(VString(x)),
+                    ArgLit(VUFixedInt(mod_uid x)))))
+      |~~| (if is_explicit
+            then cnil
+            else aggregate !bindings)) ss
 
 and g_bind ctx =
   let _g_bind_body =
     function
       Ast.BindBody(pn, b) ->
-      (push_name ctx.scp_stk pn @@ name_repr_tick ());
+      (push_name ctx.scp_stk pn @@ name_uid pn.Ast.name_repr);
       (cnil
        |~~| (g_word {ctx with is_body = false;
                               is_backquoted = false}
@@ -278,23 +291,28 @@ and g_bind ctx =
              inst_nil_ctx b
       in bind_inst |~~| then_inst
 
-and g_name ctx =
+and g_name ctx inst_ctx n =
   let get_args ns = if List.length ns = 1
     then ArgLit(VUFixedInt(lookup_name ctx.scp_stk (List.hd ns))),
          ArgLit(VUFixedInt(Uint64.zero))
     else let n_uid, es_uid = lookup_ext_name ctx.ext_scope_meta ns
       in ArgLit(VUFixedInt(n_uid)), ArgLit(VUFixedInt(es_uid))
-  in function
-      Ast.NRegular(ns) ->
-      let arg1, arg2 = get_args ns
-      in if ctx.is_backquoted
-      then line (PUSH_NAME(arg1, arg2))
-      else line (EVAL_AND_PUSH(arg1, arg2))
-    | Ast.NTailCall(ns) ->
-      let arg1, arg2 = get_args ns
-      in if ctx.is_backquoted
-      then line (PUSH_NAME(arg1, arg2)) (* This is a weird case. *)
-      else line (EVAL_TAIL(arg1, arg2))
+  in let inst = match n with
+        Ast.NRegular(ns) ->
+        let arg1, arg2 = get_args ns
+        in if ctx.is_backquoted
+        then line (PUSH_NAME(arg1, arg2))
+        else line (EVAL_AND_PUSH(arg1, arg2))
+
+      | Ast.NTailCall(ns) ->
+        let arg1, arg2 = get_args ns
+        in if ctx.is_backquoted
+        then line (PUSH_NAME(arg1, arg2)) (* This is a weird case. *)
+        else line (EVAL_TAIL(arg1, arg2))
+  in cnil
+     |~~| inst_ctx.pre (Word(Ast.WName(n)))
+     |~~| inst
+     |~~| inst_ctx.post (Word(Ast.WName(n)))
 
 and g_ctrl ctx =
   function
@@ -329,11 +347,11 @@ and g_match ctx =
                       x::[] ->
                       (try if lookup_name ctx.scp_stk x = Uint64.zero
                          then (new_names := x::!new_names;
-                               push_name ctx.scp_stk x @@ name_repr_tick ())
+                               push_name ctx.scp_stk x @@ name_uid x.Ast.name_repr)
                          else ()
                        with Exc.NameNotFoundError(_) ->
                          (new_names := x::!new_names);
-                         (push_name ctx.scp_stk x @@ name_repr_tick ()))
+                         (push_name ctx.scp_stk x @@ name_uid x.Ast.name_repr))
                     (* Users might bind some new names in this pattern,
                              so if I don't deal with these new names, it
                              might result in a NameNotFoundError. *)
@@ -414,21 +432,16 @@ and g_if ctx inst =
   in let body, ins = parse inst
   in _g_body body ins
 
-and g_backquote ctx =
+and g_backquote ctx inst_ctx =
   let new_ctx = {ctx with is_backquoted = true}
   in function
-    Ast.BQValue(pv) -> g_lit new_ctx inst_nil_ctx pv
-  | Ast.BQName(n) -> g_name new_ctx n
-  | Ast.BQSeq(seq) -> g_seq new_ctx inst_nil_ctx seq
-  | Ast.BQBackquote(bq) -> g_backquote ctx bq
+    Ast.BQValue(pv) -> g_lit new_ctx inst_ctx pv
+  | Ast.BQName(n) -> g_name new_ctx inst_ctx n
+  | Ast.BQSeq(seq) -> g_seq new_ctx inst_ctx seq
+  | Ast.BQBackquote(bq) -> g_backquote ctx inst_ctx bq
 
 and g_seq ctx inst_ctx seq =
-  let _UID =
-    if sw_opt_seq ctx.sw
-    then if ctx.is_body
-      then uniq64 ()
-      else "na"
-    else uniq64 ()
+  let _UID = uniq64 ()
 
   in let seq_st_id = Printf.sprintf "%s-st" _UID
   in let seq_end_id = Printf.sprintf "%s-end" _UID
@@ -463,7 +476,7 @@ and g_seq ctx inst_ctx seq =
               |~~| (line RET)
          else (put_label [seq_end_id])
               |~~| (line SHARED_RET)
-       in (opt_cs _x) |~~| (put_label [seq_real_end_id])
+       in (opt_cs (_x |~~| (put_label [seq_real_end_id])))
 
   in let body, scp_stk = match seq with
         Ast.Sequence(s) -> s, if _UID = "na"
@@ -533,7 +546,7 @@ and g_fun ctx inst_ctx fun_ =
   in let _g_arg_def = function
         Ast.ArgDef(pn)
       | Ast.ArgDefWithType(pn, _) ->
-        push_name scp_stk pn @@ name_repr_tick ();
+        push_name scp_stk pn @@ name_uid pn.Ast.name_repr;
         line (FUN_ARG(ArgLit(VUFixedInt(lookup_name scp_stk pn))))
 
   in let _g_fun arg_defs body is_backquoted =
@@ -577,8 +590,8 @@ and g_fun ctx inst_ctx fun_ =
 
 and g_word ctx inst_ctx = function
     Ast.WLiteral(pv) -> g_lit ctx inst_ctx pv
-  | Ast.WName(n) -> g_name ctx n
-  | Ast.WBackquote(bq) -> g_backquote ctx bq
+  | Ast.WName(n) -> g_name ctx inst_ctx n
+  | Ast.WBackquote(bq) -> g_backquote ctx inst_ctx bq
   | Ast.WSequence(seq) -> g_seq ctx inst_ctx seq
   | Ast.WControl(ctrl) -> g_ctrl ctx ctrl
   | Ast.WFunction(f) -> g_fun ctx inst_ctx f

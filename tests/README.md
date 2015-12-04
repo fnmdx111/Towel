@@ -1,4 +1,4 @@
-The Prefect Test Suite for Towel
+The Prefect Test Suite for Towel - the Test Suite from Betelgeuse
 ====
 
 Prefect reads testcases per file from within the embeded multi-line comment in each file.
@@ -11,7 +11,9 @@ To create a test case: create a `.t` file, make a comment like this,
         !>> Input for your testcase
         !<< Expected output for your testcase"
 
-Please don't remember the whitespaces after `!>>` and `!<<`.
+Single whitespace after `!>>` and `!<<` is optional.
+
+To disable certain test, add two underscores to the beginning of its filename.
 
 When you want to run these tests, go to the root directory of Towel and run
 

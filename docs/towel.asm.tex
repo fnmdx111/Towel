@@ -3,6 +3,9 @@
 \usepackage[left=1in, right=1in, top=1in, bottom=1in]{geometry}
 \usepackage{hyperref}
 
+\usepackage[usenames, dvipsnames]{pstricks}
+\usepackage{epsfig}
+
 \title{Towel Virtual Machine and Towel Assembly Language Manual}
 
 \author{zc2324}
@@ -15,68 +18,125 @@
 
 \section{An Overview on the Towel Virtual Machine}
 
-The Towel virtual machine is basically a stack-based state machine that accepts and executes Towel Assembly Language. But for the sake of convenience, it keeps track of the TOS (like any other stack machines do) and the element next to TOS. It reads instructions sequently from instruction buffer and does its computation on stacks. It has three important stacks:
+The Towel virtual machine is basically a stack-based state machine that accepts and executes Towel Assembly Language. It reads instructions sequently from instruction buffer and does its computation on stacks. It has the following important parts:
 \begin{itemize}
-\item execution stack
-\item data stack stack
-\item scope stack
+\item execution stack (or the activation record stack): \texttt{ctx\_t list}\footnote{Note that, Towel Virtual Machine does not restricts itself to a single kind of implementation. The use of OCaml type notation here is for convenience and clarity.}
+\item data stack stack: \texttt{value\_t dstack\_t dstack\_t}
+\item flags record: \texttt{flags\_t}
+\item module table: \texttt{(module\_id\_t, module\_t) Hashtbl.t}
+\item extension table: \texttt{(module\_id\_t, module TowelExtTemplate) Hashtbl.t}
 \end{itemize}
 
 \subsection{Execution Stack}
 
-Execution stack is where context of function calls are stored. A context of a function call is, for example, the return address of the function call, the function name of the function being called and so on.
+Execution stack is where context of function calls are stored. A context of a function call consists the return address of the function call, the module id of the return address is in\footnote{The PC jumps around different instruction arrays of different modules.}, the function value of the function being called.
 
-When a new function call is made, the context of this call is pushed onto the execution stack, followed by the instruction pointer jumping to the start position of the function. When the instruction \texttt{ret} is met, the function returns. TVM pops the TOS on execution stack and jumps to the return address stored in this TOS.
+When a new function call is made, the context of this call is pushed onto the execution stack, followed by the instruction pointer jumping to the start position of the function, and the \texttt{curmod} field being switched to the target module. When the instruction \texttt{ret} is met, the function returns. TVM pops the TOS on execution stack and jumps to the return address stored in this TOS and switch back to the original module according to the \texttt{ctx\_t} value.
 
-Execution stack has one element in it initially. This context has no return address and the name of it is \texttt{TVM-MAIN}.
+Execution stack has one element in it initially. This context has no meaningful record fields.
 
 \subsection{Data Stack Stack}
 
 Every function has a stack for itself to do its computation. This avoids stack corruptions along all the function executions. Data stack is essentially an important part of the context of the function call, but it is so important, we would like to operate them manually so that we could be more flexible.
 
-When a new function call is made, a new data stack (just a classic stack data structure, nothing special) is pushed onto the data stack stack. When the function returns, TVM pops the TOS from the TOS of data stack stack (i.e. the return value of this function is the TOS of current function's data stack), pushes it onto the caller's stack (next to the TOS of data stack stack). Then this data stack gets popped, thus the caller's data stack is now the TOS of the data stack stack. TVM now pops and evaluates the TOS of the caller's data stack (this is a vital step) and pushes back the evaluated value.
+Normally, when a new function call is made, a new data stack is pushed onto the data stack stack. When the function returns, TVM pops the TOS from the TOS of data stack stack (i.e. the return value of this function is the TOS of current function's data stack), pushes it onto the caller's stack (next to the TOS of data stack stack). Then this data stack gets popped, thus the caller's data stack is now the TOS of the data stack stack. TVM now pops and evaluates the TOS of the caller's data stack (this is a vital step) and pushes back the evaluated value.
 
 Data stack stack has one element (i.e. a data stack) in it initially, whereas the data stack has no elements whatsoever.
 
-\subsection{Scope Stack}
+Data stack stack is implemented by module \texttt{Nstack}, which provides the type \texttt{'a dstack\_t} (d for dynamic), and a lot of dedicated function for accessing the \texttt{dss} field in various ways.
 
-Scopes are separated from execution contexts for the same reason as data stack stack. And the mechanism is basically the same as data stacks on data stack stack.
+\subsection{Flags}
 
-Scope stack has one element (i.e. a global scope) in it initially, whereas the scope has no name bindings at all.
+Flags stores the essential states for the virtual machine to run. For example, \texttt{is\_tail\_recursive\_call} records if the virtual machine is executing a tail recursive function. \texttt{curmod} records the current module whose instructions the PC is pointing at. \texttt{dss} is the data stack stack we talked about above.
 
-\subsection{Some Concepts}
+\subsection{Module table}
 
-\subsubsection{Object Reference Table}
+Any functional Towel source code inevitably references (or, imports) other modules. When an \inst{import} is executing, a \texttt{module\_t} value is created and based on the module name, a UID is allocated for this module for referencing it later. Then the VM uses UID as the key to store the \texttt{module\_t} value into the module table.
 
-In TVM, instead of values getting to be pushed onto data stack directly, they are stored in a hashtable called the object reference table. The key of this hashtable is an integer called object index. When pushing a new value onto data stacks, TVM pushes the reference (a simple data structure containing the object index) onto the stack instead for the sake of performance.
+\subsubsection{Modules}
 
-This table also keeps track of the newest created entry for the \inst{bind} to bind a name to.
+A module is a compiled Towel source code loaded into TVM, it has the following important fields:
+\begin{itemize}
+\item \texttt{id} of type \texttt{module\_id\_t}
+\item \texttt{insts} of type \texttt{line array}
+\item \texttt{exs} of type \texttt{(name\_t, value\_t) Hashtbl.t}
+\item \texttt{imports} of type \texttt{(module\_id\_t, module\_id\_t) Hashtbl.t}
+\item \texttt{scps} of type \texttt{scope\_t list ref}
+\end{itemize}
 
-\subsubsection{Auxiliary Stack for Pattern Matching}
+\texttt{exs} is the exported value table of the module, mapping from a name to a value.
 
-There exists in every context a special auxiliary stack particularly for pattern matching. The pattern is deconstructed into single items and pushed onto this stack to accomplish pattern matching in a simpler way.
+\texttt{imports} is the absolute module id relative to this module. In the Towel compiler, names are resolved by a 2-tuple: the name id in the module and the module id. Because when compiling, the Towel compiler has no information about other modules other than the \texttt{.e} exportation file (like the header files you use in C). So it can only label other modules by IDs relative to itself (itself being zero).
 
-\subsubsection{Scopes}
+When importing a new module, the module gets a global (absolute) id, all the referencing of this module should be made through this very id. So it's vital that every module maintains a mapping from the relative module id in its instructions to the absolute module id given by TVM. See \ref{fig:imports} for an intuitive illustration.
 
-In Towel virtual machine, scopes are mappings from a name (i.e. integer identifier) to an object index. Every time a name maps to an object index, the corresponding reference counter increments. Every time a scope is popped, the reference counters that correspond to the object indices mapped by the names in this scope decrement. When the reference counter of an object is zero, the very object gets eliminated from memory.
+\begin{figure}[h]
+\psscalebox{1 1} % Change this value to rescale the drawing.
+{
+\begin{pspicture}(0,-6.8)(12.02,6.8)
+\psframe[linecolor=black, linewidth=0.04, dimen=outer](5.62,6.8)(0.42,-2.0)
+\rput[bl](1.22,4.4){\texttt{push-name 0u 1u}}
+\rput[bl](1.22,4.0){\texttt{push-name 0u 2u}}
+\rput[bl](1.22,3.6){\texttt{push-name 0u 0u}}
+\rput[bl](1.22,5.2){\texttt{import 'std' 1u}}
+\rput[bl](1.22,4.8){\texttt{import 'random' 2u}}
+\rput[bl](1.22,5.6){\texttt{...}}
+\rput[bl](1.22,3.2){\texttt{...}}
+\psframe[linecolor=blue, linewidth=0.04, dimen=outer](12.02,6.8)(7.62,1.2)
+\rput[bl](2.02,-2.4){Your module}
+\rput[bl](8.82,0.8){Module Std}
+\rput[bl](8.02,5.6){\texttt{...}}
+\rput[bl](8.02,5.2){\texttt{bind 0u}}
+\rput[bl](8.02,4.8){\texttt{...}}
+\rput[bl](8.82,0.4){\texttt{id = 5u}}
+\rput[bl](0.82,6.4){\texttt{id = 1u}}
+\psframe[linecolor=green, linewidth=0.04, dimen=outer](12.02,-0.4)(7.62,-6.0)
+\rput[bl](8.02,-3.6){\texttt{...}}
+\rput[bl](8.02,-4.0){\texttt{bind 0u}}
+\rput[bl](8.02,-4.4){\texttt{...}}
+\rput[bl](8.82,-6.4){Module Random}
+\rput[bl](8.82,-6.8){\texttt{id = 3u}}
+\psframe[linecolor=black, linewidth=0.04, dimen=outer](5.22,6.0)(0.82,2.8)
+\psframe[linecolor=black, linewidth=0.04, dimen=outer](5.22,1.2)(0.82,-1.2)
+\rput[bl](1.22,0.8){\texttt{1u -> 5u}}
+\rput[bl](1.22,0.4){\texttt{2u -> 3u}}
+\rput[bl](2.42,2.4){\texttt{insts}}
+\rput[bl](2.42,-1.6){\texttt{imports}}
+\psline[linecolor=blue, linewidth=0.04](4.02,4.4)(4.42,4.4)(4.42,1.6)(1.22,1.6)(0.82,1.6)(0.82,0.8)(1.22,0.8)(1.22,0.8)
+\psline[linecolor=blue, linewidth=0.04](2.82,0.8)(7.22,0.8)(7.22,5.2)(7.62,5.2)(7.62,5.2)
+\psline[linecolor=green, linewidth=0.04](4.02,4.0)(4.82,4.0)(4.82,2.0)(0.02,2.0)(0.02,0.4)(1.22,0.4)(1.22,0.4)
+\psline[linecolor=green, linewidth=0.04](2.82,0.4)(7.22,0.4)(7.22,-4.0)(7.62,-4.0)(7.62,-4.0)
+\end{pspicture}
+}
+\label{fig:imports}
+\end{figure}
 
-\subsubsection{Calling a Function}
+\texttt{scps} is the scope object for dynamic scoping.
 
-TVM records the instruction next to the one which currently the instruction pointer is pointing at as the return address in a new context, then pushes this context onto the execution stack. And jumps to the label \texttt{:fv*-st}, where \texttt{*} stands for the identifier of the function. In the case of tail recursive calls, TVM jumps to \texttt{:fv*-st-tail}.
+\subsection{Extension table}
 
-\subsubsection{Exception}
-
-For now, when never an exception is about to be raised, TVM prints out the exception message and exits instantly.
+Essentially the same thing as the module table, except that it stores extensions (of type \texttt{module Ext.TowelExtTemplate}) via \inst{load-ext}.
 
 \section{Towel Assembly Language and Its Instructions}
 
 \subsection{Overview}
 
-Towel Assembly Language has the same (or less) lexical elements as the Towel programming language. And it's grammar is very simple: each line has either or not a label, has an instruction, and has an argument or not according to the instruction's arity, i.e. \texttt{label* inst arg?}.
+Towel Assembly Language has the same (or less) lexical elements as the Towel programming language. And it's grammar is very simple: each line has either or not a label, has an instruction, and has some arguments or no arguments at all according to the instruction's arity.
 
-TAL has an optimized version, in which labels preceding a line are eliminated, and labels as arguments are replaced with their absolute position (i.e. the line number relative to the starting of the TAL source file, of the line where they appear as line labels).
+After assembling, labels preceding a line are eliminated, and labels as arguments are replaced with their absolute position (i.e. the line number relative to the starting of the TAL source file, of the line where they appear as line labels).
 
-\subsection{Scope Related Instructions}
+\subsubsection{Data Types}
+
+\begin{itemize}
+\item \texttt{VString}: a string surrounded by single quote
+\item \texttt{VAtom}: an unsigned 64bit integer followed by an ``a''
+\item \texttt{VUFixedInt}: an unsigned 64bit integer followed by a ``u''
+\item \texttt{VFixedInt}: a signed 64bit integer
+\item \texttt{VInt}: an integer of arbitrary precision followed by an ``l''
+\item \texttt{VFloat}: a float number
+\end{itemize}
+
+\subsection{Scope-related Instructions}
 
 \subsubsection{\inst{push-scope}}
 
@@ -92,57 +152,53 @@ Does absolutely nothing. Just a place-holder to indicate that this new context s
 
 \subsubsection{\inst{bind}}
 
-\inst{bind} instruction takes one argument, the ID of the name that something will bind to. Then TVM binds the newest created value to that name in current scope (i.e. the TOS of the scope stack).
+\inst{bind} instruction takes one argument, the ID of the name that something will bind to. Then TVM binds the TOS to that name in current scope.
 
 \subsubsection{\inst{fun-arg}}
 
-\inst{fun-arg} is a compound instruction\footnote{A compound instruction is an instruction with multiple side-effects.} which takes one argument. It pops from the caller's data stack and binds the value to name indicated by the argument.
+\inst{fun-arg} is a compound instruction\footnote{A compound instruction is an instruction with multiple side-effects.} which takes one argument. It steals (pops) from the caller's data stack\footnote{The second top stack of DSS, or the top stack of DSS if it's a tail recursive call.} and binds the value to name indicated by the argument in the clone of the \texttt{closure} table of the function.
 
-\subsection{\inst{make-*} instruction family}
+If the stack turns out to be empty, it saves the name-value pairs already bound (arguments stole by previous \inst{fun-arg}s) in the copy of the closure of the current function (\texttt{curfun} of the TOS of ctxs), marks the function as partial and returns that function.
 
-\subsubsection{\inst{make-fun}}
+If the stack is empty because the TOS is a phony, it removes the phony.
 
-Makes a new function value in the object reference table. It takes one argument as the identifier of the function to be created. This identifier is used in every label inside the function body.
+\subsection{Stack-related Instructions}
 
-\subsubsection{\inst{make-list} and \inst{make-tuple}}
+\subsubsection{\inst{push-fun}}
 
-Makes a new list or tuple on top of the current data stack, i.e. a reference to a \texttt{Nil} value created in the object reference table. When encountered this instruction, TVM shifts itself to another state, in which it interprets instructions of the \inst{push-*} family as \texttt{cons}'ing the pushed values to the list instead of pushing the value to stacks, until it reaches \inst{end-list} or \inst{end-tuple}.
+Makes a new function value and pushes it onto the stack without evaluating it. It takes one argument as the start position of the function to be created. The module id of the function is considered to be \texttt{curmod.id}.
 
-For example:
-\begin{verbatim}
-    "instruction buffer"    "obj ref table"
-  make-list               Nil
-  push-int 1              1::Nil
-  push-int 2              2::(1::Nil)
-  push-int 3              3::(2::Nil)
-  end-list                3::(2::Nil) and locked
-\end{verbatim}
+\subsubsection{\inst{push-lnil} and \inst{push-tnil}}
 
-\subsubsection{\inst{make-*literal}}
+Makes a new list or tuple on top of the current data stack. TVM also puts the pointer of its content onto \texttt{flags.list\_make\_stack} to keep track where to put new literal values (such as values from \inst{push-lit}, \inst{push-lnil} or \inst{push-tnil}), when TVM reaches \inst{end-list} or \inst{end-tuple}, the ref on top of \texttt{flags.list\_make\_stack} is popped.
 
-The \inst{make-*literal} instructions essentially do the same thing: make a literal with the value given by the argument in the object reference table. \texttt{*literal} can be one of the following:
-\begin{itemize}
-\item \texttt{int}
-\item \texttt{string}
-\item \texttt{float}
-\item \texttt{fint} (fixed integer)
-\item \texttt{ufint}
-\item \texttt{atom}
-\end{itemize}
+\subsubsection{\inst{end-list} and \inst{end-tuple}}
 
-\subsubsection{\inst{make-ref} (deprecated)}
+Ending current list or tuple construction.
 
-This instruction takes one argument as the object index of the reference to make. Widely used in optimizations to reduce the object reference table look-up time for singleton values (such as integers and strings). Because both the compiler and the virtual machine uses the same indexing function, there won't be a problem.
+\subsubsection{\inst{push-lit}}
 
-\subsection{Stack Related Instructions}
+Push a literal onto the stack or the list pointer on top of \texttt{flags.list\_make\_stack} with the value given by this instruction's argument.
 
 \subsubsection{\inst{push-name}}
 
-Takes a sequence of arguments as the identifiers of the name and the namespaces it belongs to, and evaluates the value, then pushes it onto the stack. Probably the most used instruction.
+Takes two arguments as the identifiers of the name and the module it belongs to, finds the value it is bound to, then pushes it onto the stack.
+
+\subsubsection{\inst{eval-and-push}}
+
+Takes two arguments as the description of a name (same as \inst{push-name}), finds the value it is bound to. If the value is a function, then evaluates the function.
 
 \subsubsection{\inst{pop}}
 
 Pops the TOS of current data stack.
+
+\subsubsection{\inst{dup}}
+
+Pops the TOS of current data stack.
+
+\subsubsection{\inst{reverse} (deprecated)}
+
+Take an argument from the stack, then reverse the n-top most elements according to the argument.
 
 \subsubsection{\inst{unpack}}
 
@@ -154,23 +210,19 @@ Assumes the TOS is a list or tuple, then unpacks it onto the stack. For example,
 
 \subsubsection{\inst{pack}}
 
-Takes one integer as the quantity of items to pack into a tuple. For example,
+Takes one integer as the quantity of items from the stack to pack into a tuple. For example,
 \begin{verbatim}
-  dsck: [ ... | 1 | 2 | 3]
-  after pack 3: [ ... | [1 2 3]]
+  dsck: [ ... | 1 | 2 | 3 | 3]
+  after pack: [ ... | [1 2 3]]
 \end{verbatim}
 
 If there were insufficient number of stack items, TVM throws an exception and terminates.
 
-\subsubsection{\inst{push-*literal}}
+\subsubsection{\inst{push-phony}}
 
-Takes one argument as the object index of the literal value to be pushed onto the stack.
+Pushes a phony onto the stack that fakes an empty stack. That is to say, whenever TVM encounters a phony, it regards the stack as being empty.
 
-\subsubsection{\inst{push-fun}}
-
-Takes one argument as the object index\footnote{This index is also the identifier of the function with the colon stripped off.} of the function value to be evaluated and its return value pushed onto the stack.
-
-\subsection{Function Related Instructions}
+\subsection{Function-related Instructions}
 
 \subsubsection{\inst{push-stack}}
 
@@ -184,7 +236,7 @@ Same as \inst{share-scope}.
 
 Pops the current data stack.
 
-\subsubsection{\inst{push-name-tail}}
+\subsubsection{\inst{eval-tail}}
 
 Takes one argument as the ID of the name that references to a function which is to be called in a tail recursive manner.
 
@@ -196,19 +248,27 @@ Take care of the return value of the function. Pops the execution stack. And jum
 
 Just sets the instruction pointer back to where this shared sequence gets called. No return value copied whatsoever (because there isn't any).
 
+\subsubsection{\inst{closure}}
+
+Assumes TOS is a function, takes two argument to describe the name the TOS should capture.
+
+\subsubsection{\inst{invoke}}
+
+Assumes TOS is a function, then invoke it. The function is popped before evaluating it.
+
+\subsubsection{\inst{call}}
+
+Record $PC + 1$ as the return address, then jump to the location given by the argument. Only jumps within the same module.
+
 \subsection{Conditional Branching Instructions}
 
 \subsubsection{\inst{jump}}
 
 Takes a label as its argument and unconditionally jumps to that label.
 
-\subsubsection{\inst{rjump}}
-
-Jumps to the position given by the argument relatively.
-
 \subsubsection{\inst{j*}}
 
-Takes a label as its argument and tests against the TOS on the data stack. If the result is true, TVM jumps to the label, otherwise, TVM jumps to \texttt{label!}.
+Takes a label as its argument and tests against the TOS on the data stack. If the result is true, TVM jumps to the label, otherwise, TVM executes the next instruction.
 
 \inst{j*} instruction family consists of the following instructions:
 \begin{itemize}
@@ -226,65 +286,50 @@ Hungry versions of \inst{j*} instruction family, which consume the TOS they test
 
 Each one of them takes a label as its argument, and tests if the data stack is empty. If it is, \inst{je} jumps to the label whereas \inst{jne} jumps to the \texttt{label!}, and vice versa.
 
-\subsubsection{\inst{patpush-*}}
-
-Pushes the argument onto the auxiliary stack for pattern matching.
-
-\subsubsection{\inst{patbackquote}}
-
-Backquote the TOS of the auxiliary stack, useful for Erlang style pattern matching, i.e. if backquoted names are bound and are bound to the same value, the matching succeeds.
-
-\subsubsection{\inst{match}}
-
-Matches against the TOS using the pattern from the auxiliary stack. If the pattern \textbf{does not} match, TVM clears the auxiliary stack and jumps to the label given by the argument, otherwise it clears the auxiliary stack and continue executing the next instruction.
-
-\subsubsection{\inst{hmatch}}
-
-Hungry version of \inst{match}. When the pattern matches, TVM pops TOS.
+If \inst{je} is tested against a phony, it pops it before branching.
 
 \subsection{Arithmetic Instructions}
 
-\subsubsection{\inst{fint-*}, \inst{ufint-*}, \inst{int-*}, \inst{float-*}}
+\subsubsection{\inst{add}, \inst{sub}, \inst{mul}, \inst{div}, \inst{pow}}
 
-These three instruction families are for arithmetic operations between fixed integers, integers of arbitrary precision and float numbers respectively.
+Does arithmetic operations with TOS and second TOS, and pushes \texttt{TOS op sTOS}. These instructions work for all the number types\footnote{Atoms are not numbers.}.
 
-The supported arithmetic operations are listed as follows:
-family supports almost the same arithmetic operations as follows, except that \inst{fint-*} is for fixed integer, \inst{ufint-*} for unsigned fixed integer, \inst{int-*} is for integer of arbitrary precision and does not support the bitwise operations:
-\begin{itemize}
-\item Addtion, \texttt{add}
-\item Substraction, \texttt{sub}
-\item Multiplication, \texttt{mul}
-\item Division, \texttt{div}
-\item Exponentiation, \texttt{pow}
-\item Equal, \texttt{equ}
-\end{itemize}
+\subsubsection{\inst{equ}}
+
+Does equality test on TOS and second TOS, and puts back \texttt{true} or \texttt{false} atoms. If two different types are tested against each other, TVM exits.
 
 \subsubsection{Bitwise Instructions}
 
-In addition to integer operations of \inst{fint-*} and \inst{ufint-*} instruction families, they support the following bitwise arithmetic operations:
+Fixed integers, unsigned fixed integers, and big integers support the following bitwise arithmetic operations:
 \begin{itemize}
-\item Bitwise and, \texttt{and}
-\item Bitwise or, \texttt{or}
-\item Bitwise xor, \texttt{xor}
-\item Bitwise not, \texttt{not}
-\item Bitwise shift left, \texttt{shl}
-\item Bitwise shift right, \texttt{shr}
-\item Bitwise logical shift right, \texttt{shll}
+\item Bitwise and, \inst{and}
+\item Bitwise or, \inst{or}
+\item Bitwise xor, \inst{xor}
+\item Bitwise not, \inst{not}
+\item Bitwise shift left, \inst{shl}
+\item Bitwise shift right, \inst{shr}
+\item Bitwise logical shift right, \inst{lshr}
 \end{itemize}
 
-\subsection{Backquote Instructions}
+Note that \inst{not}, \inst{and} and \inst{or} also work on the \texttt{true} and \texttt{false} atoms.
 
-\subsubsection{\inst{make-backquote}}
+\subsection{List Instructions}
 
-Backquote the newest created value (actually does nothing).
+\subsubsection{\inst{car}}
 
-\subsubsection{\inst{backquote}}
+The car operation on linked lists. It takes a list or tuple from the stack, puts back the head of the list or tuple.
 
-Backquote the TOS (actually does nothing).
+\subsubsection{\inst{cdr}}
 
-\subsubsection{\inst{backquote-name}}
+Same as \inst{car}, except that it puts back the rest of the list or tuple.
 
-Backquote the name given by the \inst{push-name} instruction right after \inst{backquote-name} along with the copy of current scope and pushes the backquoted name back onto the stack.
+\subsubsection{\inst{cons}}
+
+The cons operation on linked lists. It takes two arguments from the stack and constructs a new list and then puts it back onto the stack. If it encounters a tuple, TVM exits.
+
+\subsubsection{\inst{list-empty}}
+
+Tests if the TOS is an empty list or tuple. It puts back whether true or false depending on the emptiness of the list or tuple.
 
 \subsection{I/O Instructions}
 
@@ -294,13 +339,23 @@ Prints the TOS to standard output.
 
 \subsubsection{\inst{read}}
 
-Reads a string from standard input and store that string in ORT.
+Reads a string from standard input and store that string on the stack.
+
+\subsection{Extension Instructions}
+
+\subsubsection{\inst{load-ext}}
+
+Takes a string from the stack, loads the corresponding module from filesystem, and record it in the \texttt{opened\_exts} table. Then puts back the handle to that extension module.
+
+\subsubsection{\inst{extcall}}
+
+Takes two unsigned integers from the stack, the TOS for the extension module handle, the other one for the call number to indicate which routine to call from the extension.
 
 \subsection{Miscellaneous Instructions}
 
 \subsubsection{\inst{import}}
 
-Accepts a string of the name of the module you wish to import. TVM will assign a unique ID to every module imported based on the SHA1 digest of the source file of the module.
+Accepts a string of the name of the module you wish to import along with an unsigned integer for its ID relative to current module. TVM will assign a unique ID to every module imported based on the module string of the source file of the module. For example, the module string of Towel standard library (or Towelib) is \texttt{'std'} (because the source filename of it is \texttt{'std.t'}).
 
 \subsubsection{\inst{dint}}
 
@@ -308,7 +363,7 @@ Invokes the debug interrupt handler. See also \url{https://github.com/qwert42/ke
 
 \subsubsection{\inst{type}}
 
-Pushes the type reference of TOS onto the stack. This instruction only recognizes built-in types.
+Pushes the type information of TOS onto the stack. This instruction only recognizes built-in types.
 
 \subsubsection{\inst{not-implemented}}
 
@@ -316,10 +371,59 @@ Prints an error message stating that an unimplemented instruction was found and 
 
 \subsubsection{\inst{idle}}
 
-Does absolutely nothing. Used to align code with labels.
+Does absolutely nothing.
 
 \subsubsection{\inst{terminate}}
 
-Terminate the Towel Virtual Machine.
+Terminate the Towel Virtual Machine. Or when finishing importing modules, go back to original module.\footnote{Look at the similarities between (\inst{call}, \inst{invoke}, etc. \texttt{->} \inst{ret}) and (\inst{import} \texttt{->} \inst{terminate}).}
+
+\section{Extending the Towel Virtual Machine (OCaml Implementation)}
+
+By using the Extension interface (in \texttt{src/vm/ext.ml}), you can easily add new functionalities to TVM, enabling more powerful Towel programming experience.
+
+\subsection{Prerequisite}
+
+The library (no matter if it's third-party, or of your own) should be \textbf{OCaml-compliant}, because TVM is built on top of OCaml too. That is to say, you should be able to write OCaml programs with it, thus TVM will have access to it via dynamic linking.\footnote{I think plain C libraries with only thin OCaml wrappers (no \texttt{ml} files) would work too. Because \texttt{Dynlink} only needs it to be a OCaml-ware shared-library.}
+
+\subsection{Approach}
+
+Two instructions were implemented in TVM: \inst{load-ext} and \inst{extcall}.
+
+\inst{load-ext} takes an \texttt{ext\_str} from the stack and loads the corresponding extension module into TVM via OCaml standard module \texttt{Dynlink}. An \texttt{ext\_str} is a filename of the OCaml object file (always with the \texttt{.cmo} extension even if it's a \texttt{.cmxs} file). After successfully loading it, the instruction leaves an unsigned integer (\texttt{OVUFixedInt}) on the stack for future referencing the extension.
+
+\inst{extcall} takes two arguments from the stack: it first takes the TOS as the extension handle (the one \inst{load-ext} pushed), then it takes another unsigned integer as the extension function call number (although this integer will be converted into an OCaml \texttt{int}, but I think $2^{31}$ is fairly enough for ordinary libraries). The extension module then matchs against the call number to determine which action to perform on the data stack.
+
+\subsection{Howto}
+
+The following step illustrates how to build native extension rather than bytecode extension. If you want bytecode extension, use \texttt{ocamlc} instead, and probably lose some of the parameters.
+
+The first step, create a OCaml plugin. This plugin file is essentially a dynamic library (e.g. a \texttt{.so} file on *nix, a \texttt{.dll} file on Windows). When implementing this plugin, you must implement the module interface \texttt{TowelExtTemplate} laid out in \texttt{src/vm/ext.ml}. It's simple: one function - \texttt{extcall}. You will have to route individual call numbers to different routines using this function.
+
+The first argument of \texttt{extcall} is the call number, then the second one is the \texttt{dss} of the VM, for you to get specific arguments from the data stack or leave your result on it. But be careful, if you ruin this dss, TVM is doomed.
+
+After you finish your extcall function and other local functions, remember to register your module value in the \texttt{\_\_ext\_\_} slot so that when loading this extension, TVM will get to know of your extension.
+
+The second step, you compile your source code via the following command:\newline
+
+\texttt{ocamlfind ocamlopt -package \%1 \%2 -shared -linkall -I \%3 -o \%4}
+\newline
+
+Of these parameters:
+\begin{itemize}
+\item (\texttt{\%1}) the packages your extension module uses, take \texttt{ext\_random.ml} as an example, \texttt{\%1} will be replaced by stdint;
+\item (\texttt{\%2}) the extension module source file, \texttt{ext\_random.ml}, for example;
+\item (\texttt{\%3}) the directory where \texttt{t.cmi} and \texttt{nstack.cmi} are;
+\item (\texttt{\%4}) the output binary filename, \texttt{ext\_random.cmxs}, for exmpale.
+\item If you use some libraries that are not included in standard library, you may want to use \texttt{-linkpkg} instead of \texttt{-linkall} (for example, when building binding library for Tk).
+\end{itemize}
+
+The command for compiling the Random extension module is like this:\newline
+
+\texttt{ocamlfind ocamlopt -package stdint ext\_random.ml -shared -linkall -I ../../build/src/vm -o ext\_random.cmxs}
+\newline
+
+Third, place the \texttt{.cmxs} file in the \texttt{libpaths} of TVM, default locations are \texttt{cwd} and where \texttt{towelib} is at. Modify \texttt{src/vm/config.ml} to change these locations.
+
+Last, write a Towel wrapper module for your extension module. In the \texttt{.w} instruction wrapper module, \texttt{!>ext} is for the \inst{load-ext} instruction and \texttt{!>>} is for \inst{extcall}. You should always bind a name to the extension handle pushed by \texttt{!>ext}. It is a good idea to bind a local partial function with the handle already applied. Not exporting both the handle and this function are highly recommended.
 
 \end{document}

@@ -31,6 +31,17 @@ let print_es es = print_string "es:\n";
   print_ht (match es with ExtScope(_, p, _) -> p);
   print_string "-----\n";;
 
+let name_repr_tick_gen () =
+  let table = Hashtbl.create 128
+  in let tick = Common.counter ()
+  in (fun name -> try
+         Hashtbl.find table name
+       with Not_found ->
+         let x = tick ()
+         in Hashtbl.replace table name x;
+         x),
+     (fun name -> Hashtbl.find table name);;
+
 let push_ext_scope meta ext_scope uid possible_mod_path =
   let rec _push_e_s cur mod_path =
     try let parent, rest = BatString.split Filename.dir_sep mod_path

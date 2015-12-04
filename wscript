@@ -12,7 +12,7 @@ out = 'build'
 def options(opt):
     opt.add_option('--docs', action='store_true', default=False,
                    dest='compile_docs')
-    opt.add_option('--compiler', action='store_true', default=True,
+    opt.add_option('--compiler', action='store_true', default=False,
                    dest='compile_compiler_stub')
     opt.add_option('--native', action='store_true', default=False,
                    dest='compile_natively')
@@ -63,7 +63,7 @@ def configure(ctx):
                 ctx.msg('Checking for library \'%s\'' % l, 'ok')
 
         ctx.env.LIBS = {'Batteries', 'Extlib', 'Stdint', 'Sha'}
-        ctx.env.TVM_LIBS = {'Stdint', 'Batteries', 'Extlib'}
+        ctx.env.TVM_LIBS = {'Stdint', 'Batteries', 'Extlib', 'Dynlink'}
         for l in libs:
             find_lib(l)
 
@@ -135,5 +135,4 @@ def build(ctx):
     if ctx.options.compile_all:
         ctx.recurse('src/compiler src/vm')
         ctx.recurse('docs')
-
 
