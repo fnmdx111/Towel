@@ -1,1 +1,1 @@
-* see if code for virtual machine can be automatically generated
+* see if I can use camlp4 to do some OCaml DSL
