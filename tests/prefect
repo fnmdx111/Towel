@@ -26,8 +26,11 @@ class Prefect
   end
 
   def extract_info
-    @description, @input, @expected_output = PAT.match(@content).captures
-    @description.strip!
+    matches = PAT.match(@content)
+    unless matches.nil?
+      @description, @input, @expected_output = matches.captures
+      @description.strip!
+    end
   end
 
   def execute_ok(idx)
