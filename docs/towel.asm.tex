@@ -4,7 +4,7 @@
 \usepackage{hyperref}
 
 \usepackage[usenames, dvipsnames]{pstricks}
-\usepackage{epsfig}
+\Usepackage{Epsfig}
 
 \title{Towel Virtual Machine and Towel Assembly Language Manual}
 
@@ -20,7 +20,7 @@
 
 The Towel virtual machine is basically a stack-based state machine that accepts and executes Towel Assembly Language. It reads instructions sequently from instruction buffer and does its computation on stacks. It has the following important parts:
 \begin{itemize}
-\item execution stack (or the activation record stack): \texttt{ctx\_t list}\footnote{Note that, Towel Virtual Machine does not restricts itself to a single kind of implementation. The use of OCaml type notation here is for convenience and clarity.}
+\item execution stack (or the activation record stack): \texttt{ctx\_t list}\footnote{Note that, Towel Virtual Machine does not restricts itself to any single kind of implementation. The use of OCaml type notation here is for convenience and clarity.}
 \item data stack stack: \texttt{value\_t dstack\_t dstack\_t}
 \item flags record: \texttt{flags\_t}
 \item module table: \texttt{(module\_id\_t, module\_t) Hashtbl.t}
@@ -422,8 +422,8 @@ The command for compiling the Random extension module is like this:\newline
 \texttt{ocamlfind ocamlopt -package stdint ext\_random.ml -shared -linkall -I ../../build/src/vm -o ext\_random.cmxs}
 \newline
 
-Third, place the \texttt{.cmxs} file in the \texttt{libpaths} of TVM, default locations are \texttt{cwd} and where \texttt{towelib} is at. Modify \texttt{src/vm/config.ml} to change these locations.
+Third, place the \texttt{.cmxs} file in the \texttt{libpaths} of TVM, default locations are current working directory and the folder \texttt{towelib}. Modify \texttt{src/vm/config.ml} to change these locations.
 
-Last, write a Towel wrapper module for your extension module. In the \texttt{.w} instruction wrapper module, \texttt{!>ext} is for the \inst{load-ext} instruction and \texttt{!>>} is for \inst{extcall}. You should always bind a name to the extension handle pushed by \texttt{!>ext}. It is a good idea to bind a local partial function with the handle already applied. Not exporting both the handle and this function are highly recommended.
+Last, write a Towel wrapper module for your extension module. In the \texttt{.w} instruction wrapper module, name \texttt{!>ext} is bound to the \inst{load-ext} instruction wrapper and name \texttt{!>>} for \inst{extcall}. You should always bind a name to the extension handle pushed by \texttt{!>ext}.\footnote{It is a good idea to bind a local partial function with the handle already applied to \texttt{!>>}.}
 
 \end{document}
