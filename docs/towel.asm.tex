@@ -47,7 +47,7 @@ Data stack stack is implemented by module \texttt{Nstack}, which provides the ty
 
 \subsection{Flags}
 
-Flags stores the essential states for the virtual machine to run. For example, \texttt{is\_tail\_recursive\_call} records if the virtual machine is executing a tail recursive function. \texttt{curmod} records the current module whose instructions the PC is pointing at. \texttt{dss} is the data stack stack we talked about above.
+Flags stores the essential states for the virtual machine to run. For example, \texttt{is\_tail\_recursive\_call} records if the virtual machine is executing a tail recursive function. \texttt{curmod} records the current module whose instructions the PC is pointing at. \texttt{dss} is the data stack stack we talked about above. \texttt{scps} stores all the the names in scope stack (\texttt{scope\_t list}) for dynamic scoping.
 
 \subsection{Module table}
 
@@ -61,7 +61,6 @@ A module is a compiled Towel source code loaded into TVM, it has the following i
 \item \texttt{insts} of type \texttt{line array}
 \item \texttt{exs} of type \texttt{(name\_t, value\_t) Hashtbl.t}
 \item \texttt{imports} of type \texttt{(module\_id\_t, module\_id\_t) Hashtbl.t}
-\item \texttt{scps} of type \texttt{scope\_t list ref}
 \end{itemize}
 
 \texttt{exs} is the exported value table of the module, mapping from a name to a value.
@@ -110,8 +109,6 @@ When importing a new module, the module gets a global (absolute) id, all the ref
 }
 \label{fig:imports}
 \end{figure}
-
-\texttt{scps} is the scope object for dynamic scoping.
 
 \subsection{Extension table}
 
@@ -371,6 +368,10 @@ Takes two unsigned integers from the stack, the TOS for the extension module han
 \subsubsection{\texttt{0x70} \inst{import}}
 
 Accepts a string of the name of the module you wish to import along with an unsigned integer for its ID relative to current module. TVM will assign a unique ID to every module imported based on the module string of the source file of the module. For example, the module string of Towel standard library (or Towelib) is \texttt{'std'} (because the source filename of it is \texttt{'std.t'}).
+
+\subsubsection{\texttt{0x7f} \inst{export}}
+
+Takes an unsigned integer as the ID of a name in current module, then exports the value bound by the name to the module's \texttt{exs} field.
 
 \subsubsection{\texttt{0x71} \inst{dint}}
 

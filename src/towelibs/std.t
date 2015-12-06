@@ -9,8 +9,15 @@ also ** fun` ~1 ~2, (~1 ~2 ..**\.w)
 also % fun` ~1 ~2, (~1 ~2 ..%\.w)
 also = fun` ~1 ~2, (~1 ~2 ..=\.w)
 
+also > fun` ~1 ~2, (~1 ~2 - if>0 true, false)
+also >= fun` ~1 ~2, (~1 ~2 - if>=0 true, false)
+also < fun` ~1 ~2, (~1 ~2 - if<0 true, false)
+also <= fun` ~1 ~2, (~1 ~2 - if<=0 true, false)
+also <> fun` ~1 ~2, (~1 ~2 - if=0 false, true)
+
 also :and fun` ~1 ~2, (~1 ~2 ..and\.w)
 also :or fun` ~1 ~2, (~1 ~2 ..or\.w)
+also :not fun` ~1 ~2, (~1 ~2 ..not\.w)
 
 also ~fint fun` ~1, (~1 ..2fint\.w)
 "Use tilde as prefix for all the conversion functions."
@@ -70,5 +77,5 @@ also /apply fun` ~args ~f, (~args .!unpack\.w ~f)
 
 then export + - * / ** % = :and :or ~fint ~ufint ~int ~float ~str !print
 !println #hd #tl #cons ?#empty #t1 #t2 #t3 /id /foldl #rev /map /filter
-/flip /foldr |#| #concat <# #> <#> ?# <<# !# /apply !read @
+/flip /foldr |#| #concat <# #> <#> ?# <<# !# /apply !read > >= < <= <> :not @
 

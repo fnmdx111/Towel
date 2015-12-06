@@ -45,6 +45,7 @@ module Inst
     ['push-lit', 0x15],
     ['call', 0x28],
     ['push-fun', 0x10],
+    ['export', 0x7f],
   ]
 
   binary_instructions_all = [

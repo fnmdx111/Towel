@@ -129,6 +129,7 @@ let exec should_trace should_warn insts =
     in let curmod = flags.curmod
 
     in let dss = flags.dss
+    in let scps = flags.scps
 
     in let push_cur_ip cur_fun =
          {mod_id = curmod.id;
@@ -150,6 +151,18 @@ let exec should_trace should_warn insts =
            module. *)
         __exec (ntos ctxs) {flags with curmod = tmod} tctx.ret_addr
       end
+
+    in let invoke_regular fr =
+         let nmod = Hashtbl.find modules fr.T.mod_id
+         in let nscps = push_scope scps
+         in Hashtbl.iter
+           (fun k v -> let n, m = k
+             in npush nscps k (n, -m)) fr.closure;
+         __exec (push_cur_ip fr)
+           {flags with is_tail_recursive_call = false;
+                       curmod = nmod;
+                       scps = nscps}
+           fr.st
 
     (* `dsp' points to the next slot of TOS. *)
     in let tos_idx () = ((dsp (BatDynArray.last dss)),
@@ -181,16 +194,17 @@ let exec should_trace should_warn insts =
 
     in let resolve_name n m =
          let m = Hashtbl.find curmod.imports m
-         in try if m = curmod.id
-           then dval dss (nlookup !(curmod.scps) n)
-           else Hashtbl.find (Hashtbl.find modules m).exs n
-         (* Check local scope first, because names captured in closure
-            might be shadowed in current scope. *)
-         with Exc.NameNotFoundError(_)
-            | Not_found ->
-           if List.length ctxs > 0
-           then Hashtbl.find (tos ctxs).curfun.closure (n, m)
-           else
+         in fprintf stderr "abs mod id: %d\n" m; if m <> curmod.id
+         then Hashtbl.find (Hashtbl.find modules m).exs n
+         else try let rn, rm = nlookup scps (n, m)
+             in if rm < 0
+             then (* It's in closure. *)
+               Hashtbl.find (tos ctxs).curfun.closure (rn, -rm)
+             else dval dss (rn, rm)
+           (* Check local scope first, because names captured in closure
+              might be shadowed in current scope. *)
+           with Exc.NameNotFoundError(_)
+              | Not_found ->
              failwith "external name not found in exs and tctx.curfun.closure"
 
     in let inst =
@@ -386,11 +400,7 @@ let exec should_trace should_warn insts =
     | INVOKE -> trace "invoking tos";
       let f = dspop dss
       in (match f with
-            OVFunction(frec) ->
-            __exec (push_cur_ip frec)
-              {flags with is_tail_recursive_call = false;
-                          curmod = Hashtbl.find modules frec.mod_id}
-              frec.st
+            OVFunction(frec) -> invoke_regular frec
           | _ -> failwith "invoking non-function value")
 
     | SUB -> trace "substracting";
@@ -535,7 +545,9 @@ Something is wrong with the compiler.");
 
     | FUN_ARG(ArgLit(VUFixedInt(_nid))) -> trace "fun argumenting";
       let nid = vm_name _nid
+      in let () = fprintf stderr "nid1 = %d\n" nid
       in let nid = curmod.name_id_tick nid
+      in let () = fprintf stderr "nid2 = %d\n" nid
       in let _f = (tos ctxs).curfun
       in let f = {_f with closure = Hashtbl.copy _f.closure}
       in let remove_phony_if_any ds =
@@ -592,18 +604,21 @@ Something is wrong with the compiler.");
       in if is_partial
       then begin
         let new_closure = Hashtbl.copy f.closure
-        in Hashtbl.iter (fun name idx -> Hashtbl.replace new_closure
-                            (name, curmod.id)
-                            (* Fun-args are bound by default in current
-                               module. *)
-                            (dval dss idx))
-          (tos !(curmod.scps));
+        in (* Hashtbl.iter (fun name idx -> *)
+          (*   fprintf stderr "(%d,%d) -> (%d,%d)\n" (fst name) (snd name) (fst idx) (snd idx); *)
+          (*   Hashtbl.replace new_closure *)
+          (*                   ((fst name), curmod.id) *)
+          (*                   (\* Fun-args are bound by default in current *)
+          (*                      module. *\) *)
+          (*                   (dval dss idx)) *)
+          (* (tos scps); *)
         let nf = OVFunction({f with closure = new_closure;
                                     is_partial = true})
         in dspush dss nf;
         return ()
       end else begin
         Hashtbl.replace f.closure (nid, curmod.id) stolen_arg;
+        npush scps (nid, curmod.id) (nid, -curmod.id);
         __exec ({(tos ctxs) with curfun = f}::(ntos ctxs))
           (* Modify the toctx with the newly modified function. *)
           flags next_ip
@@ -633,7 +648,7 @@ Something is wrong with the compiler.");
       in (match v with
             OVFunction(frec) ->
             let new_ctxs = {(tos ctxs) with curfun = frec}::(ntos ctxs)
-            in let tail_ip = frec.st |> succ |> succ
+            in let tail_ip = frec.st |> succ
             (* Bypass both the push-scope and push-stack instructions. *)
             in if frec.mod_id = curmod.id
             then __exec new_ctxs
@@ -651,11 +666,7 @@ Something is wrong with the compiler.");
         in let mid = vm_mod_id _mid
         in let v = resolve_name nid mid
         in (match v with
-              OVFunction(frec) ->
-              __exec (push_cur_ip frec)
-                {flags with curmod = Hashtbl.find modules frec.mod_id;
-                            is_tail_recursive_call = false}
-                frec.st
+              OVFunction(frec) -> invoke_regular frec
 
             | OVInt(_)
             | OVAtom(_)
@@ -685,8 +696,8 @@ Something is wrong with the compiler.");
                              insts = w_insts;
                              imports = Hashtbl.create 512;
                              name_id_tick = name_id_tick_gen ();
-                             exs = Hashtbl.create 512;
-                             scps = ref []}
+                             exs = Hashtbl.create 512}
+
            in (Hashtbl.replace modules abs_uid module_);
            (Hashtbl.replace curmod.imports (vm_mod_id uid) abs_uid);
            (Hashtbl.replace module_.imports _SELF_MODULE_ID abs_uid);
@@ -700,7 +711,7 @@ Something is wrong with the compiler.");
 
       | BIND(ArgLit(VUFixedInt(uid))) -> trace "binding";
         trace (Printf.sprintf "(%d,%d)" (fst @@ tos_idx ()) (snd @@ tos_idx ()));
-        npush !(curmod.scps) (vm_name uid) (tos_idx ());
+        npush scps ((vm_name uid), curmod.id) (tos_idx ());
         let _ = curmod.name_id_tick (vm_name uid)
         in __exec ctxs flags next_ip
 
@@ -719,45 +730,31 @@ Something is wrong with the compiler.");
         __exec ctxs flags next_ip
 
       | PUSH_SCOPE -> trace "pushing scope";
-        curmod.scps := (Hashtbl.create 512)::(!(curmod.scps));
-        __exec ctxs flags next_ip
+        __exec ctxs {flags with scps = push_scope scps} next_ip
 
       | POP_SCOPE -> trace "popping scope";
-        curmod.scps := ntos (!(curmod.scps));
         (* No GC whatsoever, let OCaml take care of that for me. *)
-        __exec ctxs flags next_ip
+        __exec ctxs {flags with scps = ntos scps} next_ip
 
       | DINT -> trace "setting step debug mode";
         __exec ctxs {flags with is_stepping = not flags.is_stepping} next_ip
 
+      | EXPORT(ArgLit(VUFixedInt(_n))) -> trace "exporting";
+        let n = vm_name _n
+        in Hashtbl.replace curmod.exs n (dval dss (nlookup scps (n, curmod.id)));
+        __exec ctxs flags next_ip
+
       | TERMINATE -> trace "terminating";
         if List.length ctxs <> 1 (* May become a bug? Maybe not? *)
-        then let tctx = tos ctxs
-          in let tmod = Hashtbl.find modules tctx.mod_id
+        then (let tctx = tos ctxs
+              in let tmod = Hashtbl.find modules tctx.mod_id
 
-          in let cur_base_scope = tos (List.rev (!(curmod.scps)))
-
-          in trace (sprintf "terminating: %d, ip -> %d"
-                      tctx.mod_id tctx.ret_addr);
-
-          (* This implementation assumes the imported module only increase
-             SP of dss by one, i.e. it pops all the stacks it created
-             except for the base stack. Because all the exportable values
-             are on it. *)
-          let () = Hashtbl.iter (fun name vidx ->
-              Hashtbl.replace curmod.exs name (dval dss vidx))
-              cur_base_scope;
-            (* Copy the names and values in the base scope to `exs'. *)
-            (* Then purge it. *)
-            dspurge dss
-          in begin
-            (* Pop the top scope. If nothing went wrong, it should be the
-               only scope in the scope stack of the module. *)
-            curmod.scps := ntos !(curmod.scps);
-            __exec (ntos ctxs)
-              {flags with curmod = tmod}
-              tctx.ret_addr
-          end
+              in trace (sprintf "terminating: %d, ip -> %d"
+                          tctx.mod_id tctx.ret_addr);
+              dspurge dss;
+              __exec (ntos ctxs)
+                {flags with curmod = tmod}
+                tctx.ret_addr)
         else exit 0
 
       | _ -> fprintf stderr "Not implemented yet.\n"; exit 0
@@ -766,8 +763,7 @@ Something is wrong with the compiler.");
                  insts = insts;
                  imports = Hashtbl.create 64;
                  name_id_tick = name_id_tick_gen ();
-                 exs = Hashtbl.create 1;
-                 scps = ref []}
+                 exs = Hashtbl.create 1}
   in Hashtbl.replace modules _MAIN_MODULE_ID main;
   Hashtbl.replace main.imports _SELF_MODULE_ID _MAIN_MODULE_ID;
 
@@ -775,6 +771,7 @@ Something is wrong with the compiler.");
                 dss = dinit ();
                 list_make_stack = [];
                 is_stepping = false;
+                scps = [];
                 curmod = Hashtbl.find modules _MAIN_MODULE_ID}
     0;;
 

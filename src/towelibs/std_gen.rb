@@ -12,9 +12,10 @@ def gen_make_inline_fun(w, e, st_line_=2, nid_=1)
   nid = nid_
 
   lambda do |name, body|
-    end_line = body.size + st_line + 4
-    w.puts "push-fun #{(st_line + 3).to_s}u"
+    end_line = body.size + st_line + 5
+    w.puts "push-fun #{(st_line + 4).to_s}u"
     w.puts "bind #{nid}u \"#{name}\""
+    w.puts "export #{nid}u"
     w.puts "jump #{end_line}u"
     body.each {|inst| w.puts inst}
     w.puts "shared-ret"
@@ -43,7 +44,8 @@ if __FILE__ == $0
             ['mod', '..%'],
             ['equ', '..='],
             ['and', '..and'],
-            ['or', '..or']]
+            ['or', '..or'],
+            ['not', '..not']]
     instn, funn = i
 
     make_inline_fun.call "#{funn}", ["#{instn}"]

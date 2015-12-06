@@ -12,7 +12,7 @@ open T;;
    code here.
    ========================================== *)
 
-type scope_t = (name_t, vidx_t) Hashtbl.t;;
+type scope_t = (name_t * module_id_t, vidx_t) Hashtbl.t;;
 
 let push_scope scp_stk = (Hashtbl.create 512)::scp_stk;;
 
@@ -26,7 +26,7 @@ let npop scp_stk name =
 
 let rec nlookup scp_stk name =
   match scp_stk with
-    [] -> raise (Exc.NameNotFoundError name)
+    [] -> raise (Exc.NameNotFoundError((fst name), (snd name)))
   | scp::rest ->
     try Hashtbl.find scp name
     with Not_found -> nlookup rest name;;
@@ -34,7 +34,7 @@ let rec nlookup scp_stk name =
 let sprint_dscope dscope =
   Printf.sprintf "{%s}"
     (String.concat ", "
-       (Hashtbl.fold (fun k v acc -> (Printf.sprintf "%d: (%d,%d)" k
+       (Hashtbl.fold (fun k v acc -> (Printf.sprintf "%d,%d: (%d,%d)" (fst k) (snd k)
                          (fst v) (snd v))::acc) dscope []));;
 
 let sprint_dscope_stack scp_stk =

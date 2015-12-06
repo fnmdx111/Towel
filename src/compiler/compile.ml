@@ -56,8 +56,9 @@ let (^-) x y = Printf.sprintf "%d-%s" x y;;
 let exp_scope:(string, name_t) Hashtbl.t = Hashtbl.create 512;;
 let export ctx ns =
   let _export_one n =
-    Hashtbl.replace exp_scope n.Ast.name_repr @@ lookup_name ctx.scp_stk n
-  in List.iter _export_one ns; cnil;;
+    Hashtbl.replace exp_scope n.Ast.name_repr @@ lookup_name ctx.scp_stk n;
+    line (EXPORT(ArgLit(VUFixedInt(lookup_name ctx.scp_stk n))))
+  in aggregate (List.map _export_one ns);
 
 type callback_arg_t = Words of Ast.word list
                     | Word of Ast.word;;
@@ -269,17 +270,19 @@ and g_import ctx imp =
             else aggregate !bindings)) ss
 
 and g_bind ctx =
-  let _g_bind_body =
+  let new_scps = push_scope ctx.scp_stk
+  in let _g_bind_body =
     function
       Ast.BindBody(pn, b) ->
-      (push_name ctx.scp_stk pn @@ name_uid pn.Ast.name_repr);
+      (push_name new_scps pn @@ name_uid pn.Ast.name_repr);
       (cnil
        |~~| (g_word {ctx with is_body = false;
-                              is_backquoted = false}
+                              is_backquoted = false;
+                              scp_stk = new_scps}
                {inst_nil_ctx
                 with post =
                        fun _ -> line (BIND(ArgLit(VUFixedInt(
-                           lookup_name ctx.scp_stk pn))))}
+                           lookup_name new_scps pn))))}
                b))
       (* Cannot do compile-time stack indexing, i.e. giving names the stack index,
          because you don't know what will come out of the calculation in `b'. *)
@@ -287,9 +290,10 @@ and g_bind ctx =
   in function
       Ast.BindThen(bs, b) ->
       let bind_inst = aggregate (lmap _g_bind_body bs)
-      in let then_inst = g_word {ctx with is_body = true; is_backquoted = false}
+      in let then_inst = g_word {ctx with is_body = true; is_backquoted = false;
+                                          scp_stk = new_scps}
              inst_nil_ctx b
-      in bind_inst |~~| then_inst
+      in (line PUSH_SCOPE) |~~| bind_inst |~~| then_inst |~~| (line POP_SCOPE)
 
 and g_name ctx inst_ctx n =
   let get_args ns = if List.length ns = 1
@@ -465,23 +469,19 @@ and g_seq ctx inst_ctx seq =
        let _x = if not is_shared
          then (put_label [seq_st_id])
               |~~| (line PUSH_STACK)
-              |~~| (line PUSH_SCOPE)
          else put_label [seq_st_id]
        in opt_cs _x
 
   in let seq_postamble =
        let _x = if not is_shared
          then (put_label [seq_end_id])
-              |~~| (line POP_SCOPE)
               |~~| (line RET)
          else (put_label [seq_end_id])
               |~~| (line SHARED_RET)
        in (opt_cs (_x |~~| (put_label [seq_real_end_id])))
 
   in let body, scp_stk = match seq with
-        Ast.Sequence(s) -> s, if _UID = "na"
-                       then ctx.scp_stk
-                       else push_scope ctx.scp_stk
+        Ast.Sequence(s) -> s, ctx.scp_stk
       | Ast.SharedSequence(s) -> s, ctx.scp_stk
 
   in let lead_inst = if ctx.is_backquoted
@@ -541,8 +541,9 @@ and g_fun ctx inst_ctx fun_ =
                     |~~| (line (if sw_share_stack ctx.sw
                             then SHARE_STACK
                             else PUSH_STACK))
-                    |~~| (line PUSH_SCOPE)
   in let scp_stk = push_scope ctx.scp_stk
+         (* A function invocation automatically pushes a scope (for its arguments),
+            so no need to explicitly write a push-scope. *)
   in let _g_arg_def = function
         Ast.ArgDef(pn)
       | Ast.ArgDefWithType(pn, _) ->
