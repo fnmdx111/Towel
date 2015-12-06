@@ -3,4 +3,6 @@ Tests the idle instruction.
 !>> 
 !<< "
 
-idle
+import '.w' @
+
+.idle

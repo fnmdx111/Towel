@@ -72,6 +72,8 @@ if __FILE__ == $0
   make_inline_fun.call '..t1', ['car']
   make_inline_fun.call '..t2', ['cdr', 'car']
   make_inline_fun.call '..t3', ['cdr', 'cdr', 'car']
+  make_inline_fun.call '.idle', ['idle']
+  make_inline_fun.call '$$', ['push-phony']
 
   make_inline_fun.call '!>ext', ['load-ext']
   make_inline_fun.call '!>>', ['extcall']

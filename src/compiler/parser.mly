@@ -6,8 +6,8 @@ open Exc
 %}
 
 %token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
-%token MATCH FUNCTION BIND ALSO THEN AT TYPE IMPORT EXPORT IDLE
-%token SLASH BQUOTE COMMA SEMICOLON PHONY LAMBDA
+%token MATCH FUNCTION BIND ALSO THEN AT TYPE IMPORT EXPORT
+%token SLASH BQUOTE COMMA SEMICOLON LAMBDA
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 
 %token <Ast.atom> ATOM
@@ -251,11 +251,8 @@ name:
     $startpos($3) $startofs($1) $endofs($3)
   }
 
-idle: IDLE { }
-
 restricted_word:
   name { WName($1) }
-| idle { WIdle }
 | backquote { WBackquote($1) }
 | literal { WLiteral($1) }
 | sequence { WSequence($1) }
@@ -333,9 +330,6 @@ export:
     $2
   }
 
-phony:
-  PHONY {}
-
 word:
   backquote { WBackquote($1) }
 | sequence { WSequence($1) }
@@ -345,9 +339,7 @@ word:
 | bind_sform { WBind($1) }
 | import { WImport($1) }
 | export { WExport($1) }
-| idle { WIdle }
 | name { WName($1) }
-| phony { WPhony }
 | altype_sform { WAlType($1) }
 
 sequence:
