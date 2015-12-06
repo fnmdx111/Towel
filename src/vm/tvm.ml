@@ -16,12 +16,14 @@ let () = Arg.parse commands (fun fn -> src_file_r := fn)
 
 let src_file = !src_file_r;;
 let src_inchan = Pervasives.open_in src_file;;
-let src_content = String.concat "\n" @@ input_list src_inchan;;
-Pervasives.close_in src_inchan;;
+(* let src_content = String.concat "\n" @@ input_list src_inchan;; *)
+(* Pervasives.close_in src_inchan;; *)
 
 let () =
-  let lexbuf = Lexing.from_string src_content
-  in let text = Tasm_parser.asm Tasm_scanner.token lexbuf
-  in exec !trace_r (not !no_warnings_r)
-    (Array.of_list (match text with Asm(ins) -> ins));;
+  (* let lexbuf = Lexing.from_string src_content *)
+  (* in let text = Tasm_parser.asm Tasm_scanner.token lexbuf *)
+  (* in exec !trace_r (not !no_warnings_r) *)
+  (*   (Array.of_list (match text with Asm(ins) -> ins));; *)
+  let insts = Tasm_inv_bytecode.parse_bytecode src_inchan
+  in exec !trace_r (not !no_warnings_r) insts;;
 

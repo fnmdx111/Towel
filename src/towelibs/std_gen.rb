@@ -78,6 +78,6 @@ if __FILE__ == $0
 
   w.puts 'terminate'
 
-  File.open '.w.w', 'w' do |f| f.puts w.string end
+  File.open '.w.o', 'w' do |f| f.puts w.string end
   File.open '.w.e', 'w' do |f| f.puts e.string end
 end
