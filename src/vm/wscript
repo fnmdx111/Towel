@@ -21,7 +21,7 @@ cmxn = lambda n: _c(n, 'cmx')
 
 def build(ctx):
     mlis = ['t', 'tasm_ast']
-    lib_mls = ['exc', 'nstack', 'common', 'config', 'tasm_stringify']
+    lib_mls = ['exc', 'nstack', 'common', 'config']
     aff_mlis = []
     non_exec_mls = ['dscoping', 'tasm_inv_bytecode']
     some_more_mls0 = ['vm_t']
