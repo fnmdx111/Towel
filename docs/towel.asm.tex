@@ -20,7 +20,7 @@
 
 The Towel virtual machine is basically a stack-based state machine that accepts and executes Towel Assembly Language. It reads instructions sequently from instruction buffer and does its computation on stacks. It has the following important parts:
 \begin{itemize}
-\item execution stack (or the activation record stack): \texttt{ctx\_t list}\footnote{Note that, Towel Virtual Machine does not restricts itself to a single kind of implementation. The use of OCaml type notation here is for convenience and clarity.}
+\item execution stack (or the activation record stack): \texttt{ctx\_t list}\footnote{Note that, Towel Virtual Machine does not restricts itself to any single kind of implementation. The use of OCaml type notation here is for convenience and clarity.}
 \item data stack stack: \texttt{value\_t dstack\_t dstack\_t}
 \item flags record: \texttt{flags\_t}
 \item module table: \texttt{(module\_id\_t, module\_t) Hashtbl.t}
@@ -138,23 +138,23 @@ After assembling, labels preceding a line are eliminated, and labels as argument
 
 \subsection{Scope-related Instructions}
 
-\subsubsection{\inst{push-scope}}
+\subsubsection{\texttt{0x01} \inst{push-scope}}
 
 Pushes a new scope onto the scope stack.
 
-\subsubsection{\inst{pop-scope}}
+\subsubsection{\texttt{0x02} \inst{pop-scope}}
 
 Pops the TOS of the scope stack.
 
-\subsubsection{\inst{share-scope}}
+\subsubsection{\texttt{0x03} \inst{share-scope}}
 
 Does absolutely nothing. Just a place-holder to indicate that this new context shares the same scope with its parent.
 
-\subsubsection{\inst{bind}}
+\subsubsection{\texttt{0x04} \inst{bind}}
 
 \inst{bind} instruction takes one argument, the ID of the name that something will bind to. Then TVM binds the TOS to that name in current scope.
 
-\subsubsection{\inst{fun-arg}}
+\subsubsection{\texttt{0x05} \inst{fun-arg}}
 
 \inst{fun-arg} is a compound instruction\footnote{A compound instruction is an instruction with multiple side-effects.} which takes one argument. It steals (pops) from the caller's data stack\footnote{The second top stack of DSS, or the top stack of DSS if it's a tail recursive call.} and binds the value to name indicated by the argument in the clone of the \texttt{closure} table of the function.
 
@@ -164,43 +164,43 @@ If the stack is empty because the TOS is a phony, it removes the phony.
 
 \subsection{Stack-related Instructions}
 
-\subsubsection{\inst{push-fun}}
+\subsubsection{\texttt{0x10} \inst{push-fun}}
 
 Makes a new function value and pushes it onto the stack without evaluating it. It takes one argument as the start position of the function to be created. The module id of the function is considered to be \texttt{curmod.id}.
 
-\subsubsection{\inst{push-lnil} and \inst{push-tnil}}
+\subsubsection{\texttt{0x11} \inst{push-lnil} and \texttt{0x12} \inst{push-tnil}}
 
 Makes a new list or tuple on top of the current data stack. TVM also puts the pointer of its content onto \texttt{flags.list\_make\_stack} to keep track where to put new literal values (such as values from \inst{push-lit}, \inst{push-lnil} or \inst{push-tnil}), when TVM reaches \inst{end-list} or \inst{end-tuple}, the ref on top of \texttt{flags.list\_make\_stack} is popped.
 
-\subsubsection{\inst{end-list} and \inst{end-tuple}}
+\subsubsection{\texttt{0x13} \inst{end-list} and \texttt{0x14} \inst{end-tuple}}
 
 Ending current list or tuple construction.
 
-\subsubsection{\inst{push-lit}}
+\subsubsection{\texttt{0x15} \inst{push-lit}}
 
 Push a literal onto the stack or the list pointer on top of \texttt{flags.list\_make\_stack} with the value given by this instruction's argument.
 
-\subsubsection{\inst{push-name}}
+\subsubsection{\texttt{0x16} \inst{push-name}}
 
 Takes two arguments as the identifiers of the name and the module it belongs to, finds the value it is bound to, then pushes it onto the stack.
 
-\subsubsection{\inst{eval-and-push}}
+\subsubsection{\texttt{0x17} \inst{eval-and-push}}
 
 Takes two arguments as the description of a name (same as \inst{push-name}), finds the value it is bound to. If the value is a function, then evaluates the function.
 
-\subsubsection{\inst{pop}}
+\subsubsection{\texttt{0x18} \inst{pop}}
 
 Pops the TOS of current data stack.
 
-\subsubsection{\inst{dup}}
+\subsubsection{\texttt{0x19} \inst{dup}}
 
 Pops the TOS of current data stack.
 
-\subsubsection{\inst{reverse} (deprecated)}
+\subsubsection{\texttt{0x1a} \inst{reverse} (deprecated)}
 
 Take an argument from the stack, then reverse the n-top most elements according to the argument.
 
-\subsubsection{\inst{unpack}}
+\subsubsection{\texttt{0x1b} \inst{unpack}}
 
 Assumes the TOS is a list or tuple, then unpacks it onto the stack. For example,
 \begin{verbatim}
@@ -208,7 +208,7 @@ Assumes the TOS is a list or tuple, then unpacks it onto the stack. For example,
   after unpack: [ ... | 1 | 2 | 3]
 \end{verbatim}
 
-\subsubsection{\inst{pack}}
+\subsubsection{\texttt{0x1c} \inst{pack}}
 
 Takes one integer as the quantity of items from the stack to pack into a tuple. For example,
 \begin{verbatim}
@@ -218,51 +218,51 @@ Takes one integer as the quantity of items from the stack to pack into a tuple. 
 
 If there were insufficient number of stack items, TVM throws an exception and terminates.
 
-\subsubsection{\inst{push-phony}}
+\subsubsection{\texttt{0x1d} \inst{push-phony}}
 
 Pushes a phony onto the stack that fakes an empty stack. That is to say, whenever TVM encounters a phony, it regards the stack as being empty.
 
 \subsection{Function-related Instructions}
 
-\subsubsection{\inst{push-stack}}
+\subsubsection{\texttt{0x20} \inst{push-stack}}
 
 Pushes a new data stack onto the data stack stack.
 
-\subsubsection{\inst{share-stack}}
+\subsubsection{\texttt{0x21} \inst{share-stack}}
 
 Same as \inst{share-scope}.
 
-\subsubsection{\inst{pop-stack}}
+\subsubsection{\texttt{0x22} \inst{pop-stack}}
 
 Pops the current data stack.
 
-\subsubsection{\inst{eval-tail}}
+\subsubsection{\texttt{0x23} \inst{eval-tail}}
 
 Takes one argument as the ID of the name that references to a function which is to be called in a tail recursive manner.
 
-\subsubsection{\inst{ret}}
+\subsubsection{\texttt{0x24} \inst{ret}}
 
 Take care of the return value of the function. Pops the execution stack. And jumps to the return address.
 
-\subsubsection{\inst{shared-ret}}
+\subsubsection{\texttt{0x25} \inst{shared-ret}}
 
 Just sets the instruction pointer back to where this shared sequence gets called. No return value copied whatsoever (because there isn't any).
 
-\subsubsection{\inst{closure}}
+\subsubsection{\texttt{0x26} \inst{closure}}
 
 Assumes TOS is a function, takes two argument to describe the name the TOS should capture.
 
-\subsubsection{\inst{invoke}}
+\subsubsection{\texttt{0x27} \inst{invoke}}
 
 Assumes TOS is a function, then invoke it. The function is popped before evaluating it.
 
-\subsubsection{\inst{call}}
+\subsubsection{\texttt{0x28} \inst{call}}
 
 Record $PC + 1$ as the return address, then jump to the location given by the argument. Only jumps within the same module.
 
 \subsection{Conditional Branching Instructions}
 
-\subsubsection{\inst{jump}}
+\subsubsection{\texttt{0x30} \inst{jump}}
 
 Takes a label as its argument and unconditionally jumps to that label.
 
@@ -272,17 +272,17 @@ Takes a label as its argument and tests against the TOS on the data stack. If th
 
 \inst{j*} instruction family consists of the following instructions:
 \begin{itemize}
-\item \inst{jgz}, \inst{jgez}
-\item \inst{jlz}, \inst{jlez}
-\item \inst{jez}, \inst{jnez}
-\item \inst{jt}, \inst{jf}
+\item \texttt{0x32} \inst{jgz}, \texttt{0x31} \inst{jgez}
+\item \texttt{0x34} \inst{jlz}, \texttt{0x33} \inst{jlez}
+\item \texttt{0x35} \inst{jez}, \texttt{0x36} \inst{jnez}
+\item \texttt{0x37} \inst{jt}, \texttt{0x38} \inst{jf}
 \end{itemize}
 
 \subsubsection{\inst{hj*}}
 
-Hungry versions of \inst{j*} instruction family, which consume the TOS they test against.
+Hungry versions of \inst{j*} instruction family, which consume the TOS they test against. Their \texttt{opcode}s are the ones of their non-hungry counterpart plus \texttt{0x10}. For example, the \texttt{opcode} of \texttt{jgz} is \texttt{0x42}.
 
-\subsubsection{\inst{je}, \inst{jne}}
+\subsubsection{\texttt{0x39} \inst{je}, \texttt{0x3a} \inst{jne}}
 
 Each one of them takes a label as its argument, and tests if the data stack is empty. If it is, \inst{je} jumps to the label whereas \inst{jne} jumps to the \texttt{label!}, and vice versa.
 
@@ -290,11 +290,15 @@ If \inst{je} is tested against a phony, it pops it before branching.
 
 \subsection{Arithmetic Instructions}
 
-\subsubsection{\inst{add}, \inst{sub}, \inst{mul}, \inst{div}, \inst{pow}}
+\subsubsection{\texttt{0x50} \inst{add}, \texttt{0x51} \inst{sub}, \texttt{0x52} \inst{mul}, \texttt{0x53} \inst{div}, \texttt{0x54} \inst{pow}}
 
 Does arithmetic operations with TOS and second TOS, and pushes \texttt{TOS op sTOS}. These instructions work for all the number types\footnote{Atoms are not numbers.}.
 
-\subsubsection{\inst{equ}}
+\subsubsection{\texttt{0x55} \inst{mod}}
+
+Does modulo operation between integer types.
+
+\subsubsection{\texttt{0x56} \inst{equ}}
 
 Does equality test on TOS and second TOS, and puts back \texttt{true} or \texttt{false} atoms. If two different types are tested against each other, TVM exits.
 
@@ -302,80 +306,124 @@ Does equality test on TOS and second TOS, and puts back \texttt{true} or \texttt
 
 Fixed integers, unsigned fixed integers, and big integers support the following bitwise arithmetic operations:
 \begin{itemize}
-\item Bitwise and, \inst{and}
-\item Bitwise or, \inst{or}
-\item Bitwise xor, \inst{xor}
-\item Bitwise not, \inst{not}
-\item Bitwise shift left, \inst{shl}
-\item Bitwise shift right, \inst{shr}
-\item Bitwise logical shift right, \inst{lshr}
+\item Bitwise and, \texttt{0x57} \inst{and}
+\item Bitwise or, \texttt{0x58} \inst{or}
+\item Bitwise xor, \texttt{0x59} \inst{xor}
+\item Bitwise not, \texttt{0x5a} \inst{not}
+\item Bitwise shift left, \texttt{0x5b} \inst{shl}
+\item Bitwise shift right, \texttt{0x5c} \inst{shr}
+\item Bitwise logical shift right, \texttt{0x5d} \inst{lshr}
 \end{itemize}
 
 Note that \inst{not}, \inst{and} and \inst{or} also work on the \texttt{true} and \texttt{false} atoms.
 
+\subsubsection{Conversion Instructions}
+
+These instructions allow one type of TOS to convert into value of other types. They are of the following form:
+\begin{itemize}
+\item \texttt{0x62} \inst{to-fint}
+\item \texttt{0x63} \inst{to-ufint}
+\item \texttt{0x64} \inst{to-int}
+\item \texttt{0x65} \inst{to-float}
+\item \texttt{0x66} \inst{to-str}
+\end{itemize}
+
 \subsection{List Instructions}
 
-\subsubsection{\inst{car}}
+\subsubsection{\texttt{0x5e} \inst{car}}
 
 The car operation on linked lists. It takes a list or tuple from the stack, puts back the head of the list or tuple.
 
-\subsubsection{\inst{cdr}}
+\subsubsection{\texttt{0x5f} \inst{cdr}}
 
 Same as \inst{car}, except that it puts back the rest of the list or tuple.
 
-\subsubsection{\inst{cons}}
+\subsubsection{\texttt{0x60} \inst{cons}}
 
 The cons operation on linked lists. It takes two arguments from the stack and constructs a new list and then puts it back onto the stack. If it encounters a tuple, TVM exits.
 
-\subsubsection{\inst{list-empty}}
+\subsubsection{\texttt{0x61} \inst{list-empty}}
 
 Tests if the TOS is an empty list or tuple. It puts back whether true or false depending on the emptiness of the list or tuple.
 
 \subsection{I/O Instructions}
 
-\subsubsection{\inst{show}}
+\subsubsection{\texttt{0x67} \inst{show}}
 
 Prints the TOS to standard output.
 
-\subsubsection{\inst{read}}
+\subsubsection{\texttt{0x68} \inst{read}}
 
 Reads a string from standard input and store that string on the stack.
 
 \subsection{Extension Instructions}
 
-\subsubsection{\inst{load-ext}}
+\subsubsection{\texttt{0xf1} \inst{load-ext}}
 
 Takes a string from the stack, loads the corresponding module from filesystem, and record it in the \texttt{opened\_exts} table. Then puts back the handle to that extension module.
 
-\subsubsection{\inst{extcall}}
+\subsubsection{\texttt{0xf0} \inst{extcall}}
 
 Takes two unsigned integers from the stack, the TOS for the extension module handle, the other one for the call number to indicate which routine to call from the extension.
 
 \subsection{Miscellaneous Instructions}
 
-\subsubsection{\inst{import}}
+\subsubsection{\texttt{0x70} \inst{import}}
 
 Accepts a string of the name of the module you wish to import along with an unsigned integer for its ID relative to current module. TVM will assign a unique ID to every module imported based on the module string of the source file of the module. For example, the module string of Towel standard library (or Towelib) is \texttt{'std'} (because the source filename of it is \texttt{'std.t'}).
 
-\subsubsection{\inst{dint}}
+\subsubsection{\texttt{0x71} \inst{dint}}
 
 Invokes the debug interrupt handler. See also \url{https://github.com/qwert42/ketivm/blob/master/vm/keti.py#L164}, which is an implementation of a similar instruction.
 
-\subsubsection{\inst{type}}
+\subsubsection{\texttt{0x72} \inst{type}}
 
 Pushes the type information of TOS onto the stack. This instruction only recognizes built-in types.
 
-\subsubsection{\inst{not-implemented}}
+\subsubsection{\texttt{0xff} \inst{not-implemented}}
 
 Prints an error message stating that an unimplemented instruction was found and the virtual machine has to exit.
 
-\subsubsection{\inst{idle}}
+\subsubsection{\texttt{0x0} \inst{idle}}
 
 Does absolutely nothing.
 
-\subsubsection{\inst{terminate}}
+\subsubsection{\texttt{0xfe} \inst{terminate}}
 
 Terminate the Towel Virtual Machine. Or when finishing importing modules, go back to original module.\footnote{Look at the similarities between (\inst{call}, \inst{invoke}, etc. \texttt{->} \inst{ret}) and (\inst{import} \texttt{->} \inst{terminate}).}
+
+\section{Bytecode Form of the Towel Assembly Language}
+
+\subsection{Bytecode Form Overview}
+
+A Towel Assembly Language source code can be compiled into a binary file. The layout of such a binary file is as follows:
+\begin{itemize}
+\item Magic number \texttt{0x4242}, denotes that this is a Towel binary
+\item The data segment, which contains all the literals used in the original source code
+\item Magic number \texttt{0xff3080ff}, denotes that data segment ends here
+\item The code segment
+\end{itemize}
+
+\subsection{Data Segment}
+A Towel binary contains only one data segment. Data segment contains all the literals used in the original source code file, which are of type \texttt{VString}, \texttt{VAtom}, \texttt{VFixedInt}, \texttt{VUFixedInt}, \texttt{VInt}, \texttt{VFloat}.
+
+To store a string in the data segment. First, put a tag\footnote{Actually a string.} \texttt{``s''} into the data segment. After that tag, put a little endian 32-bit unsigned integer which represents the length of the string. Then put the contents of the string after the 32-bit integer.
+
+To store an atom, put a tag \texttt{``a''} and then an unsigned little endian 64-bit integer.
+
+To store a fixed integer, put a tag \texttt{``f''}, then a signed little endian 64-bit integer.
+
+An unsigned fixed integer is the same as an atom, except the tag is \texttt{``u''}.
+
+To store an integer (i.e. big integer) or a float, put their respective tags (\texttt{``b''} for integer, \texttt{``n''}\footnote{``n'' for not a number.} for float) before their binary string representations. For example, for a float \texttt{3.14159}, the Towel literal binary representation is \texttt{6e07000000332e3134313539}.
+
+The order of the literals are put in the data segment is their respective labels.
+
+\subsection{Instruction Format}
+
+Any bytecode instruction is a little-endian 64 bit number. The first byte of the number is \texttt{opcode}. For unary instructions, the second up to eighth bytes consists of the argument label. For binary instructions, the second up to fifth bytes consists of the first argument label, while the rest (sixth to eigth, 3 bytes, less than the first argument) consists of the second argument label.
+
+When encountered a bytecode instruction, use the argument labels (if any) to retrieve actual arguments from data segment, and then form the actual instruction.
 
 \section{Extending the Towel Virtual Machine (OCaml Implementation)}
 
@@ -422,8 +470,8 @@ The command for compiling the Random extension module is like this:\newline
 \texttt{ocamlfind ocamlopt -package stdint ext\_random.ml -shared -linkall -I ../../build/src/vm -o ext\_random.cmxs}
 \newline
 
-Third, place the \texttt{.cmxs} file in the \texttt{libpaths} of TVM, default locations are \texttt{cwd} and where \texttt{towelib} is at. Modify \texttt{src/vm/config.ml} to change these locations.
+Third, place the \texttt{.cmxs} file in the \texttt{libpaths} of TVM, default locations are current working directory and the folder \texttt{towelib}. Modify \texttt{src/vm/config.ml} to change these locations.
 
-Last, write a Towel wrapper module for your extension module. In the \texttt{.w} instruction wrapper module, \texttt{!>ext} is for the \inst{load-ext} instruction and \texttt{!>>} is for \inst{extcall}. You should always bind a name to the extension handle pushed by \texttt{!>ext}. It is a good idea to bind a local partial function with the handle already applied. Not exporting both the handle and this function are highly recommended.
+Last, write a Towel wrapper module for your extension module. In the \texttt{.w} instruction wrapper module, name \texttt{!>ext} is bound to the \inst{load-ext} instruction wrapper and name \texttt{!>>} for \inst{extcall}. You should always bind a name to the extension handle pushed by \texttt{!>ext}.\footnote{It is a good idea to bind a local partial function with the handle already applied to \texttt{!>>}.}
 
 \end{document}
