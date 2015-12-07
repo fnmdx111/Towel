@@ -80,6 +80,7 @@ if __FILE__ == $0
 
   make_inline_fun.call '.idle', ['idle']
   make_inline_fun.call '$$', ['push-phony']
+  make_inline_fun.call '***', ['dint']
 
   w.puts 'terminate'
 
