@@ -145,7 +145,7 @@ let exec should_trace should_warn insts =
           ret_addr = next_ip;
           curfun = {cur_fun with closure = new_closure}}::ctxs
 
-    in let return () =
+    in let return _ nscps =
       let tctx = tos ctxs
       in let tmod = Hashtbl.find modules tctx.mod_id
       in begin
@@ -159,7 +159,8 @@ let exec should_trace should_warn insts =
         (* If we purge (and pop) the current stack then copy the return value
            there won't be a problem if the two contexts are in the same
            module. *)
-        __exec (ntos ctxs) {flags with curmod = tmod} tctx.ret_addr
+        __exec (ntos ctxs) {flags with curmod = tmod;
+                                       scps = nscps} tctx.ret_addr
       end
 
     in let invoke_regular fr =
@@ -532,7 +533,7 @@ let exec should_trace should_warn insts =
         tctx.ret_addr
 
     | RET -> trace "returning";
-      return ()
+      return () scps
 
     | PUSH_PHONY -> trace "pushing phony";
       dspush dss OVPhony;
@@ -613,7 +614,7 @@ Something is wrong with the compiler.");
         in let nf = OVFunction({f with closure = new_closure;
                                        is_partial = true})
         in dspush dss nf;
-        return ()
+        return () (ntos scps)
       end else begin
         Hashtbl.replace f.closure (nid, curmod.id) stolen_arg;
         npush scps (nid, curmod.id) (nid, -curmod.id);
