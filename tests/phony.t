@@ -6,4 +6,4 @@ Tests if phony works.
 import 'std' @
 import '.w' \
 
-(1 $$\.w 2 - .!invoke\.w !println)
+(1 $$ 2 - .!invoke\.w !println)

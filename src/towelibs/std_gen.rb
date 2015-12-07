@@ -63,7 +63,6 @@ if __FILE__ == $0
   make_inline_fun.call '.!dup', ['dup']
   make_inline_fun.call '.!pop', ['pop']
   make_inline_fun.call '.!rev', ['reverse']
-  make_inline_fun.call '.!probe', ['dint']
   make_inline_fun.call '.!invoke', ['invoke']
   make_inline_fun.call '.!unpack', ['unpack']
   make_inline_fun.call '.!pack', ['pack']

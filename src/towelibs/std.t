@@ -32,6 +32,11 @@ also !print .!print\.w`
 also !println .!println\.w`
 also !read .!read\.w`
 
+also !!pop .!pop\.w`
+also !!dup .!dup\.w`
+
+also $$ $$\.w`
+
 also #hd fun` ~1, (~1 ..hd\.w)
 also <# #hd`
 "Use # as prefix for list/tuple functions."
@@ -44,6 +49,9 @@ also ?# ?#empty`
 also #t1 fun` ~1, (~1 ..t1\.w)
 also #t2 fun` ~1, (~1 ..t2\.w)
 also #t3 fun` ~1, (~1 ..t3\.w)
+
+also !!pack .!pack\.w`
+also !!unpack .!unpack\.w`
 
 also /id fun` ~1, ~1
 "/\ -> lambda, since \ is reserved, we use /"
@@ -77,5 +85,6 @@ also /apply fun` ~args ~f, (~args .!unpack\.w ~f)
 
 then export + - * / ** % = :and :or ~fint ~ufint ~int ~float ~str !print
 !println #hd #tl #cons ?#empty #t1 #t2 #t3 /id /foldl #rev /map /filter
-/flip /foldr |#| #concat <# #> <#> ?# <<# !# /apply !read > >= < <= <> :not @
+/flip /foldr |#| #concat <# #> <#> ?# <<# !# /apply !read > >= < <= <> :not
+!!pop !!dup !!pack !!unpack $$ @
 
