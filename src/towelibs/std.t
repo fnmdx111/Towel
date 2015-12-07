@@ -48,14 +48,14 @@ also #t3 fun` ~1, (~1 ..t3\.w)
 also /id fun` ~1, ~1
 "/\ -> lambda, since \ is reserved, we use /"
 also /foldl fun` ~p ~l ~f, (
-  ~l .?empty\.w ift ~p,
-  (~p ~l ..hd\.w ~f "accumulated value"
+  ~l .?empty\.w ift (.!pop\.w ~p),
+  (.!pop\.w ~p ~l ..hd\.w ~f "accumulated value"
    ~l ..tl\.w "rest of the list"
    ~f`
    /foldl@))
 also /foldr fun` ~p ~l ~f, (
-  ~l .?empty\.w ift ~p,
-  (~p ~l ..tl\.w ~f` /foldr
+  ~l .?empty\.w ift (.!pop\.w ~p),
+  (.!pop\.w ~p ~l ..tl\.w ~f` /foldr
    ~l ..hd\.w
    ~f))
 also #rev fun` ~1, ([] ~1 fun` ~acc ~x, (~x ~acc ..cons\.w) /foldl@)
@@ -66,8 +66,8 @@ also /map fun` ~l ~f, (
   [] ~l fun` ~acc ~x, (~x ~f ~acc ..cons\.w) /foldl #rev@)
 also /filter fun` ~l ?pred, (
   [] ~l
-  fun` ~acc ~x, (~x ?pred ift ~acc,
-                 (~x ~acc ..cons\.w))
+  fun` ~acc ~x, (~x ?pred ift (.!pop\.w ~acc),
+                 (.!pop\.w ~x ~acc ..cons\.w))
   /foldl #rev@)
 also /flip fun` ~1 ~2 ~f, (~2 ~1 ~f)
 also #len fun` ~1, (0 ~1 fun` ~acc _, (~acc 1 ..+\.w) /foldl@)
