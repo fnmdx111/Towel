@@ -132,9 +132,18 @@ let exec should_trace should_warn insts =
     in let scps = flags.scps
 
     in let push_cur_ip cur_fun =
+         let new_closure = Hashtbl.copy cur_fun.closure
+         in Hashtbl.iter
+             (fun k v -> if Hashtbl.mem cur_fun.closure k
+               then ()
+               else Hashtbl.replace new_closure k v)
+             (* Copy all the values bound in the last context's function's closure
+                in this function's closure (of course a copy) so that multiple
+                level of binding can work. *)
+             (tos ctxs).curfun.closure;
          {mod_id = curmod.id;
           ret_addr = next_ip;
-          curfun = cur_fun}::ctxs
+          curfun = {cur_fun with closure = new_closure}}::ctxs
 
     in let return () =
       let tctx = tos ctxs
@@ -143,7 +152,8 @@ let exec should_trace should_warn insts =
          (* Wipe out current stack for GC. *)
         if dsis_empty dss = 0
         then let r = dspop dss
-          in begin dspurge dss;
+          in begin
+            dspurge dss;
             dspush dss r (* Copy return value to caller's dss. *)
           end else dspurge dss;
         (* If we purge (and pop) the current stack then copy the return value
@@ -154,14 +164,9 @@ let exec should_trace should_warn insts =
 
     in let invoke_regular fr =
          let nmod = Hashtbl.find modules fr.T.mod_id
-         in let nscps = push_scope scps
-         in Hashtbl.iter
-           (fun k v -> let n, m = k
-             in npush nscps k (n, -m)) fr.closure;
-         __exec (push_cur_ip fr)
+         in __exec (push_cur_ip fr)
            {flags with is_tail_recursive_call = false;
-                       curmod = nmod;
-                       scps = nscps}
+                       curmod = nmod}
            fr.st
 
     (* `dsp' points to the next slot of TOS. *)
@@ -194,8 +199,8 @@ let exec should_trace should_warn insts =
 
     in let resolve_name n m =
          let m = Hashtbl.find curmod.imports m
-         in fprintf stderr "abs mod id: %d\n" m; if m <> curmod.id
-         then Hashtbl.find (Hashtbl.find modules m).exs n
+         in if m <> curmod.id
+         then (Hashtbl.find (Hashtbl.find modules m).exs n)
          else try let rn, rm = nlookup scps (n, m)
              in if rm < 0
              then (* It's in closure. *)
@@ -203,9 +208,8 @@ let exec should_trace should_warn insts =
              else dval dss (rn, rm)
            (* Check local scope first, because names captured in closure
               might be shadowed in current scope. *)
-           with Exc.NameNotFoundError(_)
-              | Not_found ->
-             failwith "external name not found in exs and tctx.curfun.closure"
+           with Exc.NameNotFoundError(_) -> failwith "name not found"
+              | Not_found -> failwith "external name not found in tctx.curfun.closure"
 
     in let inst =
          match line with
@@ -215,11 +219,7 @@ let exec should_trace should_warn insts =
          | CLine(_, None) ->
            tvm_warning "found an empty CLine, definitely a bug."; IDLE
 
-    in trace (sprintf "stack: %s\n" (sprint_dss dss));
-    if flags.is_stepping
-    then (print_string "d> "; ignore (read_line ()))
-    else ();
-    match inst with
+    in match inst with
       PUSH_LIT(ArgLit(lit)) -> trace "pushing lit";
       let nv = match lit with
           VInt(i) -> OVInt(i)
@@ -289,6 +289,13 @@ let exec should_trace should_warn insts =
       in let module E =
            (val Hashtbl.find opened_exts ext_id : TowelExtTemplate)
       in E.extcall cn dss;
+      __exec ctxs flags next_ip
+
+    | INSTALL -> trace "installing closure";
+      let fr = (tos ctxs).curfun
+      in Hashtbl.iter
+        (fun k v -> let n, m = k
+          in npush scps k (n, -m)) fr.closure;
       __exec ctxs flags next_ip
 
     | PACK -> trace "packing";
@@ -393,7 +400,8 @@ let exec should_trace should_warn insts =
                    mod_id = flags.curmod.id;
                    closure = Hashtbl.create 32;
                    is_partial = false}
-      in __exec (push_cur_ip nfrec)
+      in
+      __exec (push_cur_ip nfrec)
         {flags with is_tail_recursive_call = false}
         (to_pc st)
 
@@ -545,9 +553,7 @@ Something is wrong with the compiler.");
 
     | FUN_ARG(ArgLit(VUFixedInt(_nid))) -> trace "fun argumenting";
       let nid = vm_name _nid
-      in let () = fprintf stderr "nid1 = %d\n" nid
       in let nid = curmod.name_id_tick nid
-      in let () = fprintf stderr "nid2 = %d\n" nid
       in let _f = (tos ctxs).curfun
       in let f = {_f with closure = Hashtbl.copy _f.closure}
       in let remove_phony_if_any ds =
@@ -604,16 +610,8 @@ Something is wrong with the compiler.");
       in if is_partial
       then begin
         let new_closure = Hashtbl.copy f.closure
-        in (* Hashtbl.iter (fun name idx -> *)
-          (*   fprintf stderr "(%d,%d) -> (%d,%d)\n" (fst name) (snd name) (fst idx) (snd idx); *)
-          (*   Hashtbl.replace new_closure *)
-          (*                   ((fst name), curmod.id) *)
-          (*                   (\* Fun-args are bound by default in current *)
-          (*                      module. *\) *)
-          (*                   (dval dss idx)) *)
-          (* (tos scps); *)
-        let nf = OVFunction({f with closure = new_closure;
-                                    is_partial = true})
+        in let nf = OVFunction({f with closure = new_closure;
+                                       is_partial = true})
         in dspush dss nf;
         return ()
       end else begin
@@ -648,7 +646,7 @@ Something is wrong with the compiler.");
       in (match v with
             OVFunction(frec) ->
             let new_ctxs = {(tos ctxs) with curfun = frec}::(ntos ctxs)
-            in let tail_ip = frec.st |> succ
+            in let tail_ip = frec.st |> succ |> succ |> succ
             (* Bypass both the push-scope and push-stack instructions. *)
             in if frec.mod_id = curmod.id
             then __exec new_ctxs
@@ -737,7 +735,22 @@ Something is wrong with the compiler.");
         __exec ctxs {flags with scps = ntos scps} next_ip
 
       | DINT -> trace "setting step debug mode";
-        __exec ctxs {flags with is_stepping = not flags.is_stepping} next_ip
+        let rec r () = let input = read_line ()
+          in (match String.sub input 0 2 with
+                "ss" -> fprintf stderr "scps: %s\n" (sprint_dscope_stack scps); r ()
+              | "ds" -> fprintf stderr "dss: %s\n" (sprint_dss dss); r ()
+              | "vi" -> fprintf stderr "val: %s\n" (string_of_value
+                                                      (dval dss
+                                                         ((int_of_string (read_line ())),
+                                                          (int_of_string (read_line ())))));
+                r ()
+              | "ln" -> (try let vidx = resolve_name (int_of_string (read_line ()))
+                                 (int_of_string (read_line ()))
+                           in fprintf stderr "lookup: %s" (string_of_value vidx); r ()
+                         with _ -> fprintf stderr "something wrong happened"; r ())
+              | "nn" -> __exec ctxs {flags with is_stepping = not flags.is_stepping} next_ip
+              | _ -> fprintf stderr "something wronger happened"; r ())
+            in r ()
 
       | EXPORT(ArgLit(VUFixedInt(_n))) -> trace "exporting";
         let n = vm_name _n
@@ -753,7 +766,8 @@ Something is wrong with the compiler.");
                           tctx.mod_id tctx.ret_addr);
               dspurge dss;
               __exec (ntos ctxs)
-                {flags with curmod = tmod}
+                {flags with curmod = tmod;
+                            scps = ntos scps}
                 tctx.ret_addr)
         else exit 0
 

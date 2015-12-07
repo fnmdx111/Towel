@@ -134,14 +134,7 @@ let find_closure ctx tree =
             B should still be in the closure set. So should E. *)
            Ast.Sequence(ws) ->
            (* This part is really pain in the butt. *)
-           let new_scope =
-             if is_body
-             then if sw_opt_seq ctx.sw
-               then locals
-                 (* Again, if the sequence is a body of something, and the user
-                    turns opt-seq on, no new stacks nor scopes. *)
-               else push_scope locals
-             else push_scope locals
+           let new_scope = locals
            in List.iter (__find_in new_scope false) ws
          | Ast.SharedSequence(ws) ->
            (* If it's a shared sequence, do the same as a opt'ed sequence. *)
@@ -541,6 +534,7 @@ and g_fun ctx inst_ctx fun_ =
                     |~~| (line (if sw_share_stack ctx.sw
                             then SHARE_STACK
                             else PUSH_STACK))
+                    |~~| (line PUSH_SCOPE)
   in let scp_stk = push_scope ctx.scp_stk
          (* A function invocation automatically pushes a scope (for its arguments),
             so no need to explicitly write a push-scope. *)
@@ -578,6 +572,7 @@ and g_fun ctx inst_ctx fun_ =
               inst_nil_ctx body
        in let snippet = cnil
                         |~~| preamble
+                        |~~| (line INSTALL)
                         |~~| fun_args
                         |~~| body_inst
                         |~~| (cline [end_label] (Some(POP_SCOPE)))

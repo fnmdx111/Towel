@@ -38,4 +38,5 @@ let sprint_dscope dscope =
                          (fst v) (snd v))::acc) dscope []));;
 
 let sprint_dscope_stack scp_stk =
-  String.concat "; " (List.map (fun x -> sprint_dscope x) scp_stk);;
+  String.concat " " [string_of_int (List.length scp_stk);
+  String.concat "; " (List.map (fun x -> sprint_dscope x) scp_stk)];;
