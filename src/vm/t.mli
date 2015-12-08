@@ -9,9 +9,9 @@ type line_no_t = int;;
 
 type closure_t = (name_t * module_id_t, value_t) Hashtbl.t
 and type_hint_t = THInt | THAtom | THFixedInt | THUFixedInt | THString
-                | THFloat | THList | THPhony | THLNil
-                | THFunction of type_hint_t list
-                | THTuple | THTNil | THType | THAlType | THAlTypeValue
+                | THFloat | THList | THPhony
+                | THFunction | THNil
+                | THTuple | THType | THAlType | THAlTypeValue
 and fun_t = {st: line_no_t;
              mod_id: module_id_t;
              closure: closure_t;
@@ -27,6 +27,6 @@ and value_t = OVInt of Big_int.big_int
             | OVFunction of fun_t
             | OVTuple of value_t list ref
             | OVNil
-            | OVType of type_hint_t
+            | OVTypeHint of type_hint_t
             | OVAlType of unit
             | OVAlTypeValue of unit * unit;;

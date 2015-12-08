@@ -46,13 +46,13 @@ module Inst
     ['push-lit', 0x15],
     ['call', 0x28],
     ['push-fun', 0x10],
+    ['closure', 0x26],
     ['export', 0x7f],
   ]
 
   binary_instructions_all = [
     ['eval-and-push', 0x17],
     ['push-name', 0x16],
-    ['closure', 0x26],
     ['eval-tail', 0x23],
     ['import', 0x70],
   ]

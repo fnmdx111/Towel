@@ -100,6 +100,10 @@ let rec string_of_value v =
     sprintf "**%s: %d,%d,<closure set>"
       (if f.is_partial then "partial-fun" else "fun")
       f.st f.mod_id
+  | OVTypeHint(t) ->
+    "**type value"
+  | OVPhony ->
+    "$$"
   | _ -> "**abstract value";;
 
 let exec should_trace should_warn insts =
@@ -137,9 +141,13 @@ let exec should_trace should_warn insts =
              (fun k v -> if Hashtbl.mem cur_fun.closure k
                then ()
                else Hashtbl.replace new_closure k v)
-             (* Copy all the values bound in the last context's function's closure
-                in this function's closure (of course a copy) so that multiple
-                level of binding can work. *)
+             (* Copy all the values bound in the last context's function's
+                closure in this function's closure (of course a copy) so that
+                multiple level of binding can work. *)
+             (* This is potentially memory-ineffective. But without this,
+                quicksort (with bind) won't work, although I believe it
+                should work with the presence of install, despite which only
+                takes care for scopes created by functions. *)
              (tos ctxs).curfun.closure;
          {mod_id = curmod.id;
           ret_addr = next_ip;
@@ -201,7 +209,17 @@ let exec should_trace should_warn insts =
     in let resolve_name n m =
          let m = Hashtbl.find curmod.imports m
          in if m <> curmod.id
-         then (Hashtbl.find (Hashtbl.find modules m).exs n)
+         then Hashtbl.find (Hashtbl.find modules m).exs n
+             (* This module is destined to exist.
+                1. You have to import the module's .e file to be
+                able to compile code that actually uses values in
+                this module.
+                2. Therefore when you resolving names in this module,
+                this module is destined to be imported already.
+                3. Therefore you can't miss this name here.
+                4. So no need for save values other than current module
+                to closure. *)
+
          else try let rn, rm = nlookup scps (n, m)
              in if rm < 0
              then (* It's in closure. *)
@@ -293,6 +311,9 @@ let exec should_trace should_warn insts =
       __exec ctxs flags next_ip
 
     | INSTALL -> trace "installing closure";
+      (* This instruction effectively notifies the scoping mechanism about
+         all the captured values that are in closure so that when resolving
+         a name, we don't have to explicitly check the closure. *)
       let fr = (tos ctxs).curfun
       in Hashtbl.iter
         (fun k v -> let n, m = k
@@ -322,6 +343,26 @@ let exec should_trace should_warn insts =
         | OVTuple(rls) -> !rls
         | _ -> failwith "Invalid type of argument to unpack."
       in List.iter (fun x -> dspush dss x) ns;
+      __exec ctxs flags next_ip
+
+    | TYPE -> trace "typing";
+      let n = match (dspop dss) with
+          OVInt(_) -> OVTypeHint(THInt)
+        | OVAtom(_) -> OVTypeHint(THAtom)
+        | OVFixedInt(_) -> OVTypeHint(THFixedInt)
+        | OVUFixedInt(_) -> OVTypeHint(THUFixedInt)
+        | OVString(_) -> OVTypeHint(THString)
+        | OVFloat(_) -> OVTypeHint(THFloat)
+        | OVList(_) -> OVTypeHint(THList)
+        | OVPhony -> OVTypeHint(THPhony)
+        (* don't think you can do this *)
+        | OVFunction(_) -> OVTypeHint(THFunction)
+        | OVTuple(_) -> OVTypeHint(THTuple)
+        | OVNil -> OVTypeHint(THNil)
+        | OVTypeHint(_) -> OVTypeHint(THType)
+        | OVAlType(_) -> OVTypeHint(THAlType)
+        | OVAlTypeValue(_, _) -> OVTypeHint(THAlTypeValue)
+      in dspush dss n;
       __exec ctxs flags next_ip
 
     | DUP -> trace "duplicating";
@@ -444,6 +485,8 @@ let exec should_trace should_warn insts =
             if Big_int.eq_big_int j i then 0 else 1
           | OVAtom(i), OVAtom(j) ->
             Uint64.compare i j
+          | OVTypeHint(i), OVTypeHint(j) ->
+            Pervasives.compare i j
           | _ -> 1 (* Equality of non-equal values are 1. *))
       in dspush dss (if tf = 0
                      then OVAtom(Uint64.one)
@@ -539,10 +582,11 @@ let exec should_trace should_warn insts =
       dspush dss OVPhony;
       __exec ctxs flags next_ip
 
-    | CLOSURE(ArgLit(VUFixedInt(_nid)), ArgLit(VUFixedInt(_mid))) ->
+    | CLOSURE(ArgLit(VUFixedInt(_nid))) ->
       trace "adding to closure";
       let nid = vm_name _nid
-      in let mid = vm_mod_id _mid
+      in let mid = 0
+      (* Because resolve_name will absolutify mid for us, so put 0 here. *)
       in (match dstop dss with
             OVFunction(f) ->
             let v = resolve_name nid mid
@@ -557,6 +601,20 @@ Something is wrong with the compiler.");
       in let nid = curmod.name_id_tick nid
       in let _f = (tos ctxs).curfun
       in let f = {_f with closure = Hashtbl.copy _f.closure}
+      (* Because we are storing function arguments in closure, we must copy
+         the function every time we execute a fun-arg, just to make sure
+         recursive functions work. For example, if we are recursively calling
+         our function with new arguments A = 10, B = 11; if we are not copying
+         the function closure table, {ctx5}'s curfun.closure.A would be 10,
+         thus overwriting ctx5's execution stack.
+
+         ({ctx5 curfun = {closure = {A = 1; B = 2}}})
+         ({ctx4 curfun = {closure = {A = 3; B = 6}}})
+         ({ctx3 curfun = {closure = {A = 3; B = 1}}})
+         ...
+
+         I know copying is slow, but with this fun-arg approach, I have no
+         choice. *)
       in let remove_phony_if_any ds =
            let r = dis_empty ds
            in if r = 1
@@ -565,14 +623,6 @@ Something is wrong with the compiler.");
            then BatDynArray.delete_last ds
 
       in let steal_arg () =
-           (* Hashtbl.replace f.args nid 1; *)
-           (* Make a note that we stole this argument, and are going to
-              erase it from the closure set after we exit this function. *)
-           (* I may not need this. Because every time I put a fun-arg into
-              the closure set, I'm copying the existing one to a new function
-              value and then begin to put new fun-args. So when this instance
-              of the function execution exits, the original one is left
-              untouched. *)
            if flags.is_tail_recursive_call
            then if dsis_empty dss <> 0
              then begin
@@ -595,7 +645,7 @@ Something is wrong with the compiler.");
              end else
                false, dpop second_level_stack
 
-      in let is_partial, stolen_arg =
+      in let no_more_argument, stolen_arg =
            if f.is_partial
            then if Hashtbl.mem f.closure (nid, curmod.id)
              then false, Hashtbl.find f.closure (nid, curmod.id)
@@ -608,18 +658,26 @@ Something is wrong with the compiler.");
              (* Otherwise, we steal argument from others. *)
              else steal_arg ()
            else steal_arg ()
-      in if is_partial
+      in if no_more_argument
       then begin
         let new_closure = Hashtbl.copy f.closure
         in let nf = OVFunction({f with closure = new_closure;
                                        is_partial = true})
         in dspush dss nf;
-        return () (ntos scps)
+        return () (ntos scps) (* This is where I found the scope leaking.
+                                 Basically with partial functions' creation. *)
       end else begin
         Hashtbl.replace f.closure (nid, curmod.id) stolen_arg;
+        (* Store the function argument here at f.closure. *)
         npush scps (nid, curmod.id) (nid, -curmod.id);
+        (* Make the function argument visible to inner scopes so that the
+           following code will work.
+           fun A,
+             fun B,
+               A *)
         __exec ({(tos ctxs) with curfun = f}::(ntos ctxs))
-          (* Modify the toctx with the newly modified function. *)
+          (* Modify the toctx with the newly modified version of the
+             function. *)
           flags next_ip
       end
 
@@ -676,7 +734,7 @@ Something is wrong with the compiler.");
             | OVList(_)
             | OVTuple(_)
             | OVNil
-            | OVType(_) ->
+            | OVTypeHint(_) ->
               dspush dss v;
               __exec ctxs flags next_ip
             | _ ->

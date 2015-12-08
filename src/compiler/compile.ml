@@ -92,7 +92,8 @@ let find_closure ctx tree =
            bind C D
            then (C)
        if we are finding closure about the outmost function,
-       A is local, B is local, C is local, D is nonlocal.
+       A is local, B is local, C is local, D is nonlocal,
+       or A, B, C appear bound, D appears free.
 
        See also the comment at Ast.WSequence. *)
         then (* Do nothing. *) ()
@@ -103,8 +104,10 @@ let find_closure ctx tree =
         Hashtbl.replace table
           ((lookup_name outer_scope (List.hd ns)), Uint64.zero) 1
 
-    else Hashtbl.replace table
-        (lookup_ext_name ctx.ext_scope_meta ns) 1
+    else (* See nvm.ml:209 for why we don't need to put ext names in closure.
+            Hashtbl.replace table
+            (lookup_ext_name ctx.ext_scope_meta ns) 1 *)
+      ()
 
   in let rec __find_in locals is_body =
        function
@@ -498,8 +501,7 @@ and g_seq ctx inst_ctx seq =
   in let closure_insts =
        Hashtbl.fold (fun k v acc ->
            let nid, esid = k
-           in acc |~~| line (CLOSURE(ArgLit(VUFixedInt(nid)),
-                                     ArgLit(VUFixedInt(esid)))))
+           in acc |~~| line (CLOSURE(ArgLit(VUFixedInt(nid)))))
          closure cnil
 
   in let () =
@@ -522,6 +524,7 @@ and g_seq ctx inst_ctx seq =
      |~~| (opt_cs lead_inst)
      |~~| inst_ctx.post (Word(Ast.WSequence(seq)))
      |~~| closure_insts
+     |~~| (line INSTALL)
      |~~| body_main
 
 and g_fun ctx inst_ctx fun_ =
@@ -551,8 +554,7 @@ and g_fun ctx inst_ctx fun_ =
        in let closure_insts =
             Hashtbl.fold (fun k v acc ->
                 let nid, esid = k
-                in acc |~~| line (CLOSURE(ArgLit(VUFixedInt(nid)),
-                                          ArgLit(VUFixedInt(esid)))))
+                in acc |~~| line (CLOSURE(ArgLit(VUFixedInt(nid)))))
               closure cnil
 
        in let fun_inst = if is_backquoted
