@@ -1,39 +1,19 @@
 open Stdint
 
-type primitive_type =
-    PT_Atom
-  | PT_FixedInt
-  | PT_Int
-  | PT_UFixedInt
-  | PT_Float
-  | PT_String
-  | PT_List
-  | PT_Module
-  | PT_Number
-  | PT_Tuple of int
-  | PT_Any;;
-
 type atom = {
   atom_name: string;
   atom_repr: int
-};;
-
-type type_def =
-    TypeDef of type_def_item list
-
-and type_def_item = TDName of name | TDPrimitiveType of primitive_type
+}
 
 and pname = {
   name_repr: string;
-  mutable name_type: type_def
 }
 
 and name =
     NRegular of pname list
   | NTailCall of pname list
 
-type pvalue = {value_content: pvalue_content;
-               value_type: type_def}
+type pvalue = {value_content: pvalue_content}
 and pvalue_content =
     VAtom of atom
   | VFixedInt of int64
@@ -96,7 +76,6 @@ and control_sequence =
 
 and arg_def =
     ArgDef of pname
-  | ArgDefWithType of pname * type_def
 
 and function_sform =
     Function of arg_def list * word

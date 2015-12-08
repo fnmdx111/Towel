@@ -16,9 +16,6 @@ type ctx_t = {
   scp_stk: scope_t list; ext_scope_meta: external_scope_t;
 };;
 
-let nil_name = {Ast.name_repr = "";
-                Ast.name_type = Ast.TypeDef([Ast.TDPrimitiveType(Ast.PT_Any)])};;
-
 let __unique64 = Common.counter ();;
 let uniq64 x = Printf.sprintf ":%s-%s" !global_fn_id @@ tu64 @@ __unique64 x;;
 
@@ -167,8 +164,7 @@ let find_closure ctx tree =
          | Ast.BQFunction(args, body) ->
            let new_locals = push_scope locals
            in List.iter (function
-                 Ast.ArgDef(pn)
-               | Ast.ArgDefWithType(pn, _) ->
+                 Ast.ArgDef(pn) ->
                  push_name new_locals pn Uint64.one) args;
            __find_in new_locals true body)
       | Ast.WBind(Ast.BindThen(bs, bt)) ->
@@ -231,7 +227,7 @@ and g_import ctx imp =
          @@ Hashtbl.fold (fun k v acc -> (k, v)::acc) ext_scope []
        in List.iter (fun x ->
            let k, v = x
-           in push_name ctx.scp_stk {nil_name with Ast.name_repr = k}
+           in push_name ctx.scp_stk {Ast.name_repr = k}
              (name_uid k)) sorted_ext_scope
 
   in let rec find_module mod_str = function
@@ -542,8 +538,7 @@ and g_fun ctx inst_ctx fun_ =
          (* A function invocation automatically pushes a scope (for its arguments),
             so no need to explicitly write a push-scope. *)
   in let _g_arg_def = function
-        Ast.ArgDef(pn)
-      | Ast.ArgDefWithType(pn, _) ->
+        Ast.ArgDef(pn) ->
         push_name scp_stk pn @@ name_uid pn.Ast.name_repr;
         line (FUN_ARG(ArgLit(VUFixedInt(lookup_name scp_stk pn))))
 

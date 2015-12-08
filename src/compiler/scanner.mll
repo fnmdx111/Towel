@@ -65,7 +65,7 @@ let string_lit = _SQUOTE string_item* _SQUOTE
 
 let alpha = ['a'-'z']
 let reserved_char = [',' ';' '.' '\'' '\\' '`' '@'
-                     '(' ')' '[' ']'
+                     '(' ')' '[' ']' '{' '}'
                      ' ' '\t' '\n' '\r']
 let common_valid_char = ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '.'
                          '|' ':' '<' '>' '?' '/' 'a'-'z' 'A'-'Z' '0'-'9']
@@ -143,8 +143,7 @@ rule token = parse
 | _DQUOTE { comment lexbuf } (* comments *)
 
 | name as n {
-    NAME({name_repr = n;
-          name_type = TypeDef([TDPrimitiveType(PT_Any)])})
+    NAME({name_repr = n})
   }
 
               (* literals start here *)
@@ -156,21 +155,17 @@ rule token = parse
     STRING(unquote(String.sub str 1 (String.length str - 2)))
   }
 | fint_lit as i {
-    LITERAL({value_content = VFixedInt(Int64.of_string i);
-             value_type = TypeDef([TDPrimitiveType(PT_FixedInt)])})
+    LITERAL({value_content = VFixedInt(Int64.of_string i)})
   }
 | int_lit as i {
-    LITERAL({value_content = VInt(Big_int.big_int_of_string @@ strip_mod i);
-             value_type = TypeDef([TDPrimitiveType(PT_Int)])})
+    LITERAL({value_content = VInt(Big_int.big_int_of_string @@ strip_mod i)})
   }
 | ufint_lit as i {
     LITERAL({value_content = VUFixedInt(Uint64.of_string
-                                        (i |> strip_sign |> strip_mod));
-             value_type = TypeDef([TDPrimitiveType(PT_UFixedInt)])})
+                                        (i |> strip_sign |> strip_mod))})
   }
 | float_lit as f {
-    LITERAL({value_content = VFloat(float_of_string f);
-             value_type = TypeDef([TDPrimitiveType(PT_Float)])})
+    LITERAL({value_content = VFloat(float_of_string f)})
   }
 
 | _ as s {

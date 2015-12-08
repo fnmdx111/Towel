@@ -80,33 +80,9 @@ and cs_stringify cs =
        PatternsAndMatches(ps) -> String.concat "; "
                                    (List.map pattern_stringify ps))
 
-and type_def_item_stringify i =
-  match i with
-    TDName(n) -> name_stringify n
-  | TDPrimitiveType(p) ->
-    (match p with
-       PT_Any -> "PT_Any"
-     | PT_Atom -> "PT_Atom"
-     | PT_List -> "PT_List"
-     | PT_Float -> "PT_Float"
-     | PT_String -> "PT_String"
-     | PT_Module -> "PT_Module"
-     | PT_Number -> "PT_Number"
-     | PT_Tuple(x) -> P.sprintf "PT_Tuple-%d" x
-     | PT_Int -> "PT_Int"
-     | PT_UFixedInt -> "PT_UFixedInt"
-     | PT_FixedInt -> "PT_FixedInt")
-
-and type_def_stringify d =
-  match d with
-    TypeDef(tds) -> String.concat " -> "
-                      (List.map type_def_item_stringify tds)
-
 and arg_def_stringify d =
     match d with
       ArgDef(n) -> pname_stringify n
-    | ArgDefWithType(n, td) ->
-      P.sprintf "(%s: %s)" (pname_stringify n) (type_def_stringify td)
 
 and bind_body_stringify = function
     BindBody(n, w) ->

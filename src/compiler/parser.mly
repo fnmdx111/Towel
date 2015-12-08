@@ -43,19 +43,11 @@ lit_altype_literal:
 
 literal:
   LITERAL { $1 }
-| STRING { {value_content = VString($1);
-            value_type = TypeDef([TDPrimitiveType(PT_String)])} }
-| ATOM { {value_content = VAtom($1);
-          value_type = TypeDef([TDPrimitiveType(PT_Atom)])} }
-| lit_list { {value_content = $1;
-              value_type = TypeDef([TDPrimitiveType(PT_List)])} }
-| lit_tuple { {value_content = $1;
-               value_type = TypeDef([TDPrimitiveType(
-                   PT_Tuple(List.length (match $1 with
-                         VTuple(ws) -> ws
-                       | _ -> [])))])} }
-| lit_altype_literal { {value_content = VAlTypeLiteral($1);
-                        value_type = TypeDef([TDPrimitiveType(PT_Any)])} }
+| STRING { {value_content = VString($1)} }
+| ATOM { {value_content = VAtom($1) } }
+| lit_list { {value_content = $1} }
+| lit_tuple { {value_content = $1} }
+| lit_altype_literal { {value_content = VAlTypeLiteral($1)} }
 
 backquote:
   literal BQUOTE { BQValue($1) }
@@ -64,22 +56,8 @@ backquote:
 | backquote BQUOTE { BQBackquote($1) }
 | LBRACE list(word) RBRACE { BQSeq(SharedSequence($2)) }
 
-type_def:
-  LPAREN nonempty_list(name) RPAREN {
-    TypeDef(List.map (fun x -> TDName(x)) $2)
-  }
-| LPAREN error {
-    err "expected names for type definition"
-      $startpos($2) $startofs($1) $endofs($2)
-  }
-| LPAREN nonempty_list(name) error {
-    err "expected a right parenthesis for type definition"
-    $startpos($3) $startofs($1) $endofs($3)
-  }
-
 arg_def:
   NAME { ArgDef($1) }
-| NAME type_def { ArgDefWithType($1, $2) }
 
 if_sform:
   IFGEZ word COMMA word { IfGEZ(IfBody($2, $4)) }
