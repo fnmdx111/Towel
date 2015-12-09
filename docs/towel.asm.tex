@@ -249,6 +249,10 @@ Just sets the instruction pointer back to where this shared sequence gets called
 
 Assumes TOS is a function, takes two argument to describe the name the TOS should capture.
 
+\subsubsection{\texttt{0xf2} \inst{install}}
+
+Install the captured names into current scope for users to reference to.
+
 \subsubsection{\texttt{0x27} \inst{invoke}}
 
 Assumes TOS is a function, then invoke it. The function is popped before evaluating it.
@@ -325,15 +329,15 @@ These instructions allow one type of TOS to convert into value of other types. T
 \item \texttt{0x66} \inst{to-str}
 \end{itemize}
 
-\subsection{List Instructions}
+\subsection{Instructions for Enumerables}
 
 \subsubsection{\texttt{0x5e} \inst{car}}
 
-The car operation on linked lists. It takes a list or tuple from the stack, puts back the head of the list or tuple.
+The car operation on linked lists. It takes a list from the stack, puts back the head of the list.
 
 \subsubsection{\texttt{0x5f} \inst{cdr}}
 
-Same as \inst{car}, except that it puts back the rest of the list or tuple.
+Same as \inst{car}, except that it puts back the rest of the list.
 
 \subsubsection{\texttt{0x60} \inst{cons}}
 
@@ -342,6 +346,10 @@ The cons operation on linked lists. It takes two arguments from the stack and co
 \subsubsection{\texttt{0x61} \inst{list-empty}}
 
 Tests if the TOS is an empty list or tuple. It puts back whether true or false depending on the emptiness of the list or tuple.
+
+\subsubsection{\texttt{0xf3} \inst{tuple-at}}
+
+Gets a tuple \texttt{T} from the stack, then an integer \texttt{N}, and finally push back the \texttt{N}th element of \texttt{T}.
 
 \subsection{I/O Instructions}
 

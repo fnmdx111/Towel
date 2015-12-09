@@ -76,7 +76,7 @@ if __FILE__ == $0
   make_inline_fun.call '!>ext', ['load-ext']
   make_inline_fun.call '!>>', ['extcall']
 
-  make_inline_fun.call '.idle', ['idle']
+  make_inline_fun.call '..idle', ['idle']
   make_inline_fun.call '$$', ['push-phony']
   make_inline_fun.call '***', ['dint']
 

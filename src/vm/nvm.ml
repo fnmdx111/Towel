@@ -500,6 +500,8 @@ let exec should_trace should_warn insts =
             if Big_int.eq_big_int j i then 0 else 1
           | OVAtom(i), OVAtom(j) ->
             Uint64.compare i j
+          | OVString(i), OVString(j) ->
+            Pervasives.compare i j
           | OVTypeHint(i), OVTypeHint(j) ->
             Pervasives.compare i j
           | _ -> 1 (* Equality of non-equal values are 1. *))
@@ -518,6 +520,8 @@ let exec should_trace should_warn insts =
             Int64.of_uint64 i
           | OVFloat(i) ->
             Int64.of_float i
+          | OVInt(i) ->
+            Int64.of_string (Big_int.string_of_big_int i)
           | OVString(s) ->
             (* It is really not casting here, but you get the idea. *)
             Int64.of_string s

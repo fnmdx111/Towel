@@ -5,4 +5,4 @@ Tests the idle instruction.
 
 import '.w' @
 
-.idle
+..idle

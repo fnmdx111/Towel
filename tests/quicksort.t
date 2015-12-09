@@ -11,7 +11,7 @@ bind #quicksort ,\ L,
     bind ~h (L #hd)
     also ~t (L #tl)
     then (~t (~h >) /filter #quicksort
-          ~h [] #cons
+          [~h]
           ~t (~h <=) /filter #quicksort
       #concat #concat)))
 then ([5 4 3 2 1] #quicksort !println)

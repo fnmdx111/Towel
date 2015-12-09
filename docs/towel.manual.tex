@@ -3,9 +3,54 @@
 \usepackage[left=1in, right=1in, top=1in, bottom=1in]{geometry}
 \usepackage{hyperref}
 \usepackage{graphicx}
+\usepackage{mdframed}
+\usepackage{showexpl}
+\usepackage[normalem]{ulem}
 
 \title{Towel Reference Manual}
 \author{Zihang Chen (zc2324) Baochan Zheng (bz2269) Guanlin Chen (gc2666)}
+
+\mdfdefinestyle{detail}{%
+rightline=true,innerleftmargin=10,innerrightmargin=10,
+frametitle={Implementation Detail},
+frametitlerule=true,frametitlerulecolor=white,
+frametitlebackgroundcolor=cyan,
+frametitlerulewidth=2pt}
+
+\mdfdefinestyle{hint}{%
+rightline=true,innerleftmargin=10,innerrightmargin=10,
+frametitle={Hint},
+frametitlerule=true,frametitlerulecolor=white,
+frametitlebackgroundcolor=yellow,
+frametitlerulewidth=2pt}
+
+\mdfdefinestyle{example}{%
+rightline=true,innerleftmargin=10,innerrightmargin=10,
+frametitle={Example},
+frametitlerule=true,frametitlerulecolor=white,
+frametitlebackgroundcolor=green,
+frametitlerulewidth=2pt}
+
+\mdfdefinestyle{example}{%
+rightline=true,innerleftmargin=10,innerrightmargin=10,
+frametitle={Example},
+frametitlerule=true,frametitlerulecolor=white,
+frametitlebackgroundcolor=green,
+frametitlerulewidth=2pt}
+
+\mdfdefinestyle{warning}{%
+rightline=true,innerleftmargin=10,innerrightmargin=10,
+frametitle={Be warned!!},
+frametitlerule=true,frametitlerulecolor=white,
+frametitlebackgroundcolor=red,
+frametitlerulewidth=2pt}
+
+\newcommand{\mstd}[1]{\texttt{#1\textbackslash Std}}
+\newcommand{\mtilde}[1]{\textasciitilde}
+
+\newcommand{\marg}[1]{\texttt{\mtilde ~#1}}
+\newcommand{\mla}[0]{~$\leftarrow$ ~}
+\newcommand{\arithstd}[1]{\marg{1} \mla \marg{2} \mla \mstd{#1}}
 
 \begin{document}
 \maketitle
@@ -18,19 +63,43 @@
 
 \tableofcontents
 
+\chapter{Language Overview}\label{chap:overview}
+
+Towel is a general-purpose, stack-based, postfix-syntaxed, dynamically strong-typed, functional, language targeted at the Towel Virtual Machine.
+
+\section{General-purpose}
+
+Towel is designed with the universe in mind. So the syntax of it is expressive, yet concise.
+
+\sout{Oh, by the way, it is also the language used by Deep Thought when it computed the Answer to The Ultimate Question of Life, the Universe, and Everything to be 42.}
+
+\section[Stack-based]{Stack-based\footnote{It's not only stack-based, it's actually stack-stack-based. See also \autoref{sec:basics}.}}
+
+Although stack-based programs are hard to reason about, it's really efficient and powerful to use once you get the gist of it. It's also very simple to implement.
+
+\section{Postfix-syntaxed}
+
+The relationship between postfix syntax and stacks is just like a towel to a hitchhiker, so why not?
+
+\section{Dynamically Strong-typed}
+
+This means that Towel maintains types at runtime with no implicit type castings whatsoever, the compiler does not do type checking. However, it does scope analysis for every source code.
+
+\section{Functional}
+
+Once you have full-fledged functional framework, you have the whole world. For example, Church booleans, Church numbers, etc. Or more realistic, you can use functions to emulate records, or even object-oriented programming!
+
+\section{Towel Virtual Machine}
+
+Why a virtual machine? Because we think this is the most portable and easy way to do a whole new language.\footnote{The thing is, you make it run first, then you optimize it.}
+
 \chapter{Lexical Elements}\label{chap:grammar}
 \section{Keywords}
 
 Keywords in the Towel programming language is as follows:
 \begin{verbatim}
 if>=0 if>0 if<=0 if<0 if~0 if=0 ift iff ife ifne
-match fun bind type also then export
-\end{verbatim}
-
-The corresponding tokens are:
-\begin{verbatim}
-IFGEZ IFGZ IFLEZ IFLZ IFNEZ IFEZ IFT IFF IFE IFNE
-MATCH FUNCTION BIND TYPE ALSO THEN
+match fun bind type also then export import ,\
 \end{verbatim}
 
 \section{Punctuations}
@@ -39,14 +108,9 @@ Punctuations used in the Towel programming language are as follows:
 
 \begin{itemize}
 \item Whitespace characters are simply ignored.
-\item These characters have special meanings in the Towel programming language: \texttt{` ' `` , ; . ( ) [ ] { } \char`\\ ~  @ eof}. This means that you cannot use these characters in names and atoms. \footnote{In other words, you can use any other punctuation characters in names and atoms.}
+\item These characters have special meanings in the Towel programming language: \texttt{` ' `` , ; ( ) [ ] { } \char`\\ ~  @ EOF}. This means that you cannot use these characters in names and atoms. \footnote{In other words, you can use any other punctuation characters in names and atoms.}
 \item Any unprintable character is reserved and won't be used.
 \end{itemize}
-
-Specially,
-\begin{verbatim}
-  TERMINATOR ::= ['.' '\n' '\r' '\r\n' eof]
-\end{verbatim}
 
 \section{Names}
 
@@ -54,9 +118,9 @@ Names are used for naming (or to be more precise, referencing to) values. Valid 
 
 More formally,
 \begin{verbatim}
-  unprintable ::= [all the unprintable ASCII characters]
-  whitespace ::= ['\n' '\t' ' ' '\r']
-  reserved_punct ::= ['`' ''' '"' ',' ';' '.' '\' '@' 
+  unprintables ::= [all the unprintable ASCII characters]
+  whitespaces ::= ['\n' '\t' ' ' '\r']
+  reserved_punct ::= ['`' ''' '"' ',' ';' '\' '@' 
                       '(' ')' '[' ']' '{' '}' whitespaces unprintables]
   valid_punct ::= ['!' '~' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '|'
                    ':' '<' '>' '?' '/']
@@ -82,9 +146,20 @@ More formally,
   NAME ::= [^ '-' reserved_punct digit lc_chars] [^ reserved_punct]*
 \end{verbatim}
 
+You can also resolve names in other namespaces (what we call \textit{modules} in Towel) by concatenating them with a backslash.
+
+\begin{mdframed}[style=example]
+If you would like to access the name \texttt{+} in module \texttt{Std}, which is in module \texttt{MyStdlib}, you can write:
+
+\begin{verbatim}
++\Std\MyStdlib
+\end{verbatim}
+
+\end{mdframed}
+
 \section{Literals}
 
-Most easy-to-use languages support a wide variety of literals (Python is a good example and Java is not). The Towel programming language supports literals for atoms, integers (fixed)\footnote{Fixed integers are interpreted as signed integers. There is no literal provided for unsigned fixed integers for now.}, floats, strings, and lists. They are defined as follows (rule for list literals will be revealed later):
+Most easy-to-use languages support a wide variety of literals (Python is a good example and Java is not). The Towel programming language supports literals for atoms, integers (fixed, unsigned fixed, big), floats, strings, lists and tuples. They are defined as follows (rule for list literals will be revealed later):
 \begin{verbatim}
   ATOM ::= lc_chars [^ reserved_punct]*
 
@@ -110,7 +185,16 @@ Most easy-to-use languages support a wide variety of literals (Python is a good 
    language reference manual.)
 \end{verbatim}
 
-Note that because terminator is also a dot, a float number literal cannot be written as \texttt{int dot}, otherwise any integer before a period terminator will be scanned as a float. Although it's feasible to handle this case, but that involves some more parser rules for integer literals alone.
+\begin{mdframed}[style=detail]
+Because positive (or negative) numbers, ``+1.'' for example, also uses the plus punctuation, \texttt{NAME} is actually more complicated than what's written above:
+\begin{verbatim}
+  NAME ::= valid_upper_char common_valid_char*
+         | '+' common_valid_char_no_digits?
+         | '+' common_valid_char_no_digits common_valid_char*
+         | '-' common_valid_char_no_digits?
+         | '-' common_valid_char_no_digits common_valid_char*
+\end{verbatim}
+\end{mdframed}
 
 \section{Comments}
 
@@ -126,83 +210,74 @@ When the scanner encounters any other character not mentioned above, it will rai
 \chapter{Data Types}
 \label{chap:data-types}
 
-Types are important and inferred in Towel. If the type check fails, the compiler will refuse to compile the program. However, when compilation finishes, all the type information is thrown away.
+This chapter covers the basics on types in Towel. It worth mentioning here that all the values of whatever types of Towel is immutable.
 
-This chapter covers the basics on types in Towel.
-
-\section{Primitive Types}
+\section{Built-in Types}
 
 Towel provides to the user the following primitive built-in types:
 \begin{itemize}
 \item Atom
-\item FixedInt
-\item Unsigned FixedInt
-\item Int
+\item Fixed integer or, FixedInt
+\item Unsigned fixed integer or, UFixedInt
+\item Big integer or, Int
 \item String
 \item Float
 \item List
 \item Tuple
 \end{itemize}
 
-Internally, these types are phony type values bound to names above. For example, \texttt{Atom} binds to the value \texttt{type-value:atom} so that you can reference to types in Towel.
+\subsection{Functions}
+
+Functions are one of the most important kind of values in Towel. They can be returned as values, passed as arguments, and evaluated as regular functions. This kind of feature is often called as \textit{functions as first-class citizens}. A function gets its argument from caller's data stack (often the data stack beneath it, or the same stack if it's a tail recursive call), and returns the TOS on its data stack.
+
+\begin{mdframed}[style=hint]
+Although it is not recommended, you can always use the \mstd{!!pack} routine\footnote{A routine in Towel is a function with side-effects (or stack-effects).} to pack multiple values in the callee and \mstd{!!unpack} them in the caller to achieve multiple return values.
+\end{mdframed}
 
 \subsection{Atoms}
 
-Atoms are special names uniquely bound to integer constants. But they are not comparable to integers.
+Atoms are special names uniquely bound to integer constants. But they are not comparable to integers, nor can they be applied to numeric operations. It's also meaningless to compare between two atoms.
+
+Towel predefines \texttt{false} and \texttt{true} as boolean atoms.
+
+\begin{mdframed}[style=detail]
+Although, they are not comparable to integers, they can be tested against each other to see if they are the same. The earlier the atom appears in code, the smaller the integer constants it gets.
+\end{mdframed}
 
 \subsection{\texttt{(U)FixedInt}s, \texttt{Int}s, \texttt{Float}s}
 
-(U)Fixed integers and floats are 64bit integers and floats. \texttt{Int}s are signed integers of arbitrary precision (like those \texttt{int}s in Python). These types are subclass of the class \texttt{Number}. A lot of arithmetic functions take \texttt{Number}s as their arguments. However, bitwise functions will take \texttt{FixedInt}s as arguments.
-
-The unsigned version of \texttt{FixedInt} will be internally interpreted as a \texttt{Stdint.Uint64} of library \texttt{ocaml-stdint}.
+(Unsigned) fixed integers and floats are 64bit integers and floats. \texttt{Int}s are signed integers of arbitrary precision (like those \texttt{int}s in Python). These types are said to be subclass of the class \texttt{Number} (only conceptually), which is to say all these types are supported by basic arithmetic operations. However, bitwise operations will only take (\texttt{U})\texttt{FixedInt}s as arguments.
 
 \subsection{Strings}
 
-Strings are implemented as OCaml strings. String items are surrended by single quote, rather than double quote.\footnote{Because you don't have to hit the \textit{shift} key when inputing single quotes. Same goes for brackets.}
+String items are surrounded by single quote, rather than double quote.\footnote{Because you don't have to hit the \textit{shift} key when inputing single quotes. Same goes for brackets.}
 
 \subsection{Lists and Tuples}
 
-Lists and tuples are implemented as OCaml lists. Types of tuples, for instance, \texttt{PT\_Tuple\-1} for 1-element tuples, are decided at compile time, and cannot be changed later, whereas the lengths of lists are not fixed.
+Lists and tuples are enumerable types in Towel.
 
-\section{\texttt{PT\_Any}}
+Lists are accepted by list-related functions, such as \mstd{\#hd}, \mstd{\#tl}, \mstd{?\#} (list emptiness test). However, note that only lists are supported by the \mstd{\#cons} operation. When you \mstd{\#cons} to a tuple, Towel Virtual Machine will blow up.
 
-In current version, without generic typing and algebraic types implemented, \texttt{PT\_Any} is the superclass of the type of every value in Towel.
+Tuples are accepted by \mstd{\#tn} to access specific element of them. They can also be tested emptiness with \mstd{?\#}.
 
-\section{Algebraic Data Types}
+\section{Conversion between Types}
 
-Users can use the \texttt{type} special form to define custom algebraic data types, see also \autoref{ssec:atdf} and \autoref{chap:examples}. However, type hierarchy between algebraic data types hasn't been designed yet.
+Most of the operations can only deal with homogeneous data types. For example, addition can only happen between two fixed integers, or two unsigned fixed integers, or big integers, etc. A addition between a float and an integer will result in error.
 
-\section{Functions}
+If you really would like to add a float to an integer, either use the built-in function \mstd{\mtilde ~float} to convert the integer into a float, or use \mstd{\mtilde  ~int} to convert the float into an integer.
 
-The type of functions is a list of types, which consists of the types of input arguments along with the return type. When applying arguments to functions, if the arguments are not enough (i.e. the caller's stack exhausts before all the arguments are satisfied), a partial applied function is returned.
+\section{Runtime Type Reflection}
 
-\section{Type Checking}
+You can use the built-in function \mstd{\string^?} to get the type of TOS. The returned type is a built-in value that represents types. Type values can be test against each other for equality with \mstd{\string=}.
 
-Type checking is an operation done between two types, and is not commutative. When we say type A is checked against type B, type checking succeeds under the following circumstances:
-\begin{itemize}
-\item The two type being exactly the same,
-\item Or, type A is a subclass of type B,
-\item Or, check the type of each item of type A and type B, if any of the type checkings succeeds, the whole type checking between type A and type B succeeds.
-\end{itemize}
-
-For a program, each name or value is type checked against the respective argument type of a function that is applied with the names or values. For example, in the following program:
-\begin{verbatim}
-  bind B 'string'
-  also A fun,
-    (2.0 B +)
-  then A.
-\end{verbatim}
-
-\texttt{2.0} and \texttt{B} are applied to \texttt{+}. Because \texttt{+} is of \texttt{Number -> Number -> Number}, so \texttt{2.0} is type checked against the first argument \texttt{Number} type and succeeds, \texttt{B}, a string, is type checked against the second argument \texttt{Number}, which fails. So the type check of the program fails. Compiler complains about this and exits.
-
-\chapter{Elements of Programs}
+\chapter{And Now for Something Completely Different...}
 \label{chap:forms}
 
-\section{Basic Concepts}
+\section{Program Structure}\label{sec:basics}
 
-A Towel program consists of one or multiple so-called \textbf{words} and one terminator. A terminator can be a period (dot) or the end-of-file character.
+A Towel program consists of one or multiple so-called \textbf{words}.
 
-When encountered multiple words, they are always evaluated one by one in the order they appear. Although in most times, Towel remains in a postfix fashion, but for the sake of convenience, some parts of the grammar is of prefix or infix style (e.g. the bind form and namespaced name invocation).
+When encountered multiple words, they are always evaluated one by one in the order they appear. Although most of the times, Towel remains in a postfix fashion, but for the sake of convenience, some parts of the grammar is of prefix or infix style (e.g. the bind form and namespaced name invocation).
 
 A word, can be one of the following:
 \begin{itemize}
@@ -210,27 +285,32 @@ A word, can be one of the following:
 \item name
 \item sequence
 \item backquote
-\item \texttt{match} and \texttt{if} forms
+\item \texttt{if} forms
 \item function form
 \item bind form
-\item type declaring form
+\item import and export form
 \end{itemize}
+
+You should also know that the computational model Towel uses is based on stacks, or to put it more precisely, stack of stacks. That is to say, when you invoke a function, a new stack in created for that particular function, and after it returns the new stack gets destroyed. This avoids potential corruption of only a single stack.
 
 \section{Rules for Evaluation}
 
-When evaluating a Towel program, each word is evaluated in the original order:
+When you reference to a word, Towel does the following:
 \begin{itemize}
-\item For integer, float, string, and atom literals, return references to them directly;
-\item For each list literal, return a reference to the list after you have evaluated each item of the list;
-\item For a backqoute, return whatever is quoted (without evaluating);
-\item For a sequence, create a new function out of the sequence and evaluate that function (i.e. evaluate the sequence on a new stack) and return the TOS of the new stack;
-\item For a function, apply\footnote{A stack is always created along with a function invocation, this is to avoid the potential corruption of shared stacks.} required arguments to it (if not, a backquoted partial applied function will be returned), then evaluate the return value of the function with the caller's stack and return the evaluated value;
-\item For a name, look up the value it references to, evaluated that value and return the evaluated value.
-\item For \texttt{match} and \texttt{if} forms, match or test against the TOS and evaluate the word in the matched branch;
-\item For bind-then form, evaluate the value that gets bound and bind the value evaluated to the name, then evaluate the then section with current scope.
+\item For literals, it pushes back them directly;
+\item For a backqoute, it pushes back whatever is quoted (i.e. without evaluating);
+\item For a function, it creates a new stack, gets whatever required arguments to it from caller's stack, does the computation, pushes back the TOS of its own stack to caller's stack (this is called in Towel ``returning a value'');
+\item For a sequence, it creates a new function out of the body of the sequence and evaluates that function;
+\item For a name, it looks up the value it references to, evaluates that value and pushes back the evaluated value.
+\item For \texttt{if} forms, test against the TOS and evaluate the word in respective branch;
+\item For bind-then form, it pushes a new scope, evaluates the values on stack that get bound (both \texttt{bind} clause and \texttt{also} clause) and binds the values evaluated to the names, then it evaluates the \texttt{then} clause within current scope. Finally it pops the scope.
 \end{itemize}
 
-After evaluating the words, you push the result onto the stack.
+\section{Rules for Scoping}
+
+Only two forms in Towel can create a new scope: the function form and the \texttt{bind-then} form. This means that a scope is created when entering a function, or a \texttt{bind-then} form, and implies that a scope is destroyed when exiting a function, or a \texttt{bind-then} form.
+
+A name is only referenceable within the scope it is bound, plus the child scopes of that scope. For closures, the captured names are poured into the function's scope by default.
 
 \section{Literal}
 
@@ -240,101 +320,148 @@ A literal is a literal value whose type is of the data types we have talked abou
 
 You can create atoms by writing any lowercased letter followed by arbitrary length of characters that are not reserved punctuations and keywords.
 
-Atoms are unique across the entire program. Because atoms are assigned with a unique integer, so you can have no more than $2^{31}$ of them in your program.
+Atoms are unique across the entire program. Because atoms are assigned with a unique unsigned 64-bit integer, so you can have no more than $2^{64}$ of them in your program.
 
-
-Atoms are good for pattern matching.\footnote{This idea is from Erlang.} Note that bool types are implemented as atoms (\texttt{true\textbackslash Bool} and \texttt{false\textbackslash Bool}).
+\begin{mdframed}[style=detail]
+  Boolean type is implemented as atoms. \mstd{:and}, \mstd{:or}, \mstd{:not} work for integers as well as booleans.
+\end{mdframed}
 
 \subsection{Numbers and Strings}
 
 You can create number and string literals by writing like this:
+\begin{mdframed}[style=example]
 \begin{verbatim}
   1 -1 2 -3 5 -8 13 -21
   +4242424242424242424242424242424242424242424242424242424242L
-  -6666666666666666666666666666666666666666666666666666666666l
+  -3141592653589793238462643383279l
   3U +0x4579u 0b11101 0d1234
   1.1e1 -0.1 'don\'t panic'
 \end{verbatim}
-
+\end{mdframed}
 \subsection{Lists}
 
 When creating a list literal, you must write a list of words separated with spaces in a pair of brackets, like the following code:
+\begin{mdframed}[style=example]
 \begin{verbatim}
   [arthur-dent ford-prefect betelgeuse]
   [Spam Spam Spam]
-  [Spam ifne (More Spam)`, (Less Spam)`]
+  [Spam ifne (More Spam)`, (Less Spam)`] (valid but bad example)
+\end{verbatim}
+\end{mdframed}
+
+\begin{mdframed}[style=warning]
+
+Although you can safely write list literals with names, and literals (integers, atoms, or even list), but because of Towel's stack-based nature, complicated words in a list literal may not turn out to be what you want.
+
+When the Towel compiler compiles a list literal into instructions, it first generates a pair of instructions called \texttt{push-lnil}, \texttt{end-list}. Then it compiles the words being the content of the list literal, and put the generated code between that pair of instructions. But be warned that, when entering the \texttt{push-lnil} and \texttt{end-list} pair, the target of most of the pushing actions will be come the newly pushed list, rather than the data stack. For example,
+
+\begin{verbatim}
+  push-lnil
+  push-lit 1u
+  push-lit 2a
+  push-lit 3l
+  end-list
 \end{verbatim}
 
-Note that in the last list literal, there exists an \texttt{ifne} form. This
-is totally valid, because \texttt{if} forms are also words, so as long as the \textbf{type} of the value the \texttt{ifne} form evaluates to match, you are good. And you should be aware that \texttt{if} forms always test against the top element of current data stack, so the name \texttt{Spam} before \texttt{ifne} has nothing to do with the value the \texttt{ifne} form evaluates to.
+will result in \texttt{[1 2 3]}. And
+
+\begin{verbatim}
+  push-lnil
+  push-lit 1u
+  push-lnil
+  push-lit 2a
+  push-lnil
+  push-lit 3l
+  end-list
+  end-list
+  end-list
+\end{verbatim}
+
+will result in \texttt{[1 [2 [3]]]}. Just like what we expected, right?
+
+But consider the following,
+
+\begin{verbatim}
+  (2 3 [1 2 +] !println)
+\end{verbatim}
+
+This is syntactically correct Towel, but the problem is that it tries to evaluate a function within the environment of creating a list. The user might expect the output being \texttt{[3]} but that not the case: before the name \texttt{+}, the stack is like the following,
+
+\begin{verbatim}
+  {| 2 3 [1 2 |}
+\end{verbatim}
+
+when the addition function tries to grab its arguments, it first pop the unfinished \texttt{[1 2} as its argument, which is incorrect already. And it then gets its second argument from the stack, which is obviously 3.
+
+You should also be very cautious with
+
+\begin{verbatim}
+  (1 2 [3 if>0 +`, -`])
+\end{verbatim}
+
+This \texttt{if>0} is tested against the TOS, which is the unfinished list \texttt{[3}!
+
+So in general, never ever put complicated words in a list literal. If you are really forced to do so, enclose the word in a sequence (parentheses).
+\end{mdframed}
 
 \subsection{Tuples}
 
-Tuples are fixed length lists, whereas you can append new items to lists to create new lists. Create tuples like this:
+Tuples are fixed length lists, this means that you cannot CDR from them, nor CONSing to them. Create tuples like this:
+\begin{mdframed}[style=example]
 \begin{verbatim}
   [\ arthur-dent ford-prefect betelgeuse] "a 3-tuple of type PT_Tuple-3"
   [\] "a 0-tuple of type PT_Tuple-0"
 \end{verbatim}
-
-You can use tuple in match forms like this:
-\begin{verbatim}
-  match [\ a b A], A
-\end{verbatim}
-This match form matches a 3-tuple and if the first and second element are atom \texttt{a} and \texttt{b} respectively, it binds the third element to the name \texttt{A}. See also \autoref{ssec:match} for more details on \texttt{match} form.
-
-\subsection{Literal of Algebraic Type}
-
-You can create literals of algebraic type by listing the required parameters in a pair of backet with an at symbol followed by the left bracket. And creating constructors by concatenating the constructor atom and the type name with a slash. For instance\footnote{I know this seems ridiculous. But they are (and was) great comedians.}:
-\begin{verbatim}
-  [@ chapman
-    [@ cleese
-      [@ gilliam
-        [@ idle
-          [@ jones
-            [@ palin nil\List]
-             cons\List]
-           cons\List]
-         cons\List]
-       cons\List]
-     cons\List]
-   cons\List
-\end{verbatim}
-
+\end{mdframed}
 \section{Sequence}
 
-Sequences are short-hand forms for creating anonymous functions with no arguments. You can create a sequence by writing the function body between a pair of parenthesis.
+Sequences are short-hand forms for creating anonymous functions with no arguments. You can create a sequence by writing the sequence body between a pair of parentheses.
 
-Towel also provides another kind of sequences, the shared sequences. These kind of sequences share the same context (such as stack and scope) with the caller. When creating such sequences, you add an at symbol right after the left parenthesis. For example,
+Towel also provides another kind of sequences, the shared sequences. This kind of sequences share the same context (such as stack and scope) with the caller. When creating such sequences, you add an at symbol right after the left parenthesis.
+
+\begin{mdframed}[style=example]
 \begin{verbatim}
-  ((A B - if>0 1, 0) (A B + if<0 2, 3) Bitand) "non-shared regular sequences"
-  (A B - (@ if>0, 1, 0) Println) "prints 1 or 0"
+  ((A B - if>0 1, 0) (A B + if<0 2, 3) :and) "non-shared regular sequences"
+  (A B - (@ if>0, 1, 0) !println) "prints 1 or 0"
+\end{verbatim}
+\end{mdframed}
+You may want to create a shared sequence when defining tail-recursive functions, otherwise, you lose the advantage of not stacking up contexts.
+
+\begin{mdframed}[style=hint]
+Just for your information, the Towel compiler automatically strips off the creation of certain unnecessary sequences for performance reasons. For example, the following sequences will be optimized out.
+
+\begin{verbatim}
+  bind THE-ANSWER 42
+  then (THE-ANSWER !println)
+
+  42 if>0 ('The answer is greater than void.' !println),
+    ('The answer is less than void.' !println)
 \end{verbatim}
 
-You may want to create a shared sequence when defining tail-recursive functions, otherwise, you lose the advantage of not stacking up contexts.
+The appearances of the sequences above are simply only of syntactical reasons, namely, to avoid ambiguity of the grammar. They can be safely removed semantically.
+
+See \autoref{sec:switches} for more details.
+\end{mdframed}
 
 \section{Backquote}
 
-Towel evaluates and pushes everything it encounters, you can use backquotes the values to prevent Towel from evaluating them so that Towel pushes them directly onto the data stack. Backquotes are created by appending a backquote to the values you want to backquote.
+Towel evaluates and pushes everything it encounters, you can use backquotes the values to prevent Towel from evaluating them so that Towel pushes them directly onto the data stack. Backquotes are created by appending a backquote to the words you want to backquote.
 
 You can backquote only limit types of words:
 \begin{itemize}
-\item literals
-\item names
-\item sequences
-\item backquotes
+\item literals; Towel pushes the literal back immediately
+\item names; Towel pushes whatever the name references to onto the stack, without evaluating them
+\item sequences and functions; Towel pushes them onto the stack without executing it
+\item backquotes; why would you do such a thing?
 \end{itemize}
 
 You can create backquoted shared sequence by replacing the parentheses with braces and dropping the at symbol. See also \autoref{ssec:backquote} and \autoref{ssec:macro}.
 
-\section{\texttt{match} and \texttt{if} Forms}
+\section{\texttt{if} Forms}
 
-In order to be a Turing-complete language, one must provide condition branching mechanisms. They are called \texttt{if} and match forms here in Towel.
+Towel supports 10 kinds of \texttt{if} forms for the sake of readability and convenience. They are of the same form, while differing in the predicate they use.
 
-\subsection{\texttt{if} Forms}
-
-Towel has 10 kinds of \texttt{if} forms for the sake of readability and convenience. They are of the same form, while differing in the predicate they use.
-
-An \texttt{if} form contains two words separated by a comma. When evaluating an \texttt{if} form, Towel tests the TOS and see if it satisfies the condition. If the condition is satisfied, the first word (called true branch) is evaluated and the second word is ignored\footnote{This is basically why you want a designated condition form}, and vice versa. By default, \texttt{if} forms does not consume TOS, see \autoref{sec:switches} for more detail.
+An \texttt{if} form contains two words separated by a comma. When evaluating an \texttt{if} form, Towel tests the TOS and see if it satisfies the condition. If the condition is satisfied, the first word (called the true branch) is evaluated and the second word is ignored\footnote{This is basically why you want a designated condition form}, and vice versa. By default, \texttt{if} forms does not consume TOS, see \autoref{sec:switches} for more detail.
 
 The predicates used by \texttt{if} forms are as follows:
 \begin{itemize}
@@ -352,142 +479,195 @@ The predicates used by \texttt{if} forms are as follows:
 
 See \autoref{chap:examples} for examples on \texttt{if} forms.
 
-\subsection{\texttt{match} Form}
-\label{ssec:match}
-
-A \texttt{match} form is a type of advanced condition branching, which uses instead of simple predicates like greater than or less than but more complicated ones, for example, whether a value can be deconstructed as a single element and the rest of the list (like pattern matching \texttt{x::xs} in Haskell). As what \texttt{if} forms do, \texttt{match} forms also match against TOS.
-
-To use \texttt{match} form, you write the \texttt{match} keyword followed by the pattern-action pairs separated by semicolons, while patterns and actions are interleaved by commas. To be more intuitive:
-\begin{verbatim}
-  match pattern-1, action-1;
-        pattern-2, action-2;
-        ...
-        pattern-n, action-n
-\end{verbatim}
-
-Each pattern can be a literal, or a list of words. The rules of \texttt{match} form are:
-\begin{itemize}
-\item If a pattern is a simple literal, it matches if TOS is strictly equal to
-  this literal.
-\item If a pattern is a list or tuple literal, it matches if TOS is a list or tuple respectively, and if corresponding items are strictly equal; if so, items that are names in pattern will be bound to respective value in TOS.
-\item In case of a list of words, the last word of the word list
-  is called a pattern engine.
-\item If the pattern engine is a name, the name is invoked with the argument of L (note that
-  this does not pop L off the caller's stack), then the function bound
-  to the name will return a tuple of values, and for the rest of
-  words:
-  \begin{itemize}
-  \item if the word is a value, the word matches if the value is strictly
-    equal to the corresponding value in the returned tuple
-  \item if the word is a name, the name is bound to the corresponding
-    value in the returned tuple
-  \end{itemize}
-  If all words match, this pattern matches.
-\item If the pattern engine is an algebraic data type constructor, the values in the parameter are tested to see if they are equal (pattern matches if this is true), while the names are bound to the respective values. This is called \textbf{deconstruction}.
-\end{itemize}
-
-If a pattern matches, the respective action is evaluated. See \autoref{chap:examples} for a concrete example on pattern matching in Towel.
-
-Note that actions can only contain certain types of words for the sake of unambiguous grammar:
-\begin{itemize}
-\item name
-\item backquote
-\item literal
-\item sequence
-\end{itemize}
-
 \section{Function Form}
 
-You use function forms to define anonymous functions, you may want to use bind forms jointly to create recursive functions. To define a function, first type the keyword \texttt{fun}, and a list of argument declarations and finally a word for the body of the function. You can optionally tag a type to the argument by enclosing the type in a pair of parentheses after the name of the argument. If not, types will be inferred. If not enough information was provided and the type cannot be inferred, an error will occur.
+Function forms are used to define anonymous functions of arbitrary arity. To define a function, first type the keyword \texttt{fun}, and a list of argument declarations and finally a word for the body of the function.
 
-Because function form creates and evaluates function in place, the following code is valid\footnote{But not semantically correct.}:
+Because function form creates and evaluates function in place, the following code is valid\footnote{But not semantically correct, because you cannot invoke a number as function.}:
+\begin{mdframed}[style=example]
 \begin{verbatim}
   fun A B,
     (A B fun X, (3 X +))
 \end{verbatim}
+\end{mdframed}
+In practice, you may want to use the \texttt{bind-then} form and backquote jointly to create functions. You use backquote to prevent the function from evaluating so that you can use it later, for example, in the \texttt{then} clause.
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  bind Some-practical-function fun` ~arg1 ~arg2 ~arg3,
+    (~~do-something-with-the-arguments~~)
+  then (Some-arg1 Some-arg2 Some-arg3 Some-practical-function)
+\end{verbatim}
+\end{mdframed}
+
+\begin{mdframed}[style=hint]
+  You can also use the punctuation sequence ``\texttt{,\textbackslash}'' to replace \texttt{fun`}.
+\end{mdframed}
 
 See \autoref{chap:examples} for concrete examples.
 
 \subsection{Tail Recursive Function Calls}
 
-Any practical functional programming language provides tail recursion optimization. So does Towel. However, Towel is unable to identify\footnote{I admit that it's not very difficult to implement this, but we are undermanned.} whether a function call is tail recursive, so users are responsible for tagging tail recursive calls with an at symbol at the end of the name of the function, like this:
+Any practical functional programming language provides tail recursion optimization. So does Towel. However, Towel is unable to identify\footnote{\textit{I admit I had been lazy.}} whether a function call is tail recursive, so users are responsible for tagging tail recursive calls with an at symbol at the end of the name of the function, like this:
+
+\begin{mdframed}[style=example]
 \begin{verbatim}
-  bind Loop fun F It End,
-    (@ - if=0 (It F),
-              (@ It F F It 1 + End Loop@))
-  then (("looping" Println) 1 10 Loop).
+  bind Loop fun` F It End,
+    (It End - if=0 (It F),
+                (It F F` It 1 + End Loop@)
+  then (("looping" !println)` 1 10 Loop).
 \end{verbatim}
+\end{mdframed}
+
+\subsection{Currying}
+
+When applied with insufficient number of arguments, Towel will return a partially applied function instead of doing all the computation it is supposed to. To be more precisely, Towel copies the function being called as a new value, install the arguments already applied to that new function value, then return this new function value as the return value of the old function. \sout{Yummy!}
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  bind ~dec-1 (1 -)
+  then ('The Answer is ' !print 43 ~dec-1 !println)
+\end{verbatim}
+\end{mdframed}
+
+\subsection{Phony}
+
+A phony in Towel, is a special value on stack. When a phony is the current TOS, the stack will be considered empty. To push a phony onto the current stack, use \mstd{\$\$}.
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  ($$ ife (true !println), (false !println))
+\end{verbatim}
+  This will print \texttt{true}.
+\end{mdframed}
+
+Often, phony is used in conjunction with currying to create a curried function.
+
+\begin{mdframed}[style=hint]
+  Note that every phony will be popped by the TVM right after it is used, otherwise it will shadow anything pushed before it. For example the following code can produce expected answer because of this feature:
+
+\begin{verbatim}
+  ([1 2 3 4 5] $$ 3 < /filter !println)
+\end{verbatim}
+
+The output will be \texttt{[4 5]}.
+\end{mdframed}
 
 \section{Bind Form}
 
-Use bind forms to add new name bindings in current scope. Names can be bound to any kind of values such as functions, atoms, and all kinds of literals. Simply type \texttt{bind} followed by the name and the value. Bind forms have a compulsory \texttt{then} clause, which is followed by a word. You can do your computation under the name scope after this name binding in the \texttt{then} clause. Top-level name bindings, i.e. names bound by the outmost bind form, are visible across modules, you may want to take advantage of this behavior.
+Use bind forms to add new name bindings in a new scope. Names can be bound to any kind of values such as functions, atoms, and all kinds of literals as long as they exist on the stack.
 
-If you encountered a situation where names bindings must be done in a cross referencing manner, use \texttt{also} clause. For example:
+Simply type \texttt{bind} followed by the name and the value. Use keyword \texttt{also} to bind more names to more values. Bind forms have a compulsory \texttt{then} clause, which is followed by a word. You can do your computation under the name scope after this name binding in the \texttt{then} clause. Top-level name bindings, i.e. names bound by the outmost bind form, are visible across modules, you may want to take advantage of this behavior.
+
+\begin{mdframed}[style=example]
 \begin{verbatim}
-  bind A 5
-  then bind A (B 4 -)
-       also B (A 5 +)
-       then (A B -)
-\end{verbatim}
-
-\subsection{Namespace}
-
-Namespace\footnote{Namespace won't be implement until later versions.}, or module, in Towel, is a set of names. Mechanisms like this prevent names of various files from colliding into each other.
-
-To open and close a namespace (in other words, import and unimport a module), use \texttt{Import} and \texttt{Unimport} function. To invoke a name in a certain namespace, interleave the names with a backslash. You can invoke a namespace from another namespace, resulting in a chained list of names.
-
-For instance:
-\begin{verbatim}
-  bind Library ("library" Import)
-  then bind Towel Towel\The-guide\Library
-    "bind the name Towel from namespace The-guide from namespace Library"
-  then (Towel Println
-        Library Unimport)
-
-  ... some more code ...
-\end{verbatim}
-
-
-\section{Algebraic Data Type Declaration}
-\label{ssec:atdf}
-
-Algebraic data types will be basically the same with that of OCaml except the syntax is different. The syntax here in Towel is designed in a postfix fashion. First, use \texttt{type NAME} to bind the type you are declaring to the name \texttt{NAME}. Then declare constructors using atoms. Before the constructor, put the types of parameters in a list with an at symbol in the beginning. If the types of parameters are parameterized, put the parameters in a pair of braces before the type, like this:
-\begin{verbatim}
-  type Option [@ a] some, none
-  type List [@ a {a}List] cons, nil
-  type BinTree [@ {a}BinTree {a}BinTree] tree, [@ a] leaf
-\end{verbatim}
-
-You can only put atoms, parameterized names (potential namespaced) into the parameter list. See also \autoref{ssec:adt-example}.
-
-\section{Imports and Exports}
-
-You can import other namespaces (or modules if you like) by invoking the \texttt{import} statement as follows:
-\begin{verbatim}
-  bind A 1
+  bind A 40
   also B 2
-  then (import 'big-int' @
-    A B +/Big-int).
+  then (A B + !println)
 \end{verbatim}
-Towel will search for files named \texttt{big-int.w} and \texttt{big-int.e} in predefined library paths. When it finds the required file, it binds the module to the name of 
- Common predefined library paths include the current working directory, somewhere in the Towel compiler installation (when compiling), somewhere in the Towel virtual machine installation (when executing assembled Towel).
+\end{mdframed}
+
+\begin{mdframed}[style=detail]
+  Binding in TVM is currently implemented as names associating to the absolute index of the values in the stack. See also the following warning.
+\end{mdframed}
+
+\begin{mdframed}[style=warning]
+Note that all the computations are done on stacks, so are bindings. That is to say that, the values that get bound exists on stacks. So you may want to be careful about this.
+
+You may overflow your stack by using the \texttt{bind-then} form in a series of tail recursive calls if you forget to pop the values you bind previously.\footnote{Tail recursive calls in Towel don't offer you a whole new stack (or to say erase the stack for you), but rather continue to use the same stack the caller have been using.}
+
+Fasten your seat belts for the next two examples.
+
+\begin{verbatim}
+  bind Answer 42
+  then (!!pop Answer !println)
+\end{verbatim}
+
+will result in your program blowing up, because the position where there used to hold the value for the Answer is now invalid.
+
+What's more scare is this,
+
+\begin{verbatim}
+  bind Answer 42
+  then (!!pop 41 Answer !println)
+\end{verbatim}
+
+You just accidentally changed the value of the Answer without even noticing it!
+\end{mdframed}
+
+\section{Module}
+
+Modules, or namespaces, in Towel, are sets of names. Mechanisms like this prevent names of various files from colliding into each other.
+
+\subsection{Importing a Module}
+
+To import a module, use the \texttt{import} form.
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  import 'std' \
+  import 'std' @
+\end{verbatim}
+\end{mdframed}
+
+The first \texttt{import} form means importing the module defined in a file named \texttt{'std.w'}, and name that module \texttt{Std} so that you can reference to the names from this module as \mstd{SomeName}. The ending punctuation backslash is exactly the samething you use for module referencing. This is called explicit importing.
+
+The second \texttt{import} form ending with an at symbol, means not only importing the module \texttt{Std}, but also importing all the exported names in that module. In this way, you are allowed to reference to the names without having to specify the modules they are in. This is call implicit importing.
+
+\begin{mdframed}[style=detail]
+  During compilation, the file the compiler searches is a \texttt{'.e'} file, this file contains only all the names available in the respective module.
+
+  During execution, however, the file the virtual machine needs is a \texttt{'.w'} file which is the compiled version of the actual program.
+
+  Also note that in current version of TVM, implicit importing imports and pushes all the exported values from the imported module onto the stack. So you may expect a non-empty stack after implicit importing.
+\end{mdframed}
+
+\begin{mdframed}[style=detail]
+  Be aware that imports affects exactly the current scope, and the children scopes of the current one. When current scope exits, the side-effect the import form brought about is also gone.
+
+  This also implies that values pushed by implicit importing are popped along with the stack being destroyed.
+\end{mdframed}
+
+\begin{mdframed}[style=hint]
+  For your imformation, no modules imported by default. You have to explicitly import any modules you want to use.
+\end{mdframed}
+
+The path of the module file \texttt{'std.w'}, is searched as the following order:
+\begin{itemize}
+\item the current working directory
+\item the predefined directory \texttt{towelibs}
+\end{itemize}
+
+\begin{mdframed}[style=detail]
+  In current implementation, you can modify both the \texttt{'compiler/config.ml'} and \texttt{'vm/config.ml'} and recompile them to change the default search paths. We may add a environment variable for search paths in the future.
+\end{mdframed}
 
 Note that you can import multiple modules in a single \texttt{import} statement.
 
-You can also export names in your module so that they are visible to other modules with \texttt{export} statement as follows:
+\subsection{Exporting Names}
+
+You can also export names in your module so that they are visible to other modules with \texttt{export} form as follows:
+
+\begin{mdframed}[style=example]
 \begin{verbatim}
   bind A 1
   also B 2
   also C 3
   then export A B C @.
 \end{verbatim}
+\end{mdframed}
 
-\texttt{import} and \texttt{export} statements does not affect the stack.
+The Towel compiler will automatically generate a \texttt{'.e'} file for each compiled \texttt{'.t'} file for the purposes of name exportation.\footnote{Very much like the C header files, but less powerful.} An empty one will be generated, even if there are no names exported in the source file.
+
+\section{Wait, What about Garbage Collection?}
+
+Towel definitely collects garbage for you!
+
+In current implementation of the TVM, when a value is popped out from a stack, the value gets GC'ed immediately.\footnote{Mayn thanks to OCaml!} When a stack is popped from the data stack stack, all the values on the popped stack are GC'ed immediately. So basically, Towel gets garbage collection for free because of its stack-based computation model.
 
 \section{Switches}
 \label{sec:switches}
 
-Towel provides some switches to change the default behavior of the compiler or the virtual machine:
+Towel provides some switches to change the default behavior of the compiler:
 \begin{itemize}
 \item \texttt{hungry}
 \item \texttt{share-stack}
@@ -502,56 +682,426 @@ If you want to turn on/off these switches, type in the switch names on first lin
   then Something-new.
 \end{verbatim}
 
-If \texttt{hungry} is turned on, \texttt{if} and \texttt{match} forms will consume the TOS they test against when the test finishes, i.e. immediately after falling in particular branches or after failing to fall in any of the branches. This is useful when you want to be thrifty about stack spaces.
+If \texttt{hungry} is turned on, \texttt{if} forms will compile to the hungry version of their counterparts, which consume the TOS they test against when the test finishes, i.e. immediately after falling in particular branches or after failing to fall in any of the branches. This is useful when you want to be thrifty about stack spaces.
 
-When \texttt{share-stack} is on, every function (including sequence) uses the same stack, you get more classic stack-based language programming experience\footnote{And probably faster execution, because the context switching is done a lot faster without data stacks pushing and popping.} out of this switch, but you may want to make sure functions don't leave extra elements on the stack, so you'd better turn on \texttt{hungry} switch along with this.
+\begin{mdframed}[style=hint]
+  You can also achieve this with \texttt{hungry} turned off by calling \mstd{!!pop} explicitly.
+\end{mdframed}
 
-If you turn on \texttt{optimize-seq} switch, when you create a sequence as the body of a function, \texttt{if} or \texttt{match} form, this sequence is optimized to disappear, leaving the body of it as the body of the form, because the point of putting a sequence here as the form body is purely syntactic: a list of words must be quoted by a pair of parentheses so that Towel knows where the function body ends.\footnote{Not knowing where to end is called ambiguity in compiler jargon.} However, by doing so, you may risk polluting the name scopes and this may not be what you want.
+When \texttt{share-stack} is on, every function (including sequence of course) uses the same stack, you get more classic stack-based language programming experience\footnote{And probably faster execution, because the context switching is done a lot faster without data stacks pushing and popping.} out of this switch, but you may want to make sure functions don't leave extra elements on the stack, so you'd better turn on \texttt{hungry} switch along with this.
+
+If you turn on \texttt{optimize-seq} switch, when you create a sequence as the body of a function, \texttt{if} form, or \texttt{then} clause of \texttt{bind-then} forms, this sequence is optimized to disappear, leaving the body of it as the body of the form.
+
+\chapter{The Standard Library}
+
+\section{Naming Conventions}
+
+In towel, we encourage Lisp-like naming styles. But since only upper-cased characters are allowed to appear as the first alphabet character in a name, we normally prepend a punctuation to it.
+
+\begin{itemize}
+\item For routines, we would normally prepend an exclamation mark to
+  such routines. For example, \mstd{!print}. For routines with serious side-effects, we prepend two.
+
+\item For functions that operate on enumerables, we prepend \texttt{\#}.
+
+\item For functional functions, we prepend a slash (half of the $\lambda$ character). For example, we have in the standard library \mstd{/foldl}, \mstd{/map}.
+
+\item For predicates (something that returns \texttt{true} or \texttt{false}), we prepend a question mark.
+
+\item For arithmetic functions, we don't prepend anything.
+
+\item For arguments, we usually prepend a \texttt{\mtilde} for the sake of simplicity.
+\end{itemize}
+
+\section{Module \texttt{Std}}
+
+Module \texttt{Std} is the very basic standard library of the Towel programming language. It consists of functions of multiple domains.
+
+\subsection{Arithmetic Functions}
+
+This category contains the following functions:
+\begin{itemize}
+\item \arithstd{+}
+
+add \marg1 and \marg2
+\item \arithstd{-}
+
+\marg1 minus \marg2
+\item \arithstd{*}
+
+multiply \marg1 and \marg2
+\item \arithstd{/}
+
+divide \marg1 by \marg2
+\item \arithstd{**}
+
+\marg1 to the power of \marg2
+\item \arithstd{\%}
+
+\marg1 modulo \marg2
+\end{itemize}
+
+\begin{mdframed}[style=hint]
+  This leftarrow thing is just to highlight the arguments that should be applied to the function, and implies the stack-based nature of Towel, i.e. the order the functions acquire their arguments.
+
+  For example, \arithstd{-} means that \mstd{-} grabs \marg2 first, then \marg1, but still calculates $\marg1 - \marg2$.
+\end{mdframed}
+
+It also contains various functions for comparison purposes:
+
+\begin{itemize}
+\item \arithstd{=}
+
+tests if \marg1 equals to \marg2
+\item \arithstd{>}
+
+tests if \marg1 is the greater than \marg2
+\item \arithstd{>=}
+
+tests if \marg1 is the greater than \marg2
+\item \arithstd{<}
+
+tests if \marg1 is the less than \marg2
+\item \arithstd{<=}
+
+tests if \marg1 is the less than or equal to \marg2
+\item \arithstd{<>}
+
+tests if \marg1 is not equal to \marg2
+\end{itemize}
+
+Let's not forget about bitwise arithmetic functions:
+
+\begin{itemize}
+\item \arithstd{:and}
+
+bitwise and between \marg1 and \marg2
+\item \arithstd{:or}
+
+bitwise or between \marg1 and \marg2
+\item \arithstd{:not}
+
+bitwise not \marg1
+\item \arithstd{:xor}
+
+bitwise xor between \marg1 and \marg2
+\item \arithstd{:shl}
+
+bitwise shift left \marg1 for \marg2 bits
+\item \arithstd{:shr}
+
+bitwise shift right \marg1 for \marg2 bits
+\item \arithstd{:lshr}
+
+bitwise logical shift right \marg1 for \marg2 bits
+\end{itemize}
+
+\begin{mdframed}[style=hint]
+  Arithmetic functions only work for numbers.
+
+  The equality and non-equality function works for most of the types (including type \texttt{Type}).
+  The comparison functions only work for numbers because they are implemented using the substraction function.
+
+  Bitwise functions only work for fixed integer and unsigned fixed integer.
+\end{mdframed}
+
+\begin{mdframed}[style=hint]
+  The above functions must be applied to values of the same type. Otherwise the TVM will throw an error and exit.
+\end{mdframed}
+
+\subsection{Conversion Functions}
+
+Because Towel is a strong-typed language, we provide you some conversion functions to cast the values around.
+
+\begin{mdframed}[style=warning]
+  Think before you use these functions.
+\end{mdframed}
+
+\begin{itemize}
+\item \marg1 \mla \mstd{\textasciitilde fint}
+
+converts \marg1 of unsigned fixed integers, floats, big integers, or strings into a fixed integer
+\item \marg1 \mla \mstd{\textasciitilde ufint}
+
+converts \marg1 of unsigned fixed integers, floats, big integers, or strings into an unsigned fixed integer
+\item \marg1 \mla \mstd{\textasciitilde int}
+
+converts \marg1 of unsigned fixed integers, floats, big integers, or strings into a big integer
+\item \marg1 \mla \mstd{\textasciitilde float}
+
+converts \marg1 of unsigned fixed integers, floats, big integers, or strings into float number
+\item \marg1 \mla \mstd{\textasciitilde str}
+
+stringifies \marg1 of any possible value to a string
+\end{itemize}
+
+\subsection{Reflection Function}
+
+Use \texttt{\string^?} if you want to know the type of a value at runtime. The return value of this function can be tested equality against other type values.
+
+\subsection{Routines}
+
+\begin{itemize}
+\item \marg{x} \mla \mstd{!print}
+
+prints \marg{x}
+\item \marg{x} \mla \mstd{!println}
+
+prints \marg{x} plus a newline character
+\item \mstd{!read}
+
+reads in a string from standard input and push it onto the stack
+\item \mstd{!!pop}
+
+pop the last element on current stack
+\item \mstd{!!dup}
+
+duplicate the last element on current stack
+\item \texttt{...} \mla \marg{n} \mla \mstd{!!pack}
+
+pack \marg{n} elements on current stack into a list
+\item \marg1 \mla \mstd{!!unpack}
+
+unpack \marg1 into N elements and push them onto current stack
+\end{itemize}
+
+\begin{mdframed}[style=hint]
+  Because of the low-levelness of \mstd{!!pack} and \mstd{!!unpack}, they do not accept argument the same way other functions do, but directly from current stack. So you cannot create curried functions out of them.
+\end{mdframed}
+
+\subsection{Phony}
+
+Use \mstd{\$\$} to push a phony onto current stack.
+
+\begin{mdframed}[style=warning]
+  Do not try to \mstd{!!pop} a phony, it will result in an \texttt{PhonyEmptyStack} error.
+\end{mdframed}
+
+\subsection{Working with Enumerables}
+
+
+\subsubsection{Functions that Works with Both Lists and Tuples}
+
+Only one exists for now: \marg{x} \mla \mstd{?\#}, \marg{x} emptiness test.
+
+\subsubsection{List-only Functions}
+
+\begin{itemize}
+\item \marg{l} \mla \mstd{\#hd}
+
+get the head of \marg{l}
+\item \marg{l} \mla \mstd{\#tl}
+
+get the tail of \marg{l}
+\item \marg{e} \mla \marg{l} \mla \mstd{\#cons}
+
+cons \marg{e} and \marg{l} into a new list
+\item \marg{l} \mla \mstd{\#rev}
+
+reverse \marg{l}
+\item \marg{l1} \mla \marg{l2} \mla \mstd{\#concat}
+
+concatenate \marg{l1} and \marg{l2}
+\item \marg{l} \mla \mstd{\#len}
+
+get the length of \marg{l}
+\end{itemize}
+
+\begin{mdframed}[style=hint]
+  Remember everything in Towel is immutable.
+\end{mdframed}
+
+\subsubsection{Tuple-only Functions}
+
+\begin{itemize}
+\item \marg{n} \mla \marg{t} \mla \mstd{\#tn}
+
+get the \marg{n}-th element of \marg{t}
+\item \marg{t} \mla \mstd{\#t1}
+
+get the first element of \marg{t}
+\item \marg{t} \mla \mstd{\#t2}
+
+get the second element of \marg{t}
+\item \marg{t} \mla \mstd{\#t3}
+
+get the third element of \marg{t}
+\end{itemize}
+
+\subsection{Functional Functions}
+
+\begin{itemize}
+\item \marg{x} \mla \mstd{/id}
+
+the identity function, i.e. it returns \marg{x}
+\item \marg{init} \mla \marg{list} \mla \marg{fun} \mla \mstd{/foldl}
+
+folds the  list\marg{list} from left to right on function \marg{fun}, with the initial value being \marg{init}.
+\item \marg{init} \mla \marg{list} \mla \marg{fun} \mla \mstd{/foldr}
+
+same as \mstd{/foldl}, except that this walks the list from right to left and is not tail recursive function.
+\item \marg{list} \mla \marg{fun} \mla \mstd{/map}
+
+maps function denoted by \marg{fun} onto \marg{list}.
+\item \marg{list} \mla \texttt{?pred} \mla \mstd{/filter}
+
+for each element \marg{x} in \marg{list}, discards \marg{x} when \texttt{\marg{x} ?pred} turns out to be \texttt{true}.
+\item \marg1 \mla \marg2 \mla \marg{fun} \mla \mstd{/flip}
+
+flips the arguments of a binary function \marg{fun}, i.e. \texttt{\marg2 \marg1 \marg{fun}}.
+\item \marg{args} \mla \marg{fun} \mla \mstd{/apply}
+
+apply the elements in \marg{args} as arguments to \marg{fun}.
+\end{itemize}
+
+\begin{mdframed}[style=hint]
+  You may want to use backquotes when using these functions, for example,
+
+\begin{verbatim}
+  ([1 2 3 4 5] !println /map)
+\end{verbatim}
+
+prints out
+\begin{verbatim}
+  [1 2 3 4 5]
+\end{verbatim}
+
+rather than
+\begin{verbatim}
+  1
+  2
+  3
+  4
+  5
+\end{verbatim}
+
+To do this correctly, you should backquote \texttt{!println} like this
+
+\begin{verbatim}
+  ([1 2 3 4 5] !println` /map)
+\end{verbatim}
+
+This backquote prevents \texttt{!println} from executing, leaving it be as a function value so that it can be passed to \texttt{/map}.
+\end{mdframed}
+
+\section{Module \texttt{Random}}
+
+This module exploits the extension mechanism provided by current implementation of the TVM to easily invoke functions in OCaml. See the virtual machine manual for more details.
+
+The provided functions are
+\begin{itemize}
+\item \marg{s} \mla \texttt{\mtilde ~seed\textbackslash Random}
+
+change the seed used in random number generation to \marg{s}
+\item \texttt{\mtilde ~useed\textbackslash Random}
+
+change the seed according to \texttt{/dev/urandom} on *nix systems, or system parameters if \texttt{/dev/urandom} is not available
+\item \texttt{\mtilde ~\mtilde ~\textbackslash Random}
+
+generates a random floating point number within the range of $[0.0, 1.0]$.
+\end{itemize}
+
+
+\chapter{The Towel Compiler \texttt{weave} Howto}
+
+To compile a source file \texttt{foo.t}, and want the compiled output to be \texttt{bar.w}, use
+\begin{verbatim}
+        path-to-weave foo.t -o bar.w
+\end{verbatim}
+
+If you want to see the human-readable bytecode file, apply -t to \texttt{weave}, for example
+\begin{verbatim}
+        path-to-weave foo.t -o bar.l -t
+\end{verbatim}
+
+If you want to read the unassembled compiled file (human-readable) for debugging purposes, apply -r to \texttt{weave} like this
+\begin{verbatim}
+        path-to-weave foo.t -o bar.o -r
+\end{verbatim}
+
+If you have a human-readable bytecode file, and want to compile into VM-readable bytecode file, apply -b to \texttt{weave}, e.g.
+\begin{verbatim}
+        path-to-weave foo.l -o bar.w -b
+\end{verbatim}
+
+\begin{mdframed}[style=hint]
+  Recommended extension for Towel source file is \texttt{.t}, because it's the first letter of the word \textit{towel}.
+
+  Recommended extension for raw unassembled compiled file is \texttt{.o}, which means original Towel.
+
+  Recommended extension for Towel bytecode file is \texttt{.w}, meaning woven Towel. It's also the third letter of \textit{towel}!\footnote{I love wordplay so much!}.
+
+  By default, files that contains the exported names of the module have the extension of \texttt{.e}, meaning exportation.
+
+  And finally recommended extension for human-readable bytecode file is \texttt{.l}.
+\end{mdframed}
 
 \chapter{Examples}
 \label{chap:examples}
 
-The \texttt{traverse} tool produces correct syntax tree with these examples. And be aware that these examples are not guaranteed to run properly with switch \texttt{hungry} and \texttt{shared-stack} turned on.
+The following examples runs under the default compiler switch configuration.
 
 \section{Concrete Examples}
-\subsection{Quicksort}
-\begin{verbatim}
-  bind Quicksort fun _,
-    match
-      [], [];
-      Head Tail ::,
-        (Tail (Head <) Filter Quicksort
-         [Head]
-         Tail (Head >=) Filter Quicksort
-         ++3)
-  then ([5 4 3 2 1] Quicksort).
-\end{verbatim}
-
-Note that \texttt{++3} is a trinary version of function \texttt{++} (list concatenation), you can always replace \texttt{++3} with two \texttt{++}s. Also the second pattern action is written as a sequence, which creates an anonymous function whose body is the forms in the sequence, then the anonymous function is evaluted.
 
 \subsection{Greatest Common Divisor}
+\begin{mdframed}[style=example]
 \begin{verbatim}
-  bind Greatest-common-divisor fun X(Int) Y,
-    (- if=0 X,
-       if>0 (X Y - Y Greatest-common-divisor@),
-            (X Y X - Greatest-common-divisor@))
-  then (42 24 Greatest-common-divisor).
+  import 'std' @
+
+  bind GCD fun` A B,
+    (A B - if=0 A (5),
+       if>0 (1) (!!pop A B - B GCD@ (2)),
+       if<0 (!!pop (3) A B A - GCD@),
+         ~idle (4))
+  then (42 24 GCD !println)
 \end{verbatim}
+\end{mdframed}
 
-Note that \texttt{X} and \texttt{Y} are already in the stack by default (because Towel pushes arguments onto stack), so we can immediately evaluate function \texttt{-}.
-
-Pay attention to the tail recursive call here. And because \texttt{optimize-seq} is on by default, we can use regular sequence here as the body of the function form and \texttt{if>0} form.
+\begin{enumerate}
+\item See how \texttt{if} forms are chained here!
+\item Note that we are tail recursing the \texttt{GCD} function here.
+\item As is mentioned in previous chapters, when doing tail recursive calls, you really want to be careful about your stack usage to avoid stack leakage.
+\item Remember an \texttt{if} form have two branches, and both of them cannot be omitted. So we put \sout{Eric Idle} \mstd{\mtilde ~idle} here to denote that we don't want to do anything here.
+\item The exit of the recursive function, so we'll directly put \texttt{A} here, without popping the result of \texttt{A B -}. Because this stack will be destroyed and all the values on it GC'ed, after it returns \texttt{A}.
+\end{enumerate}
 
 \subsection{Fibonacci Numbers}
+\begin{mdframed}[style=example]
 \begin{verbatim}
-  bind Fib fun A B N,
+  bind Fib fun` A B N,
     if=0 A, (A B + A 1 N - Fib@)
   then (1 1 10 Fib).
 \end{verbatim}
-
-Note how tail recursive calls are done by adding an at symbol at the end of \texttt{Fib}.
+\end{mdframed}
+Trivial.
 
 \section{Advanced Examples}
+
+\subsection{Quicksort}
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  import 'std' @ (1)
+
+  bind #quicksort (2) ,\ (3) L,
+    (L ?#empty ift (!!pop (4) []), (!!pop
+      bind ~h (L #hd)
+      also ~t (L #tl)
+      then (~t (~h >) (5) /filter #quicksort
+            [~h]
+            ~t (~h <=) /filter #quicksort
+        #concat #concat (6))))
+  then ([5 4 3 2 1] #quicksort !println)
+\end{verbatim}
+\end{mdframed}
+
+\begin{enumerate}
+\item Implicitly import module \texttt{Std} so that we can use the names bound in it without referencing to the module name.
+\item Remember our naming conventions? Quicksort works on lists, so we prepend a \texttt{\#} to it.
+\item It's a synonym for \texttt{fun`}.
+\item Use \mstd{!!pop} to be thrifty about memory spaces.
+\item Utilizing non-shared sequence to create partial applied function.
+\item We have three lists on stack, so it takes two \mstd{\#concat}s to merge them all into one list.
+\end{enumerate}
 
 \subsection{Backquotes}
 \label{ssec:backquote}

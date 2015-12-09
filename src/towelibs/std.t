@@ -13,7 +13,7 @@ also > fun` ~1 ~2, (~1 ~2 - if>0 true, false)
 also >= fun` ~1 ~2, (~1 ~2 - if>=0 true, false)
 also < fun` ~1 ~2, (~1 ~2 - if<0 true, false)
 also <= fun` ~1 ~2, (~1 ~2 - if<=0 true, false)
-also <> fun` ~1 ~2, (~1 ~2 - if=0 false, true)
+also <> fun` ~1 ~2, (~1 ~2 = ift false, true)
 
 also :and fun` ~1 ~2, (~1 ~2 ..and\.w)
 also :or fun` ~1 ~2, (~1 ~2 ..or\.w)
@@ -86,8 +86,10 @@ also !# #len`
 
 also /apply fun` ~args ~f, (~args .!unpack\.w ~f)
 
+also ~idle ..idle\.w`
+
 then export + - * / ** % = :and :or ~fint ~ufint ~int ~float ~str !print
 !println #hd #tl #cons ?#empty #t1 #t2 #t3 /id /foldl #rev /map /filter
 /flip /foldr |#| #concat <# #> <#> ?# <<# !# /apply !read > >= < <= <> :not
-!!pop !!dup !!pack !!unpack $$ ^? #tn @
+!!pop !!dup !!pack !!unpack $$ ^? #tn ~idle @
 
