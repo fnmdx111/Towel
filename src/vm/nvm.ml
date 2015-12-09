@@ -300,7 +300,8 @@ let exec should_trace should_warn insts =
       in let module ThisModule = (val __get_ext () : TowelExtTemplate)
       in Hashtbl.replace opened_exts uid
         (module ThisModule : TowelExtTemplate);
-      put_val (OVUFixedInt(Uint64.of_int uid))
+      dspush dss (OVUFixedInt(Uint64.of_int uid));
+      __exec ctxs flags next_ip
 
     | EXTCALL -> trace "loading ext";
       let ext_id = match (dspop dss) with
@@ -338,14 +339,15 @@ let exec should_trace should_warn insts =
         | _ -> failwith "Invalid type of argument to pack."
       in let nl = List.fold_left (fun acc _ ->
           (dspop dss)::acc) [] (BatList.range 1 `To n)
-      in put_val (OVList(ref nl))
+      in dspush dss (OVList(ref nl));
+      __exec ctxs flags next_ip
 
     | UNPACK -> trace "unpacking";
       let ns = match (dspop dss) with
           OVList(rls) -> !rls
         | OVTuple(rls) -> !rls
         | _ -> failwith "Invalid type of argument to unpack."
-      in List.iter (fun x -> __put_val x) ns;
+      in List.iter (fun x -> dspush dss x) ns; (* TODO put_val or dspush? *)
       __exec ctxs flags next_ip
 
     | TYPE -> trace "typing";
@@ -365,7 +367,8 @@ let exec should_trace should_warn insts =
         | OVTypeHint(_) -> OVTypeHint(THType)
         | OVAlType(_) -> OVTypeHint(THAlType)
         | OVAlTypeValue(_, _) -> OVTypeHint(THAlTypeValue)
-      in put_val n
+      in dspush dss n;
+      __exec ctxs flags next_ip
 
     | DUP -> trace "duplicating";
       let v = dstop dss
@@ -373,29 +376,33 @@ let exec should_trace should_warn insts =
 
     | READ -> trace "reading";
       let n = Pervasives.input_line Pervasives.stdin
-      in put_val (OVString(n))
+      in dspush dss (OVString(n));
+      __exec ctxs flags next_ip
 
     | CAR -> trace "pushing list head";
       let tos = dspop dss
       in (match tos with
             OVList(rls)
-          | OVTuple(rls) -> put_val (List.hd !rls)
-          | _ -> failwith "Non hd-able value type.")
+          | OVTuple(rls) -> dspush dss (List.hd !rls)
+          | _ -> failwith "Non hd-able value type.");
+      __exec ctxs flags next_ip
 
     | CDR -> trace "pushing list tail";
       let tos = dspop dss
       in (match tos with
-            OVList(rls) -> put_val (OVList(ref (List.tl !rls)))
-          | OVTuple(rls) -> put_val (OVTuple(ref (List.tl !rls)))
+            OVList(rls) -> dspush dss (OVList(ref (List.tl !rls)))
+          | OVTuple(rls) -> dspush dss (OVTuple(ref (List.tl !rls)))
           (* You've got to cdr a tuple to access the elements of it. *)
-          | _ -> failwith "Non tl-able value type.")
+          | _ -> failwith "Non tl-able value type.");
+      __exec ctxs flags next_ip
 
     | CONS -> trace "consing list";
       let l = dspop dss
       in let elem = dspop dss
       in (match l with
-            OVList(rls) -> put_val (OVList(ref (elem::(!rls))))
-          | _ -> failwith "Cons'ing a non-list value.")
+            OVList(rls) -> dspush dss (OVList(ref (elem::(!rls))))
+          | _ -> failwith "Cons'ing a non-list value.");
+      __exec ctxs flags next_ip
 
     | LIST_EMPTY -> trace "pushing is_empty_list";
       let tos = dspop dss
@@ -404,8 +411,9 @@ let exec should_trace should_warn insts =
            else OVAtom(Uint64.zero)
       in (match tos with
             OVList(rls)
-          | OVTuple(rls) -> put_val (judge rls)
-          | _ -> failwith "Non is_empty-able value type.")
+          | OVTuple(rls) -> dspush dss (judge rls)
+          | _ -> failwith "Non is_empty-able value type.");
+      __exec ctxs flags next_ip
 
     | POP -> trace "popping";
       (try
@@ -448,7 +456,7 @@ let exec should_trace should_warn insts =
     | SUB -> trace "substracting";
       let v1 = dspop dss
       in let v2 = dspop dss
-      in put_val (match v1, v2 with
+      in dspush dss (match v1, v2 with
           (* [| v2 | v1 |], when evaluating v2 v1 -, we want v2 - v1. *)
             OVFixedInt(i), OVFixedInt(j) ->
             OVFixedInt(Int64.sub j i)
@@ -458,7 +466,8 @@ let exec should_trace should_warn insts =
             OVFloat(j -. i)
           | OVInt(i), OVInt(j) ->
             OVInt(Big_int.sub_big_int j i)
-          | _ -> failwith "Incompatible type to do substraction.")
+          | _ -> failwith "Incompatible type to do substraction.");
+      __exec ctxs flags next_ip
 
     | EQU -> trace "testing equality";
       let v1 = dspop dss
@@ -479,13 +488,14 @@ let exec should_trace should_warn insts =
           | OVTypeHint(i), OVTypeHint(j) ->
             Pervasives.compare i j
           | _ -> 1 (* Equality of non-equal values are 1. *))
-      in put_val (if tf = 0
-                  then OVAtom(Uint64.one)
-                  else OVAtom(Uint64.zero))
+      in dspush dss (if tf = 0
+                     then OVAtom(Uint64.one)
+                     else OVAtom(Uint64.zero));
+        __exec ctxs flags next_ip
 
     | TO_FINT -> trace "casting to fint";
       let v = dspop dss
-      in put_val (OVFixedInt(match v with
+      in dspush dss (OVFixedInt(match v with
             OVFixedInt(i) ->
             tvm_warning "casting from fint to fint!";
             i
@@ -499,7 +509,8 @@ let exec should_trace should_warn insts =
           | OVFunction(frec) ->
             (* Leave it for debugging purposes. *)
             Int64.of_int frec.st
-          | _ -> failwith "casting unsupported value to fint."))
+          | _ -> failwith "casting unsupported value to fint."));
+      __exec ctxs flags next_ip
 
     | JUMP(ArgLit(VUFixedInt(p))) -> trace "jumping";
       __exec ctxs flags (to_pc p)
@@ -568,7 +579,8 @@ let exec should_trace should_warn insts =
       return () scps
 
     | PUSH_PHONY -> trace "pushing phony";
-      put_val OVPhony;
+      put_val OVPhony; (* push-phony is a low level instruction, if we were
+                          to push a phony into string, use put_val here. *)
       __exec ctxs flags next_ip
 
     | CLOSURE(ArgLit(VUFixedInt(_nid))) ->
