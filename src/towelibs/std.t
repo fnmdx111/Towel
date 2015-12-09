@@ -26,6 +26,8 @@ also ~int fun` ~1, (~1 ..2int\.w)
 also ~float fun` ~1, (~1 ..2float\.w)
 also ~str fun` ~1, (~1 ..2str\.w)
 
+also ^? .^?\.w`
+
 also !print .!print\.w`
 "Use exclamation mark as prefix for functions with side-effects."
 "Use .! as prefix for functions with serious stack-effects."
@@ -86,5 +88,5 @@ also /apply fun` ~args ~f, (~args .!unpack\.w ~f)
 then export + - * / ** % = :and :or ~fint ~ufint ~int ~float ~str !print
 !println #hd #tl #cons ?#empty #t1 #t2 #t3 /id /foldl #rev /map /filter
 /flip /foldr |#| #concat <# #> <#> ?# <<# !# /apply !read > >= < <= <> :not
-!!pop !!dup !!pack !!unpack $$ @
+!!pop !!dup !!pack !!unpack $$ ^? @
 

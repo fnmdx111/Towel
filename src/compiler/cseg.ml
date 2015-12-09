@@ -18,6 +18,8 @@ let (|~~|) a1 a2 =
   in match a1, a2 with
     Asm([]), Asm(_) ->
     a2 (* If a1 is empty, who cares about a1? *)
+  | Asm(ls1), Asm([]) ->
+    a1
   | Asm(ls1), Asm(ls2) ->
     let last1 = lh (lr ls1)
     in let first2 = lh ls2

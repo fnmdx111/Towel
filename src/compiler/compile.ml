@@ -188,17 +188,29 @@ let rec g_lit ctx inst_ctx lit =
        with Not_found ->
          let r = atom_repr_tick ()
          in Hashtbl.add atom_dict atom.Ast.atom_name r; r)
-    in line (PUSH_LIT(ArgLit(VAtom(repr))))
+    in (inst_ctx.pre (Word(Ast.WLiteral(lit))))
+       |~~| (line (PUSH_LIT(ArgLit(VAtom(repr)))))
+       |~~| (inst_ctx.post (Word(Ast.WLiteral(lit))))
   | Ast.VFixedInt(i) ->
-    line (PUSH_LIT(ArgLit(VFixedInt(i))))
+    (inst_ctx.pre (Word(Ast.WLiteral(lit))))
+    |~~| (line (PUSH_LIT(ArgLit(VFixedInt(i)))))
+    |~~| (inst_ctx.post (Word(Ast.WLiteral(lit))))
   | Ast.VUFixedInt(u) ->
-    line (PUSH_LIT(ArgLit(VUFixedInt(u))))
+    (inst_ctx.pre (Word(Ast.WLiteral(lit))))
+    |~~| (line (PUSH_LIT(ArgLit(VUFixedInt(u)))))
+    |~~| (inst_ctx.post (Word(Ast.WLiteral(lit))))
   | Ast.VInt(i) ->
-    line (PUSH_LIT(ArgLit(VInt(i))))
+    (inst_ctx.pre (Word(Ast.WLiteral(lit))))
+    |~~| (line (PUSH_LIT(ArgLit(VInt(i)))))
+    |~~| (inst_ctx.post (Word(Ast.WLiteral(lit))))
   | Ast.VFloat(f) ->
-    line (PUSH_LIT(ArgLit(VFloat(f))))
+    (inst_ctx.pre (Word(Ast.WLiteral(lit))))
+    |~~| (line (PUSH_LIT(ArgLit(VFloat(f)))))
+    |~~| (inst_ctx.post (Word(Ast.WLiteral(lit))))
   | Ast.VString(s) ->
-    line (PUSH_LIT(ArgLit(VString(s))))
+    (inst_ctx.pre (Word(Ast.WLiteral(lit))))
+    |~~| (line (PUSH_LIT(ArgLit(VString(s)))))
+    |~~| (inst_ctx.post (Word(Ast.WLiteral(lit))))
   | Ast.VList(wl) ->
     (inst_ctx.pre (Words(wl)))
     |~~| (line (PUSH_LNIL))
@@ -495,10 +507,11 @@ and g_seq ctx inst_ctx seq =
           the scope stack before we enter this sequence context. *)
        else Hashtbl.create 1
   in let closure_insts =
-       Hashtbl.fold (fun k v acc ->
+       (Hashtbl.fold (fun k v acc ->
            let nid, esid = k
            in acc |~~| line (CLOSURE(ArgLit(VUFixedInt(nid)))))
-         closure cnil
+           closure cnil) |~~| (if ctx.is_backquoted then (line INSTALL)
+                               else cnil)
 
   in let () =
        if is_shared
@@ -520,7 +533,6 @@ and g_seq ctx inst_ctx seq =
      |~~| (opt_cs lead_inst)
      |~~| inst_ctx.post (Word(Ast.WSequence(seq)))
      |~~| closure_insts
-     |~~| (line INSTALL)
      |~~| body_main
 
 and g_fun ctx inst_ctx fun_ =
