@@ -48,9 +48,10 @@ also #cons fun` ~1 ~2, (~1 ~2 ..cons\.w)
 also <#> #cons`
 also ?#empty fun` ~1, (~1 .?empty\.w)
 also ?# ?#empty`
-also #t1 fun` ~1, (~1 ..t1\.w)
-also #t2 fun` ~1, (~1 ..t2\.w)
-also #t3 fun` ~1, (~1 ..t3\.w)
+also #tn fun` ~n ~t, (~t ~n ..tuple-at\.w)
+also #t1 fun` ~1, (0 ~1 #tn)
+also #t2 fun` ~1, (1 ~1 #tn)
+also #t3 fun` ~1, (2 ~1 #tn)
 
 also !!pack .!pack\.w`
 also !!unpack .!unpack\.w`
@@ -88,5 +89,5 @@ also /apply fun` ~args ~f, (~args .!unpack\.w ~f)
 then export + - * / ** % = :and :or ~fint ~ufint ~int ~float ~str !print
 !println #hd #tl #cons ?#empty #t1 #t2 #t3 /id /foldl #rev /map /filter
 /flip /foldr |#| #concat <# #> <#> ?# <<# !# /apply !read > >= < <= <> :not
-!!pop !!dup !!pack !!unpack $$ ^? @
+!!pop !!dup !!pack !!unpack $$ ^? #tn @
 

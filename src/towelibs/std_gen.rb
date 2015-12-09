@@ -70,9 +70,7 @@ if __FILE__ == $0
   make_inline_fun.call '..tl', ['cdr']
   make_inline_fun.call '..cons', ['cons']
   make_inline_fun.call '.?empty', ['list-empty']
-  make_inline_fun.call '..t1', ['car']
-  make_inline_fun.call '..t2', ['cdr', 'car']
-  make_inline_fun.call '..t3', ['cdr', 'cdr', 'car']
+  make_inline_fun.call '..tuple-at', ['tuple-at']
   make_inline_fun.call '.^?', ['type']
 
   make_inline_fun.call '!>ext', ['load-ext']

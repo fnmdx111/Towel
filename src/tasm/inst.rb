@@ -35,7 +35,7 @@ module Inst
     ['and', 0x57], ['or', 0x58], ['xor', 0x59], ['not', 0x5a],
     ['shl', 0x5b], ['shr', 0x5c], ['lshr', 0x5d], ['dup', 0x19],
     ['load-ext', 0xf1], ['extcall', 0xf0],
-    ['install', 0xf2],
+    ['install', 0xf2], ['tuple-at', 0xf3],
   ]
 
   unary_instructions_all = [

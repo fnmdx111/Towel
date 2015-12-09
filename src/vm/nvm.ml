@@ -246,7 +246,7 @@ let exec should_trace should_warn insts =
     in let put_val x = __put_val x;
          __exec ctxs flags next_ip
 
-    in fprintf stderr "dss: %s\n" (sprint_dss dss);
+    in trace (sprint_dss dss);
     match inst with
       PUSH_LIT(ArgLit(lit)) -> trace "pushing lit";
       let nv = match lit with
@@ -382,8 +382,7 @@ let exec should_trace should_warn insts =
     | CAR -> trace "pushing list head";
       let tos = dspop dss
       in (match tos with
-            OVList(rls)
-          | OVTuple(rls) -> dspush dss (List.hd !rls)
+            OVList(rls) -> dspush dss (List.hd !rls)
           | _ -> failwith "Non hd-able value type.");
       __exec ctxs flags next_ip
 
@@ -391,8 +390,6 @@ let exec should_trace should_warn insts =
       let tos = dspop dss
       in (match tos with
             OVList(rls) -> dspush dss (OVList(ref (List.tl !rls)))
-          | OVTuple(rls) -> dspush dss (OVTuple(ref (List.tl !rls)))
-          (* You've got to cdr a tuple to access the elements of it. *)
           | _ -> failwith "Non tl-able value type.");
       __exec ctxs flags next_ip
 
@@ -413,6 +410,24 @@ let exec should_trace should_warn insts =
             OVList(rls)
           | OVTuple(rls) -> dspush dss (judge rls)
           | _ -> failwith "Non is_empty-able value type.");
+      __exec ctxs flags next_ip
+
+    | TUPLE_AT -> trace "getting tuple element";
+      let n = match dspop dss with
+          OVUFixedInt(i) -> Uint64.to_int i
+        | OVFixedInt(i) -> let x = Int64.to_int i
+          in if x < 0
+          then failwith "Invalid index for a tuple."
+          else x
+        | OVInt(i) -> let x = Big_int.int_of_big_int i
+          in if x < 0
+          then failwith "Invalid index for a tuple."
+          else x
+        | _ -> failwith "Invalid index type for a tuple."
+      in let tuple = match dspop dss with
+            OVTuple(rls) -> !rls
+          | _ -> failwith "Invalid target for tuple-at."
+      in dspush dss (BatList.at tuple n);
       __exec ctxs flags next_ip
 
     | POP -> trace "popping";
@@ -725,8 +740,7 @@ Something is wrong with the compiler.");
         let nid = vm_name _nid
         in let mid = vm_mod_id _mid
         in let v = resolve_name nid mid
-        in fprintf stderr "vs: %s\n" (string_of_value v);
-        (match v with
+        in (match v with
               OVFunction(frec) -> invoke_regular frec
 
             | OVInt(_)
