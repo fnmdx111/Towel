@@ -1,3 +1,4 @@
+
 \documentclass{report}
 
 \usepackage[left=1in, right=1in, top=1in, bottom=1in]{geometry}
@@ -78,11 +79,11 @@ Towel is a stack-based, general-purpose, postfix-syntaxed, dynamically strong-ty
 
 \section[Stack-based]{Stack-based\footnote{It's not only stack-based, it's actually stack-stack-based. See also \autoref{sec:basics}.}}
 
-Although stack-based programs are hard to reason about, it's really efficient and powerful to use once you get the gist of it. It also enforces programmer's to think about the evaluation order of their potentially side-effected code.
+Although stack-based programs are hard to reason about, it's really efficient and powerful to use once you get the gist of it. It is comes with natural support for imperative programming paradigm. It also enforces programmer's to think about the evaluation order of their potentially side-effected code.
 
 \section{General-purpose}
 
-Towel is designed with the universe in mind. So the syntax of it is expressive, yet concise.
+Towel is designed with the universe in mind. So the syntax of it is expressive and reasonable with as few limitations as possible, yet easy to understand.
 
 \section{Postfix-syntaxed}
 
@@ -90,7 +91,7 @@ The relationship between postfix syntax and stacks is just like a towel to a hit
 
 \section{Dynamically Strong-typed}
 
-This means that Towel maintains types at runtime with no implicit type castings whatsoever, the compiler does not do type checking. However, it does scope analysis for every source code.
+This means that Towel maintains types at runtime with no implicit type castings whatsoever, the compiler does not do type checking. However, it does scope analysis for every piece of Towel code.
 
 \section{Functional}
 
@@ -98,7 +99,7 @@ Once you have full-fledged functional framework, you have the whole world. For e
 
 \section{Towel Virtual Machine}
 
-Why a virtual machine? Because we think this is the most portable and easy way to do a whole new language.\footnote{The thing is, you make it run first, then you optimize it.}
+Why a virtual machine? Because we think this is the most portable and easy way to do a prototype for a new language. After you got the language working, you can do all kinds of crazing things, like compiling the bytecode that the VM reads into a native application.
 
 \part{The Towel Reference Manual}
 
@@ -250,7 +251,7 @@ Atoms are special names uniquely bound to integer constants. But they are not co
 Towel predefines \texttt{false} and \texttt{true} as boolean atoms.
 
 \begin{mdframed}[style=detail]
-Although, they are not comparable to integers, they can be tested against each other to see if they are the same. The earlier the atom appears in code, the smaller the integer constants it gets.
+Although they are not comparable to integers, they can be tested against each other to see if they are the same. The earlier the atom appears in code, the smaller the integer constants it gets.
 \end{mdframed}
 
 \subsection{\texttt{(U)FixedInt}s, \texttt{Int}s, \texttt{Float}s}
@@ -283,12 +284,12 @@ If you really would like to add a float to an integer, either use the built-in f
 
 You can use the built-in function \mstd{\string^?} to get the type of TOS. The returned type is a built-in value that represents types. Type values can be test against each other for equality with \mstd{\string=}.
 
-\chapter{And Now for Something Completely Different...}
+\chapter{Hello, Word}
 \label{chap:forms}
 
 \section{Program Structure}\label{sec:basics}
 
-A Towel program consists of one or multiple so-called \textbf{words}.
+A Towel program consists of one or multiple so-called \textbf{words} or \textbf{forms}.
 
 When encountered multiple words, they are always evaluated one by one in the order they appear. Although most of the times, Towel remains in a postfix fashion, but for the sake of convenience, some parts of the grammar is of prefix or infix style (e.g. the bind form and namespaced name invocation).
 
@@ -425,8 +426,8 @@ So in general, never ever put complicated words in a list literal. If you are re
 Tuples are fixed length lists, this means that you cannot CDR from them, nor CONSing to them. Create tuples like this:
 \begin{mdframed}[style=example]
 \begin{verbatim}
-  [\ arthur-dent ford-prefect betelgeuse] "a 3-tuple of type PT_Tuple-3"
-  [\] "a 0-tuple of type PT_Tuple-0"
+  [\ arthur-dent ford-prefect betelgeuse]
+  [\] "an empty tuple"
 \end{verbatim}
 \end{mdframed}
 \section{Sequence}
@@ -643,13 +644,13 @@ The second \texttt{import} form ending with an at symbol, means not only importi
 \end{mdframed}
 
 \begin{mdframed}[style=detail]
-  Be aware that imports affects exactly the current scope, and the children scopes of the current one. When current scope exits, the side-effect the import form brought about is also gone.
+  Be aware that imports affects exactly the current scope, and the children scopes of the current one. When current scope exits, the side-effects the import form brought about are also gone.
 
   This also implies that values pushed by implicit importing are popped along with the stack being destroyed.
 \end{mdframed}
 
 \begin{mdframed}[style=hint]
-  For your imformation, no modules imported by default. You have to explicitly import any modules you want to use.
+  For your imformation, no module is imported by default. You have to explicitly import any modules you want to use.
 \end{mdframed}
 
 The path of the module file \texttt{'std.w'}, is searched as the following order:
@@ -685,6 +686,8 @@ Towel definitely collects garbage for you!
 
 In current implementation of the TVM, when a value is popped out from a stack, the value gets GC'ed immediately.\footnote{Mayn thanks to OCaml!} When a stack is popped from the data stack stack, all the values on the popped stack are GC'ed immediately. So basically, Towel gets garbage collection for free because of its stack-based computation model.
 
+Oh, and of course, extensions have to manage their own memory. Because they are out of the TVM's touch.
+
 \section{Switches}
 \label{sec:switches}
 
@@ -696,14 +699,16 @@ Towel provides some switches to change the default behavior of the compiler:
 \end{itemize}
 
 If you want to turn on/off these switches, type in the switch names on first line, leave an empty line next to it, then go on with your code, like this:
+\begin{mdframed}[style=example]
 \begin{verbatim}
   I'm so hungry! Also please share-stack.
 
   bind Something-new (1 2 -)
-  then Something-new.
+  then Something-new
 \end{verbatim}
+\end{mdframed}
 
-If \texttt{hungry} is turned on, \texttt{if} forms will compile to the hungry version of their counterparts, which consume the TOS they test against when the test finishes, i.e. immediately after falling in particular branches or after failing to fall in any of the branches. This is useful when you want to be thrifty about stack spaces.
+If \texttt{hungry} is turned on, \texttt{if} forms will be compiled to their respective hungry versions, which consume the TOS they test against when the test finishes, i.e. immediately after falling in particular branches or after failing to fall in any of the branches. This is useful when you want to be thrifty about stack spaces.
 
 \begin{mdframed}[style=hint]
   You can also achieve this with \texttt{hungry} turned off by calling \mstd{!!pop} explicitly.
@@ -712,6 +717,10 @@ If \texttt{hungry} is turned on, \texttt{if} forms will compile to the hungry ve
 When \texttt{share-stack} is on, every function (including sequence of course) uses the same stack, you get more classic stack-based language programming experience\footnote{And probably faster execution, because the context switching is done a lot faster without data stacks pushing and popping.} out of this switch, but you may want to make sure functions don't leave extra elements on the stack, so you'd better turn on \texttt{hungry} switch along with this.
 
 If you turn on \texttt{optimize-seq} switch, when you create a sequence as the body of a function, \texttt{if} form, or \texttt{then} clause of \texttt{bind-then} forms, this sequence is optimized to disappear, leaving the body of it as the body of the form.
+
+\begin{mdframed}[style=detail]
+  The reason that I don't make them arguments to the compiler, is because I believe these kinds of configuration is a part of the code. If you were to make the arguments to the compiler, users with different compiler settings while compiling will have different bytecode, thus different result.
+\end{mdframed}
 
 \chapter{The Standard Library}
 
@@ -884,6 +893,9 @@ pack \marg{n} elements on current stack into a tuple
 \item \marg1 \mla \mstd{!!unpack}
 
 unpack \marg1 into N elements and push them onto current stack
+\item \marg{fun} \mla \mstd{!invoke}
+
+invoke \marg{fun} as a function when you don't know the arity of it
 \end{itemize}
 
 \begin{mdframed}[style=hint]
@@ -957,22 +969,22 @@ get the third element of \marg{t}
 the identity function, i.e. it returns \marg{x}
 \item \marg{init} \mla \marg{list} \mla \marg{fun} \mla \mstd{/foldl}
 
-folds the  list\marg{list} from left to right on function \marg{fun}, with the initial value being \marg{init}.
+folds the  list\marg{list} from left to right on function \marg{fun}, with the initial value being \marg{init}
 \item \marg{init} \mla \marg{list} \mla \marg{fun} \mla \mstd{/foldr}
 
-same as \mstd{/foldl}, except that this walks the list from right to left and is not tail recursive function.
+same as \mstd{/foldl}, except that this walks the list from right to left and is not tail recursive function
 \item \marg{list} \mla \marg{fun} \mla \mstd{/map}
 
-maps function denoted by \marg{fun} onto \marg{list}.
+maps function denoted by \marg{fun} onto \marg{list}
 \item \marg{list} \mla \texttt{?pred} \mla \mstd{/filter}
 
-for each element \marg{x} in \marg{list}, discards \marg{x} when \texttt{\marg{x} ?pred} turns out to be \texttt{true}.
+for each element \marg{x} in \marg{list}, discards \marg{x} when \texttt{\marg{x} ?pred} turns out to be \texttt{true}
 \item \marg1 \mla \marg2 \mla \marg{fun} \mla \mstd{/flip}
 
-flips the arguments of a binary function \marg{fun}, i.e. \texttt{\marg2 \marg1 \marg{fun}}.
+flips the arguments of a binary function \marg{fun}, i.e. \texttt{\marg2 \marg1 \marg{fun}}
 \item \marg{args} \mla \marg{fun} \mla \mstd{/apply}
 
-apply the elements in \marg{args} as arguments to \marg{fun}.
+apply the elements in \marg{args} as arguments to \marg{fun}
 \end{itemize}
 
 \begin{mdframed}[style=hint]
@@ -1023,7 +1035,16 @@ generates a random floating point number within the range of $[0.0, 1.0]$.
 \end{itemize}
 
 
-\chapter{The Towel Compiler \texttt{weave} Howto}
+\chapter{Weaving a Towel Program}
+
+The compiler for the Towel programming language is codenamed \texttt{weave}, you can find it in \texttt{build/src/compiler} after successfully compiling the whole project with
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  ./waf configure build --tvm --compiler --native
+\end{verbatim}
+
+\textit{*This will build both the compiler and the TVM. The built binaries are both standalone.}
+\end{mdframed}
 
 To compile a source file \texttt{foo.t}, and want the compiled output to be \texttt{bar.w}, use
 \begin{verbatim}
@@ -1060,7 +1081,7 @@ If you have a human-readable bytecode file, and want to compile into VM-readable
 \chapter{Examples}
 \label{chap:examples}
 
-The following examples runs under the default compiler switch configuration.
+The following examples run under the default switch configuration.
 
 \section{Concrete Examples}
 
@@ -1082,7 +1103,7 @@ The following examples runs under the default compiler switch configuration.
 \item See how \texttt{if} forms are chained here!
 \item Note that we are tail recursing the \texttt{GCD} function here.
 \item As is mentioned in previous chapters, when doing tail recursive calls, you really want to be careful about your stack usage to avoid stack leakage.
-\item Remember an \texttt{if} form have two branches, and both of them cannot be omitted. So we put \sout{Eric Idle} \mstd{\mtilde ~idle} here to denote that we don't want to do anything here.
+\item Remember an \texttt{if} form have two branches, and both of them cannot be omitted. So we put \sout{Eric Idle} \mstd{\mtilde ~idle} here to denote that we don't want to do anything here, just a placeholder.
 \item The exit of the recursive function, so we'll directly put \texttt{A} here, without popping the result of \texttt{A B -}. Because this stack will be destroyed and all the values on it GC'ed, after it returns \texttt{A}.
 \end{enumerate}
 
@@ -1090,13 +1111,14 @@ The following examples runs under the default compiler switch configuration.
 \begin{mdframed}[style=example]
 \begin{verbatim}
   bind Fib fun` A B N,
-    if=0 A, (A B + A 1 N - Fib@)
-  then (1 1 10 Fib).
+    (N if=0 A,
+         (A B + A 1 N - Fib@))
+  then (1 1 10 Fib)
 \end{verbatim}
 \end{mdframed}
 Trivial.
 
-\section{Advanced Examples}
+\section{And Now for Something Completely Different...}
 
 \subsection{Quicksort}
 \begin{mdframed}[style=example]
@@ -1156,7 +1178,9 @@ A quick explanation: \texttt{(@ if\textasciitilde 0 +, -)} is bound to name \tex
 
 \texttt{Macro2} is a short-hand version of \texttt{Macro1}.
 
-\subsection{Object-oriented Programming (not even close)}
+\subsection{Object-oriented Programming}
+
+\subsubsection{Not Even Close}
 
 \begin{mdframed}[style=example]
 \begin{verbatim}
@@ -1188,6 +1212,69 @@ The above code snippet will produce the output
 \end{verbatim}
 
 which is exactly what we would be expecting.
+
+\subsubsection{A More Advanced Example}
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  import 'std' @
+
+  bind >>send !invoke`
+
+  also Shape ,\ ~type, (7)
+    bind __type ~type
+    also Type fun`, #t1 "dirty hack to make this work with >>send"
+    also Area #t2`
+    then [\__type [\Type` Area`]]
+
+  then bind __meta-Shape ('' Shape)
+       also :type (__meta-Shape #t2 #t1) (1)
+       also :area (__meta-Shape #t2 #t2)
+
+       also Circle ,\ Radius,
+         bind __radius Radius (2)
+         also ~super ('Circle' Shape) (3)
+
+         then bind Type (~super #t1)
+              also Area ,\, (__radius !!dup 3.14159 * *) (4)
+
+              then [\Type` Area`] (5)
+
+        also Rectangle ,\ Width Height,
+          bind __width Width
+          also __height Height
+
+          also ~super ('Rectangle' Shape)
+
+          then bind Type (~super #t1)
+               also Area ,\, (__width __height *)
+  
+               then [\Type` Area`]
+
+        then bind ~my-circle (42 Circle)
+             also ~my-rectangle (1 2 Rectangle)
+             then (~my-circle :type >>send (6) !println
+                   ~my-rectangle :type >>send !println
+                   ~my-circle :area >>send !println
+                   ~my-rectangle :area >>send !println)
+\end{verbatim}
+\end{mdframed}
+
+\begin{enumerate}
+\item Make a meta object to get all the available messages a Shape object can receive.
+\item A private field of Circle objects.
+\item The superclass (or super object).
+\item Implementing the abstract method!
+\item The public available methods.
+\item This is really great: we are sending the message \texttt{:type} to the Circle object \texttt{\mtilde ~my-circle}, and hoping the object will respond. \textit{Now we are speaking Japanese!}
+\item So in retrospect, it's more like an interface or protocol (with some dirty hacks), rather than an abstract class.
+\end{enumerate}
+
+The key idea here is that the interface function returns a tuple of the indexing functions that specifiy the position of each method in classes that agree with this protocol.
+
+For example, \texttt{:area} is actually the \texttt{\#t2} function, and is used to get the first element from a Shape object, which is a tuple with the second element being the function that does the calculation for area.
+
+It's a shame that we don't have Lisp macros here, otherwise the syntax will be much simpler here.\footnote{Common Lisp actually has a package that does object-oriented programming simulation, which is of course much powerful than what I have shown here.}
 
 \subsection{GUI Programming}
 
@@ -1401,6 +1488,8 @@ Towel Assembly Language has the same (or less) lexical elements as the Towel pro
 
 After assembling, labels preceding a line are eliminated, and labels as arguments are replaced with their absolute position (i.e. the line number relative to the starting of the TAL source file, of the line where they appear as line labels).
 
+Essentially, this assembly language is considered to be the intermediate representation of compiled Towel programs. And the TVM is a facility to execute IR directly. We can always compile IR further to, for example, native code or other virtual machines like JVM.
+
 \subsection{Data Types}
 
 \begin{itemize}
@@ -1446,7 +1535,7 @@ The argument \marg{UID} denotes the ID of the name that the TVM will bind TOS to
 
 \subsection{\texttt{0x05} \inst{fun-arg} \marg{UID}}
 
-\inst{fun-arg} is a compound instruction\footnote{A compound instruction is an instruction with multiple side-effects.}. It steals (pops) from the caller's data stack\footnote{The second top stack of DSS, or the top stack of DSS if it's a tail recursive call.} and binds the value to name indicated by the \marg{UID} in the clone of the \texttt{closure} table of the function.
+\inst{fun-arg} is a compound instruction\footnote{A compound instruction is an instruction with multiple side-effects.}. It steals (pops) from the caller's data stack\footnote{The second top stack of DSS, or the top stack of DSS if it's a tail recursive call.} and binds a reference to the value to the name indicated by the \marg{UID} in the clone of the \texttt{closure} table of the function.
 
 \begin{mdframed}[style=detail]
   If the stack turns out to be empty, this instruction saves the
@@ -1850,7 +1939,7 @@ So we can finally reconstruct the first instruction to be \texttt{PUSH\_LIT('str
 
 Now let's look at the third instruction, we lookup the \texttt{opcode} \texttt{0x17} is \inst{eval-and-push} with \marg{NID} and \marg{MID}, so we reinterpret from the 2nd to the 5th byte as an integer, i.e. 3, and 6th to 8th as another integer, 5.
 
-Thus the two arguments are \texttt{2} and \texttt{0x15}. So we can also reconstruct this instruction to be \texttt{EVAL\_AND\_PUSH(2, 0x15)}. The rest instructions are the same.
+Thus the two arguments are \texttt{2} and \texttt{0x15}. So we can also reconstruct this instruction to be\newline \texttt{EVAL\_AND\_PUSH(2, 0x15)}. The rest instructions are the same.
 
 \end{mdframed}
 

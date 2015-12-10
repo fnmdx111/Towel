@@ -86,10 +86,12 @@ also !# #len`
 
 also /apply fun` ~args ~f, (~args .!unpack\.w ~f)
 
+also !invoke .!invoke\.w`
+
 also ~idle ..idle\.w`
 
 then export + - * / ** % = :and :or ~fint ~ufint ~int ~float ~str !print
 !println #hd #tl #cons ?#empty #t1 #t2 #t3 /id /foldl #rev /map /filter
 /flip /foldr |#| #concat <# #> <#> ?# <<# !# /apply !read > >= < <= <> :not
-!!pop !!dup !!pack !!unpack $$ ^? #tn ~idle @
+!!pop !!dup !!pack !!unpack $$ ^? #tn ~idle !invoke @
 
