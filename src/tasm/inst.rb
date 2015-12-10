@@ -47,6 +47,7 @@ module Inst
     ['call', 0x28],
     ['push-fun', 0x10],
     ['closure', 0x26],
+    ['import', 0x70],
     ['export', 0x7f],
   ]
 
@@ -54,7 +55,6 @@ module Inst
     ['eval-and-push', 0x17],
     ['push-name', 0x16],
     ['eval-tail', 0x23],
-    ['import', 0x70],
   ]
 
   multiarity_instructions_all = []

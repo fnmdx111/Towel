@@ -339,7 +339,7 @@ let exec should_trace should_warn insts =
         | _ -> failwith "Invalid type of argument to pack."
       in let nl = List.fold_left (fun acc _ ->
           (dspop dss)::acc) [] (BatList.range 1 `To n)
-      in dspush dss (OVList(ref nl));
+      in dspush dss (OVTuple(ref nl));
       __exec ctxs flags next_ip
 
     | UNPACK -> trace "unpacking";
@@ -761,31 +761,34 @@ Something is wrong with the compiler.");
             | _ ->
               __exec ctxs flags next_ip)
 
-      | IMPORT(ArgLit(VString(mod_str)), ArgLit(VUFixedInt(uid))) ->
+      | IMPORT(ArgLit(VUFixedInt(uid))) ->
         trace "importing";
-        (try let _ = Hashtbl.find curmod.imports (vm_mod_id uid)
-           in __exec ctxs flags next_ip (* Do nothing since we have already
-                                           imported the module before. *)
-         with Not_found ->
-           let w_insts = find_module mod_str libpaths
-           in let abs_uid = module_id_tick ()
+        let mod_str = match dspop dss with
+            OVString(s) -> s
+          | _ -> failwith "invalid type for a mod_str, may be a compiler bug"
+        in (try let _ = Hashtbl.find curmod.imports (vm_mod_id uid)
+              in __exec ctxs flags next_ip (* Do nothing since we have already
+                                              imported the module before. *)
+            with Not_found ->
+              let w_insts = find_module mod_str libpaths
+              in let abs_uid = module_id_tick ()
 
-           in let module_ = {id = abs_uid;
-                             insts = w_insts;
-                             imports = Hashtbl.create 512;
-                             name_id_tick = name_id_tick_gen ();
-                             exs = Hashtbl.create 512}
+              in let module_ = {id = abs_uid;
+                                insts = w_insts;
+                                imports = Hashtbl.create 512;
+                                name_id_tick = name_id_tick_gen ();
+                                exs = Hashtbl.create 512}
 
-           in (Hashtbl.replace modules abs_uid module_);
-           (Hashtbl.replace curmod.imports (vm_mod_id uid) abs_uid);
-           (Hashtbl.replace module_.imports _SELF_MODULE_ID abs_uid);
-           (* Update the imports proxy for mapping from rel to abs. *)
-           (__exec
-              (push_cur_ip {st = 0; mod_id = curmod.id;
-                            closure = Hashtbl.create 1;
-                            is_partial = false})
-              {flags with curmod = module_}
-              0))
+              in (Hashtbl.replace modules abs_uid module_);
+              (Hashtbl.replace curmod.imports (vm_mod_id uid) abs_uid);
+              (Hashtbl.replace module_.imports _SELF_MODULE_ID abs_uid);
+              (* Update the imports proxy for mapping from rel to abs. *)
+              (__exec
+                 (push_cur_ip {st = 0; mod_id = curmod.id;
+                               closure = Hashtbl.create 1;
+                               is_partial = false})
+                 {flags with curmod = module_}
+                 0))
 
       | BIND(ArgLit(VUFixedInt(uid))) -> trace "binding";
         trace (Printf.sprintf "(%d,%d)" (fst @@ tos_idx ()) (snd @@ tos_idx ()));

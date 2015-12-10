@@ -267,8 +267,8 @@ and g_import ctx imp =
   in let () = List.iter (fun x -> find_module x Config.libpaths) ss
   in List.fold_left (|~~|) cnil
   @@ lmap (fun x ->
-      (line (IMPORT(ArgLit(VString(x)),
-                    ArgLit(VUFixedInt(mod_uid x)))))
+      (line (PUSH_LIT(ArgLit(VString(x)))))
+      |~~| (line (IMPORT(ArgLit(VUFixedInt(mod_uid x)))))
       |~~| (if is_explicit
             then cnil
             else aggregate !bindings)) ss
@@ -513,16 +513,11 @@ and g_seq ctx inst_ctx seq =
            closure cnil) |~~| (if ctx.is_backquoted then (line INSTALL)
                                else cnil)
 
-  in let () =
-       if is_shared
-       then ()
-       else if ctx.is_body
+  in let () = if ctx.is_body
        then ()
        else global_snippets := seq_insts::(!global_snippets)
 
-  in let body_main = if is_shared
-       then seq_insts
-       else if ctx.is_body
+  in let body_main = if ctx.is_body
        then seq_insts
        else cnil
        (* We cannot put shared seq_insts in global_snippets like functions,
