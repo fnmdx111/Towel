@@ -228,7 +228,7 @@ let exec should_trace should_warn insts =
          else try let rn, rm = nlookup scps (n, m)
              in if rm < 0
              then (* It's in closure. *)
-               Hashtbl.find (tos ctxs).curfun.closure (rn, -rm)
+               !(Hashtbl.find (tos ctxs).curfun.closure (rn, -rm))
              else dval dss (rn, rm)
            (* Check local scope first, because names captured in closure
               might be shadowed in current scope. *)
@@ -321,7 +321,7 @@ let exec should_trace should_warn insts =
          a name, we don't have to explicitly check the closure. *)
       let fr = (tos ctxs).curfun
       in Hashtbl.iter
-        (fun k v -> let n, m = k
+        (fun k _ -> let n, m = k
           in npush scps k (n, -m)) fr.closure;
       __exec ctxs flags next_ip
 
@@ -611,7 +611,8 @@ let exec should_trace should_warn insts =
             OVFunction(f) ->
             let v = resolve_name nid mid
             in Hashtbl.replace f.closure (nid,
-                                         Hashtbl.find curmod.imports mid) v
+                                          Hashtbl.find curmod.imports mid)
+              (ref v)
           | _ -> failwith "Adding captured value to non-function.
 Something is wrong with the compiler.");
       __exec ctxs flags next_ip
@@ -668,7 +669,7 @@ Something is wrong with the compiler.");
       in let no_more_argument, stolen_arg =
            if f.is_partial
            then if Hashtbl.mem f.closure (nid, curmod.id)
-             then false, Hashtbl.find f.closure (nid, curmod.id)
+             then false, !(Hashtbl.find f.closure (nid, curmod.id))
              (* We found what we want in the closure set. Just get the
                 argument from it.
 
@@ -689,7 +690,7 @@ Something is wrong with the compiler.");
         return () (ntos scps) (* This is where I found the scope leaking.
                                  Basically with partial functions' creation. *)
       end else begin
-        Hashtbl.replace f.closure (nid, curmod.id) stolen_arg;
+        Hashtbl.replace f.closure (nid, curmod.id) (ref stolen_arg);
         (* Store the function argument here at f.closure. *)
         npush scps (nid, curmod.id) (nid, -curmod.id);
         (* Make the function argument visible to inner scopes so that the

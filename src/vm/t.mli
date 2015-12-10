@@ -7,7 +7,7 @@ type asm_name_anno_t = string;;
 type module_id_t = int;;
 type line_no_t = int;;
 
-type closure_t = (name_t * module_id_t, value_t) Hashtbl.t
+type closure_t = (name_t * module_id_t, value_t ref) Hashtbl.t
 and type_hint_t = THInt | THAtom | THFixedInt | THUFixedInt | THString
                 | THFloat | THList | THPhony
                 | THFunction | THNil
