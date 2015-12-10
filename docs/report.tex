@@ -1,4 +1,4 @@
-\documentclass{book}
+\documentclass{report}
 
 \usepackage[left=1in, right=1in, top=1in, bottom=1in]{geometry}
 \usepackage{hyperref}
@@ -8,8 +8,13 @@
 \usepackage[normalem]{ulem}
 \usepackage{minted}
 
-\title{Towel Reference Manual}
+\usepackage[usenames, dvipsnames]{pstricks}
+\usepackage{epsfig}
+
+\title{The Towel Report}
 \author{Zihang Chen (zc2324) Baochan Zheng (bz2269) Guanlin Chen (gc2666)}
+
+\makeatletter\@addtoreset{chapter}{part}\makeatother%
 
 \mdfdefinestyle{detail}{%
 rightline=true,innerleftmargin=10,innerrightmargin=10,
@@ -53,6 +58,9 @@ frametitlerulewidth=2pt}
 \newcommand{\mla}[0]{~$\leftarrow$ ~}
 \newcommand{\arithstd}[1]{\marg{1} \mla \marg{2} \mla \mstd{#1}}
 
+\newcommand{\inst}[1] {\texttt{inst:#1}}
+
+
 \begin{document}
 \maketitle
 
@@ -91,6 +99,8 @@ Once you have full-fledged functional framework, you have the whole world. For e
 \section{Towel Virtual Machine}
 
 Why a virtual machine? Because we think this is the most portable and easy way to do a whole new language.\footnote{The thing is, you make it run first, then you optimize it.}
+
+\part{The Towel Reference Manual}
 
 \chapter{Lexical Elements}\label{chap:grammar}
 \section{Keywords}
@@ -252,7 +262,7 @@ Although, they are not comparable to integers, they can be tested against each o
 A string is an immutable data structure of fixed-length sequence of characters (or bytes).
 
 \begin{mdframed}[style=detail]
-  To see how long a string can be in the underlying OCaml environment, go to your OCaml toplevel and type \texttt{Sys.max_string_length;;}.
+  To see how long a string can be in the underlying OCaml environment, go to your OCaml toplevel and type \texttt{Sys.max\_string\_length;;}.
 \end{mdframed}
 
 \subsection{Lists and Tuples}
@@ -1269,5 +1279,654 @@ If you compile the OCaml-side wrapper correctly and run the last but one example
   \caption{Hello world!}
   \label{fig:gui}
 \end{figure}
+
+\part{The Towel Assembly and Virtual Machine Manual}
+
+\chapter{An Overview on the Towel Virtual Machine}
+
+The Towel virtual machine is basically a stack-based state machine that accepts and executes Towel Assembly Language. It reads instructions sequently from instruction buffer and does its computation on stacks. It has the following important parts:
+\begin{itemize}
+\item execution stack (or the activation record stack): \texttt{ctx\_t list}\footnote{Note that, Towel Virtual Machine does not restricts itself to any single kind of implementation. The use of OCaml type notation here is for convenience and clarity.}
+\item data stack stack: \texttt{value\_t dstack\_t dstack\_t}
+\item flags record: \texttt{flags\_t}
+\item module table: \texttt{(module\_id\_t, module\_t) Hashtbl.t}
+\item extension table: \texttt{(module\_id\_t, module TowelExtTemplate) Hashtbl.t}
+\end{itemize}
+
+\section{Execution Stack}
+
+Execution stack is where context of function calls are stored. A context of a function call consists the return address of the function call, the module id of the return address is in\footnote{The PC jumps around different instruction arrays of different modules.}, the function value of the function being called.
+
+When a new function call is made, the context of this call is pushed onto the execution stack, followed by the instruction pointer jumping to the start position of the function, and the \texttt{curmod} field being switched to the target module. When the instruction \texttt{ret} is met, the function returns. TVM pops the TOS on execution stack and jumps to the return address stored in this TOS and switch back to the original module according to the \texttt{ctx\_t} value.
+
+\begin{mdframed}[style=detail]
+  Execution stack has one element in it initially. This context has no
+  meaningful record fields.
+\end{mdframed}
+
+\section{Data Stack Stack}
+
+Every function has a stack for itself to do its computation. This avoids stack corruptions along all the function executions. Data stack is essentially an important part of the context of the function call, but it is so important, we would like to operate them manually so that we could be more flexible.
+
+Normally, when a new function call is made, a new data stack is pushed onto the data stack stack. When the function returns, TVM pops the TOS from the TOS of data stack stack (i.e. the return value of this function is the TOS of current function's data stack), pushes it onto the caller's stack (next to the TOS of data stack stack). Then this data stack gets popped, thus the caller's data stack is now the TOS of the data stack stack. TVM now pops and evaluates the TOS of the caller's data stack (this is a vital step) and pushes back the evaluated value.
+
+\begin{mdframed}[style=detail]
+  Data stack stack has one element (i.e. a data stack) in it
+  initially, whereas the data stack has no elements whatsoever.
+
+  Data stack stack is implemented by module \texttt{Nstack}, which
+  provides the type \texttt{'a dstack\_t} (d for dynamic), and a lot
+  of dedicated function for accessing the \texttt{dss} field in
+  various ways.
+\end{mdframed}
+
+\section{Flags}
+
+Flags stores the essential states for the virtual machine to run. For example, \texttt{is\_tail\_recursive\_call} records if the virtual machine is executing a tail recursive function. \texttt{curmod} records the current module whose instructions the PC is pointing at. \texttt{dss} is the data stack stack we talked about above. \texttt{scps} stores all the the names in scope stack (\texttt{scope\_t list}) for dynamic scoping.
+
+\section{Module table}
+
+Any functional Towel source code inevitably references (or, imports) other modules. When an \inst{import} is executing, a \texttt{module\_t} value is created and based on the module name, a UID is allocated for this module for referencing it later. Then the VM uses the UID as the key to store the \texttt{module\_t} value into the module table.
+
+\subsection{Modules}
+
+A module is a compiled Towel source code loaded into TVM, it has the following important fields:
+\begin{itemize}
+\item \texttt{id} of type \texttt{module\_id\_t}
+\item \texttt{insts} of type \texttt{line array}
+\item \texttt{exs} of type \texttt{(name\_t, value\_t) Hashtbl.t}
+\item \texttt{imports} of type \texttt{(module\_id\_t, module\_id\_t) Hashtbl.t}
+\end{itemize}
+
+\texttt{exs} is the exported value table of the module, mapping from a name to a value.
+
+\texttt{imports} is the absolute module id relative to this module. In the Towel compiler, names are resolved by a 2-tuple: the name id in the module and the module id. Because when compiling, the Towel compiler has no information about other modules other than the \texttt{.e} exportation file (like the header files you use in C). So it can only label other modules by IDs relative to itself (itself being zero).
+
+When importing a new module, the module gets a global (absolute) id, all the referencing of this module should be made through this very id. So it's vital that every module maintains a mapping from the relative module id in its instructions to the absolute module id given by TVM. See \ref{fig:imports} for an intuitive illustration.
+
+\begin{figure}[h]
+\psscalebox{1 1} % Change this value to rescale the drawing.
+{
+\begin{pspicture}(0,-6.8)(12.02,6.8)
+\psframe[linecolor=black, linewidth=0.04, dimen=outer](5.62,6.8)(0.42,-2.0)
+\rput[bl](1.22,4.4){\texttt{push-name 0u 1u}}
+\rput[bl](1.22,4.0){\texttt{push-name 0u 2u}}
+\rput[bl](1.22,3.6){\texttt{push-name 0u 0u}}
+\rput[bl](1.22,5.2){\texttt{import 'std' 1u}}
+\rput[bl](1.22,4.8){\texttt{import 'random' 2u}}
+\rput[bl](1.22,5.6){\texttt{...}}
+\rput[bl](1.22,3.2){\texttt{...}}
+\psframe[linecolor=blue, linewidth=0.04, dimen=outer](12.02,6.8)(7.62,1.2)
+\rput[bl](2.02,-2.4){Your module}
+\rput[bl](8.82,0.8){Module Std}
+\rput[bl](8.02,5.6){\texttt{...}}
+\rput[bl](8.02,5.2){\texttt{bind 0u}}
+\rput[bl](8.02,4.8){\texttt{...}}
+\rput[bl](8.82,0.4){\texttt{id = 5u}}
+\rput[bl](0.82,6.4){\texttt{id = 1u}}
+\psframe[linecolor=green, linewidth=0.04, dimen=outer](12.02,-0.4)(7.62,-6.0)
+\rput[bl](8.02,-3.6){\texttt{...}}
+\rput[bl](8.02,-4.0){\texttt{bind 0u}}
+\rput[bl](8.02,-4.4){\texttt{...}}
+\rput[bl](8.82,-6.4){Module Random}
+\rput[bl](8.82,-6.8){\texttt{id = 3u}}
+\psframe[linecolor=black, linewidth=0.04, dimen=outer](5.22,6.0)(0.82,2.8)
+\psframe[linecolor=black, linewidth=0.04, dimen=outer](5.22,1.2)(0.82,-1.2)
+\rput[bl](1.22,0.8){\texttt{1u -> 5u}}
+\rput[bl](1.22,0.4){\texttt{2u -> 3u}}
+\rput[bl](2.42,2.4){\texttt{insts}}
+\rput[bl](2.42,-1.6){\texttt{imports}}
+\psline[linecolor=blue, linewidth=0.04](4.02,4.4)(4.42,4.4)(4.42,1.6)(1.22,1.6)(0.82,1.6)(0.82,0.8)(1.22,0.8)(1.22,0.8)
+\psline[linecolor=blue, linewidth=0.04](2.82,0.8)(7.22,0.8)(7.22,5.2)(7.62,5.2)(7.62,5.2)
+\psline[linecolor=green, linewidth=0.04](4.02,4.0)(4.82,4.0)(4.82,2.0)(0.02,2.0)(0.02,0.4)(1.22,0.4)(1.22,0.4)
+\psline[linecolor=green, linewidth=0.04](2.82,0.4)(7.22,0.4)(7.22,-4.0)(7.62,-4.0)(7.62,-4.0)
+\end{pspicture}
+}
+\label{fig:imports}
+\end{figure}
+
+\section{Extension table}
+
+Essentially the same thing as the module table, except that it stores extensions (of type \texttt{module Ext.TowelExtTemplate}) via \inst{load-ext}.
+
+\renewcommand{\marg}[1]{\texttt{IARG\_#1}}
+\newcommand{\sarg}[1]{\texttt{SARG\_#1}}
+\newcommand{\parg}[1]{\texttt{PARG\_#1}}
+
+\chapter{Towel Assembly Language and Its Instructions}
+
+\section{Overview}
+
+Towel Assembly Language has the same (or less) lexical elements as the Towel programming language. And it's grammar is very simple: each line of a Towel Assembly program has no or multiple labels, an instruction, and some arguments or no argument at all according to the instruction's arity.
+
+After assembling, labels preceding a line are eliminated, and labels as arguments are replaced with their absolute position (i.e. the line number relative to the starting of the TAL source file, of the line where they appear as line labels).
+
+\subsection{Data Types}
+
+\begin{itemize}
+\item \texttt{VString}: a string surrounded by single quote
+\item \texttt{VAtom}: an unsigned 64bit integer followed by an ``a''
+\item \texttt{VUFixedInt}: an unsigned 64bit integer followed by a ``u''
+\item \texttt{VFixedInt}: a signed 64bit integer
+\item \texttt{VInt}: an integer of arbitrary precision followed by an ``l''
+\item \texttt{VFloat}: a float number
+\end{itemize}
+
+\section{Scope-related Instructions}
+
+\begin{mdframed}[style=hint]
+  In the upcoming sections, we use the following convention to denote arguments of the instructions:
+
+  \begin{itemize}
+  \item \marg{SOME} means this argument is a part of an instruction.
+  \item \sarg{SOME} means this argument is fetched from the data stack, and it will be put back potentially modified.
+
+Stack argument that appears first is popped first, and so forth.
+
+Also the term TOS and \sarg{SOME} are often interchangeable if there exists only one stack argument.
+  \item \parg{SOME} is the same as \sarg{SOME}, except that \parg{SOME} is popped out from the stack forever.
+  \end{itemize}
+\end{mdframed}
+
+\subsection{\texttt{0x01} \inst{push-scope}}
+
+Pushes a new scope onto the scope stack.
+
+\subsection{\texttt{0x02} \inst{pop-scope}}
+
+Pops the TOS of the scope stack.
+
+\subsection{\texttt{0x03} \inst{share-scope}}
+
+Does absolutely nothing. Just a place-holder to indicate that this new context shares the same scope with its parent.
+
+\subsection{\texttt{0x04} \inst{bind} \marg{UID}}
+
+The argument \marg{UID} denotes the ID of the name that the TVM will bind TOS to. Then TVM does it in current scope.
+
+\subsection{\texttt{0x05} \inst{fun-arg} \marg{UID}}
+
+\inst{fun-arg} is a compound instruction\footnote{A compound instruction is an instruction with multiple side-effects.}. It steals (pops) from the caller's data stack\footnote{The second top stack of DSS, or the top stack of DSS if it's a tail recursive call.} and binds the value to name indicated by the \marg{UID} in the clone of the \texttt{closure} table of the function.
+
+\begin{mdframed}[style=detail]
+  If the stack turns out to be empty, this instruction saves the
+  name-value pairs already bound (arguments stole by previous
+  \inst{fun-arg}s) in the copy of the closure of the current function
+  (\texttt{curfun} of the TOS of ctxs), marks the function as partial
+  and returns that function.
+
+  Also if the stack is empty because the TOS is a phony, it removes the
+  phony.
+\end{mdframed}
+
+\begin{mdframed}[style=hint]
+  Why copy the \texttt{closure} table? Think about the execution of a recursive function,
+
+\begin{verbatim}
+  {ctx_current with arg1 = 5; arg2 = ?}
+  {ctx1 with arg1 = 3; arg2 = 4}
+  {ctx0 with arg1 = 1; arg2 = 2}
+\end{verbatim}
+
+If arguments were put into the table directly, applying arg2 with, for example, 10, in \texttt{ctx\_current} will result in \texttt{ctx1.arg2 <- 10} and \texttt{ctx0.arg2 <- 10}. In other words, you just corrupted the activation records.
+
+So you may ask, why not putting the arguments directly on stack, and bind the given \marg{UID} to the index of that argument, just like what \inst{bind} does? The reason is that, if this is the case, it would be almost impossible to implement automatic currying. Because when returning the partial applied function, the stack that saves the arguments will be destroyed, and all your arguments will be lost.
+\end{mdframed}
+
+Sorry for such a complicated (and probably the only complicated) instruction.
+
+\section{Stack-related Instructions}
+
+\subsection{\texttt{0x10} \inst{push-fun} \marg{START}}
+
+Makes a new function value and pushes it onto the stack without evaluating it. It takes \marg{START} as the start position of the function to be created. The module id of the function is considered to be \texttt{curmod.id}.
+
+\subsection{\texttt{0x11} \inst{push-lnil} and \texttt{0x12} \inst{push-tnil}}
+
+Makes a new list or tuple on top of the current data stack. TVM also puts the pointer of its content onto \texttt{flags.list\_make\_stack} to keep track where to put new values (such as values from \inst{push-lit}, \inst{push-lnil} or \inst{push-tnil}), when TVM reaches \inst{end-list} or \inst{end-tuple}, the ref on top of \texttt{flags.list\_make\_stack} is popped.
+
+\begin{mdframed}[style=detail]
+  Only selected instructions have effect on these list pointers:
+  \begin{itemize}
+  \item \inst{eval-and-push}
+  \item \inst{push-lit}
+  \item \inst{push-phony}
+  \item \inst{push-name}
+  \item \inst{push-fun}
+  \item \inst{dup}
+  \item Instructions that return some value.
+  \end{itemize}
+\end{mdframed}
+
+\subsection{\texttt{0x13} \inst{end-list} and \texttt{0x14} \inst{end-tuple}}
+
+Ends current list or tuple construction.
+
+\subsection{\texttt{0x15} \inst{push-lit} \marg{LIT}}
+
+Pushes a literal \marg{LIT} onto the stack or the list pointer on top of \texttt{flags.list\_make\_stack}.
+
+\subsection{\texttt{0x16} \inst{push-name} \marg{NID} \marg{MID}}
+
+Finds the value bound to the name whose ID is \marg{NID}, in the module with the module ID being \marg{MID}, then pushes it onto the stack.
+
+\subsection{\texttt{0x17} \inst{eval-and-push} \marg{NID} \marg{MID}}
+
+Takes two arguments as the description of a name (same as \inst{push-name}), finds the value it is bound to. If the value is a function, then evaluates the function.
+
+\subsection{\texttt{0x18} \inst{pop} \parg{POPPED}}
+
+Pops the TOS of current data stack. In other words, it gets an argument from the stack, then does absolutely nothing.
+
+\subsection{\texttt{0x19} \inst{dup} \sarg{SOME}}
+
+Duplicates the TOS of current data stack. In other words, it gets an argument from the stack, then puts back two.
+
+\subsection{\texttt{0x1a} \inst{reverse} \parg{N} \sarg{1} \sarg{2} ... \sarg{N} (deprecated)}
+
+Takes an argument from the stack, then reverses the \parg{N}-top most elements.
+
+\subsection{\texttt{0x1b} \inst{unpack} \parg{E}}
+
+Assumes the TOS is a list or tuple, then unpacks it onto the stack.
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  dsck: [ ... | [1 2 3]]
+  after unpack: [ ... | 1 | 2 | 3]
+\end{verbatim}
+\end{mdframed}
+\subsection{\texttt{0x1c} \inst{pack} \parg{N} \parg{1} \parg{2} ... \parg{3}}
+
+Takes one integer \parg{N} from the stack to pack \parg{N} items on the stack into a tuple.
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  dsck: [ ... | 1 | 2 | 3 | 3]
+  after pack: [ ... | [1 2 3]]
+\end{verbatim}
+\end{mdframed}
+
+\begin{mdframed}[style=hint]
+  If there were insufficient number of stack items, TVM throws an
+  exception and terminates.
+\end{mdframed}
+
+\subsection{\texttt{0x1d} \inst{push-phony}}
+
+Pushes a phony onto the stack that fakes an empty stack. That is to say, whenever TVM encounters a phony, it regards the stack as being empty.
+
+\section{Function-related Instructions}
+
+\subsection{\texttt{0x20} \inst{push-stack}}
+
+Pushes a new data stack onto the data stack stack.
+
+\subsection{\texttt{0x21} \inst{share-stack}}
+
+Same as \inst{share-scope}.
+
+\subsection{\texttt{0x22} \inst{pop-stack}}
+
+Pops the current data stack.
+
+\subsection{\texttt{0x23} \inst{eval-tail} \marg{NID} \marg{MID}}
+
+Finds the function the two arguments references to, then calls it in a tail recursive manner.
+
+\subsection{\texttt{0x24} \inst{ret} \sarg{RET\_VAL}}
+
+Take care of the return value of the function. Pops the execution stack. And jumps to the return address.
+
+\subsection{\texttt{0x25} \inst{shared-ret}}
+
+Just sets the instruction pointer back to where this shared sequence gets called. No return value copied whatsoever (because there isn't any).
+
+\subsection{\texttt{0x26} \inst{closure} \marg{NID} \marg{MID} \sarg{FUN}}
+
+Assumes \sarg{FUN} is a function, takes two argument to describe the name \sarg{FUN} should capture.
+
+\begin{mdframed}[style=detail]
+  Because you only need to capture names from self-module, so \marg{MID} is often left being zero\footnote{The self-module ID, i.e. the ID modules reference themselves to.} when compiling.
+\end{mdframed}
+
+\subsection{\texttt{0xf2} \inst{install} \sarg{FUN}}
+
+Install the captured names of \sarg{FUN} into current scope so that users can reference them.
+
+\subsection{\texttt{0x27} \inst{invoke} \parg{FUN}}
+
+Assumes TOS is a function, then invokes it. \parg{FUN} is popped before evaluating it.
+
+\subsection{\texttt{0x28} \inst{call} \marg{START}}
+
+Records $PC + 1$ as the return address, then jumps to \marg{START}.
+
+\begin{mdframed}[style=hint]
+  This instruction only jumps within the same module.
+\end{mdframed}
+
+\section{Conditional Branching Instructions}
+
+\subsection{\texttt{0x30} \inst{jump} \marg{POS}}
+
+Unconditionally jumps to \marg{POS}.
+
+\subsection{\inst{j*} \marg{POS} \sarg{X}}
+
+Tests the TOS with specific predicates. If the result is true, TVM jumps to \marg{POS}, otherwise, TVM executes the next instruction.
+
+\inst{j*} instruction family consists of the following instructions:
+\begin{itemize}
+\item \texttt{0x32} \inst{jgz}: \sarg{X} is greater than zero,
+
+\texttt{0x31} \inst{jgez}: \sarg{X} is greater than or equal to zero
+
+\item \texttt{0x34} \inst{jlz}: \sarg{X} is less than zero,
+
+\texttt{0x33} \inst{jlez}: \sarg{X} is less than or equal to zero
+
+\item \texttt{0x35} \inst{jez}: \sarg{X} is equal to zero,
+
+\texttt{0x36} \inst{jnez}: \sarg{X} is not equal to zero
+
+\item \texttt{0x37} \inst{jt}: \sarg{X} is \texttt{true},
+
+\texttt{0x38} \inst{jf}: \sarg{X} is \texttt{false}
+\end{itemize}
+
+\subsection{\inst{hj*} \marg{POS} \parg{X}}
+
+Hungry versions of \inst{j*} instruction family, which consume the TOS they test against. Their \texttt{opcode}s are the ones of their non-hungry counterpart plus \texttt{0x10}. For example, the \texttt{opcode} of \texttt{jgz} is \texttt{0x42}.
+
+\subsection{\texttt{0x39} \inst{je} \marg{POS}, \texttt{0x3a} \inst{jne} \marg{POS}}
+
+Both of them test if the data stack is empty. \inst{je} jumps to \marg{POS} if it is empty, whereas \inst{jne} jumps only when the stack is non-empty.
+
+\begin{mdframed}[style=detail]
+  If \inst{je} is tested against a phony, it pops it before branching.
+\end{mdframed}
+
+\section{Arithmetic Instructions}
+
+\subsection{\texttt{0x50} \inst{add}, \texttt{0x51} \inst{sub}, \texttt{0x52} \inst{mul}, \texttt{0x53} \inst{div}, \texttt{0x54} \inst{pow}}
+
+Takes two arguments \parg{1} and \parg{2} from stack. Does arithmetic operations with \parg{1} and \parg{2}, and pushes \texttt{\parg{2} op \parg{1}}. These instructions work for all the number types\footnote{Atoms are not numbers.}.
+
+\subsection{\texttt{0x55} \inst{mod} \parg{1} \parg{2}}
+
+Does modulo operation between integer types.
+
+\subsection{\texttt{0x56} \inst{equ} \parg{1} \parg{2}}
+
+Does equality test on \parg{1} \parg{2}, and puts back \texttt{true} or \texttt{false} atoms.
+
+\begin{mdframed}[style=hint]
+  If two different types are tested against each other, TVM exits.
+\end{mdframed}
+
+\subsection{Bitwise Instructions}
+
+Fixed integers, unsigned fixed integers, and big integers are supported by the following bitwise arithmetic operations:
+\begin{itemize}
+\item Bitwise and, \texttt{0x57} \inst{and} \parg{1} \parg{2}
+\item Bitwise or, \texttt{0x58} \inst{or} \parg{1} \parg{2}
+\item Bitwise xor, \texttt{0x59} \inst{xor} \parg{1} \parg{2}
+\item Bitwise not, \texttt{0x5a} \inst{not} \parg{1}
+\item Bitwise shift left, \texttt{0x5b} \inst{shl} \parg{X} \parg{N}
+\item Bitwise shift right, \texttt{0x5c} \inst{shr} \parg{X} \parg{N}
+\item Bitwise logical shift right, \texttt{0x5d} \inst{lshr} \parg{X} \parg{N}
+\end{itemize}
+
+Note that \inst{not}, \inst{and} and \inst{or} also work on the \texttt{true} and \texttt{false} atoms.
+
+\subsection{Conversion Instructions}
+
+These instructions allow one type of TOS to convert into value of other types. They are of the following form:
+\begin{itemize}
+\item \texttt{0x62} \inst{to-fint} \parg{X}
+\item \texttt{0x63} \inst{to-ufint} \parg{X}
+\item \texttt{0x64} \inst{to-int} \parg{X}
+\item \texttt{0x65} \inst{to-float} \parg{X}
+\item \texttt{0x66} \inst{to-str} \parg{X}
+\end{itemize}
+
+\section{Instructions for Enumerables}
+
+\subsection{\texttt{0x5e} \inst{car} \parg{XS}}
+
+Does CAR operation on linked lists. It takes a list from the stack, puts back the head of the list.
+
+\subsection{\texttt{0x5f} \inst{cdr} \parg{XS}}
+
+Same as \inst{car}, except that it puts back the rest of the list.
+
+\subsection{\texttt{0x60} \inst{cons} \parg{XS} \parg{X}}
+
+Does CONS operation on linked lists. It constructs a new list and then puts it back onto the stack.
+
+\begin{mdframed}[style=hint]
+  If it encounters a tuple, TVM exits.
+\end{mdframed}
+
+\subsection{\texttt{0x61} \inst{list-empty} \parg{XS}}
+
+Tests if the TOS is an empty \textbf{list or tuple}. It puts back whether \texttt{true} or \texttt{false}, depending on the emptiness of the list or tuple.
+
+\subsection{\texttt{0xf3} \inst{tuple-at} \parg{N} \parg{XS}}
+
+Pushes back the \parg{N}-th element of \parg{XS}.
+
+\section{I/O Instructions}
+
+\subsection{\texttt{0x67} \inst{show} \parg{X}}
+
+Prints the TOS to standard output.
+
+\subsection{\texttt{0x68} \inst{read}}
+
+Reads a string from standard input and store that string on the stack.
+
+\section{Extension Instructions}
+
+\subsection{\texttt{0xf1} \inst{load-ext} \parg{EXT\_STR}}
+
+Loads the extension by the filename of \parg{EXT\_STR} from filesystem, and records it in the \texttt{opened\_exts} table. Then puts back the handle to that extension module.
+
+\subsection{\texttt{0xf0} \inst{extcall} \parg{EXT\_ID} \parg{EXT\_CN}}
+
+Takes two unsigned integers from the stack. Argument \parg{EXT\_ID} is for specifying the extension module handle, the other one is the call number to indicate which routine to call from the extension.
+
+\section{Miscellaneous Instructions}
+
+\subsection{\texttt{0x70} \inst{import} \parg{MOD\_STR} \marg{REL\_ID}}
+
+Finds the module by the filename of \parg{MOD\_STR} and assign it's ID relative to current ID as \marg{REL\_ID}\footnote{See previous section on modules for more details.}.
+
+TVM will assign a unique ID to every module imported based on this \parg{MOD\_STR}. For example, the module string of module \texttt{Std} from the Towel standard library (or Towelib) is \texttt{'std'} (because the source filename of it is \texttt{'std.t'}).
+
+\subsection{\texttt{0x7f} \inst{export} \marg{UID}}
+
+Exports the value bound by the name ID \marg{UID} to the module's \texttt{exs} field.
+
+\subsection{\texttt{0x71} \inst{dint}}
+
+Invokes the debug interrupt handler. See also \url{https://github.com/qwert42/ketivm/blob/master/vm/keti.py#L164}, which is an implementation of a similar instruction.
+
+\subsection{\texttt{0x72} \inst{type} \parg{X}}
+
+Pushes the type information of TOS onto the stack. This instruction only recognizes built-in types.
+
+\subsection{\texttt{0xff} \inst{not-implemented}}
+
+Prints an error message stating that an unimplemented instruction was found and the virtual machine has to exit.
+
+\subsection{\texttt{0x0} \inst{idle}}
+
+Does absolutely nothing.
+
+\subsection{\texttt{0xfe} \inst{terminate}}
+
+Terminate the Towel Virtual Machine. Or when finishing importing modules, go back to original module.
+
+\begin{mdframed}[style=hint]
+  Look at the similarities between (\inst{call}, \inst{invoke},
+  etc. \texttt{->} \inst{ret}) and (\inst{import} \texttt{->}
+  \inst{terminate}).
+\end{mdframed}
+
+\chapter{Bytecode Form of the Towel Assembly Language}
+
+\section{Bytecode Form Overview}
+
+A Towel Assembly Language source code can be compiled into a binary file. The layout of such a binary file is as follows:
+\begin{itemize}
+\item Magic number \texttt{0x4242}, denotes that this is a Towel binary
+\item The data segment, which contains all the literals used in the original source code
+\item Magic number \texttt{0xff3080ff}, denotes that data segment ends here
+\item The code segment
+\end{itemize}
+
+\section{Data Segment}
+A Towel binary contains only one data segment. Data segment contains all the literals used in the original source code file, which are of type \texttt{VString}, \texttt{VAtom}, \texttt{VFixedInt}, \texttt{VUFixedInt}, \texttt{VInt}, \texttt{VFloat}.
+
+To store a string in the data segment. First, put a tag\footnote{Actually a string.} \texttt{``s''} into the data segment. After that tag, put a little endian 32-bit unsigned integer which represents the length of the string. Then put the contents of the string after the 32-bit integer.
+
+To store an atom, put a tag \texttt{``a''} and then an unsigned little endian 64-bit integer.
+
+To store a fixed integer, put a tag \texttt{``f''}, then a signed little endian 64-bit integer.
+
+An unsigned fixed integer is the same as an atom, except the tag is \texttt{``u''}.
+
+To store an integer (i.e. big integer) or a float, put their respective tags (\texttt{``b''} for integer, \texttt{``n''}\footnote{``n'' for not a number.} for float) before their binary string representations.
+
+\begin{mdframed}[style=example]
+  For a float \texttt{3.14159}, the Towel literal binary
+  representation is \texttt{6e07000000332e3134313539}.
+\end{mdframed}
+
+
+The order of the literals are put in the data segment is their respective labels.
+
+\section{Instruction Format}
+
+Any bytecode instruction is a little-endian 64 bit number. The first byte of the number is \texttt{opcode}. For unary instructions, the second up to eighth bytes consists of the argument label. For binary instructions, the second up to fifth bytes consists of the first argument label, while the rest (sixth to eigth, 3 bytes, less than the first argument) consists of the second argument label.
+
+When encountered a bytecode instruction, use the argument labels (if any) to retrieve actual arguments from data segment, and then form the actual instruction.
+
+\begin{mdframed}[style=example]
+  Suppose we have the following bytecode file:
+
+\begin{verbatim}
+  BB
+    s03000000std
+    u0100000000000000
+    u0200000000000000
+    s12000000Hello, world
+    u1500000000000000
+  ff3080ff
+
+  1501000000000000
+  7002000000000000
+  1703000000050000
+  1504000000000000
+  fe00000000000000
+\end{verbatim}
+
+First, we can identify this file as a Towel bytecode because the first two bytes are \texttt{0x4242}, i.e. \texttt{BB}.
+
+We also know that there are 5 literals in the data segment:
+\begin{enumerate}
+\item a string: \texttt{'std'}
+\item an unsigned fixed integer 1
+\item an unsigned fixed integer 2
+\item a string: \texttt{'Hello, world'}
+\item an unsigned fixed integer 0x15
+\end{enumerate}
+
+Then, for the first instruction (8 bytes), we get \texttt{opcode} from the first byte, in this case, \texttt{0x15}, which is \inst{push-lit} with \marg{LIT}, so we reinterpret from the 2nd to the 8th byte as an integer, 1. And get an element from the data segment by the index of one, which turns out to be the \texttt{'std'} string.\footnote{Yes, the index of data segment starts from one.}
+
+So we can finally reconstruct the first instruction to be \texttt{PUSH\_LIT('str')}.
+
+Now let's look at the third instruction, we lookup the \texttt{opcode} \texttt{0x17} is \inst{eval-and-push} with \marg{NID} and \marg{MID}, so we reinterpret from the 2nd to the 5th byte as an integer, i.e. 3, and 6th to 8th as another integer, 5.
+
+Thus the two arguments are \texttt{2} and \texttt{0x15}. So we can also reconstruct this instruction to be \texttt{EVAL\_AND\_PUSH(2, 0x15)}. The rest instructions are the same.
+
+\end{mdframed}
+
+\begin{mdframed}[style=detail]
+  One of the neat things about this kind of representation is that I don't have to modify the assembler even when I have variable-sized instructions, because the addresses I'm jumping to are counted by instructions from the start, rather than bytes.
+\end{mdframed}
+
+\chapter{Extending the Towel Virtual Machine (OCaml Implementation)}
+
+By using the Extension interface (in \texttt{src/vm/ext.ml}), you can easily add new functionalities to TVM, enabling more powerful Towel programming experience.
+
+\section{Prerequisite}
+
+The library (no matter if it's third-party, or of your own) should be \textbf{OCaml-compliant}, because TVM is built on top of OCaml too. That is to say, you should be able to write OCaml programs with it, thus TVM will have access to it via dynamic linking.
+
+\begin{mdframed}[style=hint]
+  I think plain C libraries with only thin OCaml wrappers (no
+  \texttt{ml} files) would work too. Because \texttt{Dynlink} only
+  needs it to be a OCaml-aware shared-library.
+\end{mdframed}
+
+\section{Approach}
+
+Two instructions were implemented in TVM: \inst{load-ext} and \inst{extcall}.
+
+\inst{load-ext} takes an \texttt{ext\_str} from the stack and loads the corresponding extension module into TVM via the OCaml standard module \texttt{Dynlink}. An \texttt{ext\_str} is a filename of the OCaml object file. After successfully loading it, the instruction leaves an unsigned integer (\texttt{OVUFixedInt}) on the stack for future reference of the extension.
+
+\begin{mdframed}[style=hint]
+   \texttt{ext\_str} should always ends with \texttt{.cmo} even if the target is a \texttt{.cmxs} file.
+\end{mdframed}
+
+\inst{extcall} takes two arguments from the stack: it first takes the TOS as the extension handle (the one \inst{load-ext} pushed), then it takes another unsigned integer as the extension function call number (although this integer will be converted into an OCaml \texttt{int}, but I think $2^{31}$ is fairly enough for ordinary libraries). The extension module then matches against the call number to determine which action to perform on the data stack.
+
+\section{Howto}
+
+\begin{mdframed}[style=hint]
+  The following step illustrates how to build native extension rather
+  than bytecode extension. If you want bytecode extension, use
+  \texttt{ocamlc} instead, and probably lose some of the parameters.
+\end{mdframed}
+
+The first step, create a OCaml plugin. This plugin file is essentially a dynamic library (e.g. a \texttt{.so} file on *nix, a \texttt{.dll} file on Windows). When implementing this plugin, you must implement the module interface \texttt{TowelExtTemplate} laid out in \texttt{src/vm/ext.ml}. It's simple: one function - \texttt{extcall}. You will have to route individual call numbers to different routines using this function.
+
+The first argument of \texttt{extcall} is the call number, then the second one is the \texttt{dss} of the VM, for you to get specific arguments from the data stack or leave your results on it. But be careful, if you ruin this dss, the TVM is doomed.
+
+After you finish your \texttt{extcall} function and other local functions, remember to register your module value in the \texttt{\_\_ext\_\_} slot so that when loading this extension, TVM will get to know of your extension.
+
+The second step, you compile your source code via the following command:
+
+\begin{mdframed}[style=example]
+  \texttt{ocamlfind ocamlopt -package \%1 \%2 -shared -linkall -I \%3
+    -o \%4}
+\end{mdframed}
+Of these parameters:
+\begin{itemize}
+\item (\texttt{\%1}) the packages your extension module uses, take \texttt{ext\_random.ml} as an example, \texttt{\%1} will be replaced by stdint;
+\item (\texttt{\%2}) the extension module source file, \texttt{ext\_random.ml}, for example;
+\item (\texttt{\%3}) the directory where \texttt{t.cmi} and \texttt{nstack.cmi} are;
+\item (\texttt{\%4}) the output binary filename, \texttt{ext\_random.cmxs}, for exmpale;
+\item If you use some libraries that are not included in standard library, you may want to use \texttt{-linkpkg} instead of \texttt{-linkall} (for example, when building binding library for Tk).
+\end{itemize}
+
+The command for compiling the Random extension module is like this:
+
+\begin{mdframed}[style=example]
+  \texttt{ocamlfind ocamlopt -package stdint ext\_random.ml -shared
+    -linkall -I ../../build/src/vm -o ext\_random.cmxs}
+\end{mdframed}
+
+Third, place the \texttt{.cmxs} file in the \texttt{libpaths} of TVM, default locations are current working directory and the folder \texttt{towelib}. Modify \texttt{src/vm/config.ml} to change these locations.
+
+Last, write a Towel wrapper module for your extension module. In the \texttt{.w} instruction wrapper module, name \texttt{!>ext} is bound to the \inst{load-ext} instruction wrapper and name \texttt{!>>} for \inst{extcall}. You should always bind a name to the extension handle pushed by \texttt{!>ext}.
+
+
+\begin{mdframed}[style=hint]
+  It is often a good idea to bind a local partial applied function with the handle already applied to \texttt{!>>}.
+\end{mdframed}
 
 \end{document}
