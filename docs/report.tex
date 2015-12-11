@@ -44,11 +44,11 @@ frametitlerule=true,frametitlerulecolor=white,
 frametitlebackgroundcolor=green,
 frametitlerulewidth=2pt}
 
-\mdfdefinestyle{example}{%
+\mdfdefinestyle{cl}{%
 rightline=true,innerleftmargin=10,innerrightmargin=10,
-frametitle={Example},
+frametitle={Code Listing},
 frametitlerule=true,frametitlerulecolor=white,
-frametitlebackgroundcolor=green,
+frametitlebackgroundcolor=magenta,
 frametitlerulewidth=2pt}
 
 \mdfdefinestyle{warning}{%
@@ -1280,7 +1280,7 @@ The key idea here is that the interface function returns a tuple of the indexing
 
 For example, \texttt{:area} is actually the \texttt{\#t2} function, and is used to get the first element from a Shape object, which is a tuple with the second element being the function that does the calculation for area.
 
-It's a shame that we don't have Lisp macros here, otherwise the syntax will be much simpler here.\footnote{Common Lisp actually has a package that does object-oriented programming simulation, which is of course much powerful than what I have shown here.}
+It's a shame that we don't have Lisp macros here, otherwise the syntax will be much simpler here.\footnote{Common LISP actually has a package that does object-oriented programming simulation, which is of course much powerful than what I have shown here.}
 
 \subsection{GUI Programming}
 
@@ -2040,15 +2040,15 @@ Specification was not clear at the beginning of the development, but became clea
 
 The three of us get together every Monday afternoon before meeting with Professor Edwards. We would discuss the newly implemented parts and ideas, and hoped this discussion would identify as much flaws as possible. Then during the week, new parts would get developed, and flaws fixed.
 
-Later in the development (after the test suite was implemented as well as several testcases), the development process began to be like Test-Driven Development spontaneously.
+Later in the development (after the test suite was implemented as well as several test cases), the development process began to be like Test-Driven Development spontaneously.
 
 Manuals (or specification) were modified along development (at least for the first month) to fit what we had at that time. Later in the development, because features got added or redone too fast, they quickly went out of date, and finally got a major revision after feature freeze.
 
 \section{Testing Process}
 
-After each major feature was completed, one or two testcases would be created to test if the feature would work.
+After each major feature was completed, one or two test cases would be created to test if the feature would work.
 
-Not long before feature freeze, some holistic testcases were made to ensure everything works correctly together. Such testcases include, for example, \texttt{quicksort.t} for quicksort and \texttt{adv-obj.t} for advanced OO simulation.
+Not long before feature freeze, some holistic test cases were made to ensure everything works correctly together. Such test cases include, for example, \texttt{quicksort.t} for quicksort and \texttt{adv-obj.t} for advanced OO simulation.
 
 \section{Programming Style}
 
@@ -2109,6 +2109,12 @@ Here's the major changes made in the code repository:
 
 \section{Roles and Responsibilities}
 
+\begin{itemize}
+\item Project Manager: None
+\item The Guru Guy: Zihang Chen
+\item System Architect: Zihang Chen
+\item Testers: Zihang Chen, Baochan Zheng, Guanlin Chen
+\end{itemize}
 \section{Tools and Languages Used in Developemnt}
 
 \begin{itemize}
@@ -2125,7 +2131,7 @@ Here's the major changes made in the code repository:
 
 \item \XeTeX{} for document compilation and AUCTeX for \LaTeX ~editing.
 
-\item \texttt{opam} for installing OCaml packages, \texttt{ocamlfind} for compiling my source code with the packages, and \texttt{ocamldebug} for some information on stack trace.
+\item \texttt{opam} for installing OCaml packages, \texttt{findlib} for compiling my source code with the packages, and \texttt{ocamldebug} for some information on stack trace. Overall package usage: \texttt{Batteries}, \texttt{Stdint}, \texttt{Sha}, \texttt{Extlib}, \texttt{menhir}.
 
 \item Git for project version control, GitHub for project hosting, and Google for some of the problem solving. English for understanding the OCaml and Batteries manual, also the solutions I found on Stackoverflow.
 \end{itemize}
@@ -2160,7 +2166,7 @@ See Appendix \autoref{project-log}.
   \label{fig:overall}
 \end{figure}
 
-\subsection{The Towel Compiler}
+\subsection{The Towel Compiler (Zihang Chen)}
 
   The compiler frontend (module \texttt{Weave}) first invokes \texttt{Switches.parse} to parse the switch configuration for the source code. Then it gets the abstract syntax tree out of the source code by tokenizing and parsing it with modules \texttt{Scanner.token} and \texttt{Parser.sentence}.
 
@@ -2218,7 +2224,7 @@ See Appendix \autoref{project-log}.
   \label{fig:compiler-arch}
 \end{figure}
 
-\subsection{The Towel Virtual Machine}
+\subsection{The Towel Virtual Machine (Zihang Chen)}
 
 Things are much simpler on the VM-side. The virtual machine frontend \texttt{Tvm} first reads in the bytecode representation of IR, transform it back into IR AST by \texttt{Tasm\_inv\_bytecode.parse\_bytecode}. Then invokes \texttt{Nvm.exec} to execute all the instructions parsed.
 
@@ -2238,6 +2244,8 @@ The \texttt{Nvm.exec} depends on many other functions from other modules to work
 
 \item The module \texttt{Nstack} provides support for the stack data
   structure and various operations used by \texttt{Nvm.exec}.
+
+\item The module \texttt{Arithmetics} (Baochan Zheng, Guanlin Chen) provides implementation for various arithmetics instructions.
 
 \item The module \texttt{Jumps} we've talked above provides branching control.
 
@@ -2274,6 +2282,678 @@ The \texttt{Nvm.exec} depends on many other functions from other modules to work
   \caption{Virtual Machine Architecture}
   \label{fig:vm-arch}
 \end{figure}
+
+\chapter{Test Plan}
+
+\section{Individual Test Examples}
+
+\subsection{\texttt{partial.t}}
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  "---
+  Tests partial function application.
+  !>>
+  !<< 42
+  41
+  [2 2]
+  "
+
+  import 'std' \
+
+  bind Dec1 (1 -\Std)
+  then (43 Dec1 !println\Std 42 Dec1 !println\Std)
+\end{verbatim}
+\end{mdframed}
+
+The assembled text form of the IR is as follows:
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  push-stack
+  push-scope
+  push-lit 'std'
+  import 1u
+  push-scope
+  call 15u
+  bind 1u
+  push-lit 43
+  eval-and-push 1u 0u
+  eval-and-push 25u 1u
+  push-lit 42
+  eval-and-push 1u 0u
+  eval-and-push 25u 1u
+  pop-scope
+  terminate
+  push-stack
+  push-lit 1
+  eval-and-push 4u 1u
+  ret
+\end{verbatim}
+\end{mdframed}
+
+The assembled binary form of the IR is as follows:
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  4242 7303 0000 0073 7464 7501 0000 0000
+  0000 0075 0f00 0000 0000 0000 662b 0000
+  0000 0000 0075 0000 0000 0000 0000 7519
+  0000 0000 0000 0066 2a00 0000 0000 0000
+  6601 0000 0000 0000 0075 0400 0000 0000
+  0000 ff30 80ff 2000 0000 0000 0000 0100
+  0000 0000 0000 1501 0000 0000 0000 7002
+  0000 0000 0000 0100 0000 0000 0000 2803
+  0000 0000 0000 0402 0000 0000 0000 1504
+  0000 0000 0000 1702 0000 0005 0000 1706
+  0000 0002 0000 1507 0000 0000 0000 1702
+  0000 0005 0000 1706 0000 0002 0000 0200
+  0000 0000 0000 fe00 0000 0000 0000 2000
+  0000 0000 0000 1508 0000 0000 0000 1709
+  0000 0002 0000 2400 0000 0000 0000
+\end{verbatim}
+\end{mdframed}
+
+\subsection{\texttt{bind.t}}
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  "---
+  Tests if nested bind and also works.
+  !>>
+  !<< 3
+  -1
+  5
+  3
+  10
+  -2
+  9
+  3
+  12
+  11
+  "
+
+  import 'std' \
+
+  bind A fun` B,
+    bind C fun` D,
+      bind E (1 2 -\Std)
+      then (((E !println\Std D !println\Std B !println\Std 10)))
+    also F fun` D,
+      bind E (5 7 -\Std)
+      then (E !println\Std D !println\Std B !println\Std 12)
+    then (B !println\Std 5 C !println\Std 9 F !println\Std 11)
+  then (3 A !println\Std)
+\end{verbatim}
+\end{mdframed}
+
+The assembled text form of the IR is as follows:
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+   push-stack
+   push-scope
+   push-lit 'std'
+   import 1u
+   push-scope
+   push-fun 12u
+   bind 1u
+   push-lit 3
+   eval-and-push 1u 0u
+   eval-and-push 25u 1u
+   pop-scope
+   terminate
+   push-stack
+   push-scope
+   install
+   fun-arg 2u
+   push-scope
+   push-fun 57u
+   bind 3u
+   closure 2u
+   push-fun 35u
+   bind 6u
+   closure 2u
+   eval-and-push 2u 0u
+   eval-and-push 25u 1u
+   push-lit 5
+   eval-and-push 3u 0u
+   eval-and-push 25u 1u
+   push-lit 9
+   eval-and-push 6u 0u
+   eval-and-push 25u 1u
+   push-lit 11
+   pop-scope
+   pop-scope
+   ret
+   push-stack
+   push-scope
+   install
+   fun-arg 4u
+   push-scope
+   call 52u
+   bind 5u
+   eval-and-push 5u 0u
+   eval-and-push 25u 1u
+   eval-and-push 4u 0u
+   eval-and-push 25u 1u
+   eval-and-push 2u 0u
+   eval-and-push 25u 1u
+   push-lit 12
+   pop-scope
+   pop-scope
+   ret
+   push-stack
+   push-lit 5
+   push-lit 7
+   eval-and-push 4u 1u
+   ret
+   push-stack
+   push-scope
+   install
+   fun-arg 4u
+   push-scope
+   call 80u
+   bind 5u
+   call 68u
+   pop-scope
+   pop-scope
+   ret
+   push-stack
+   call 71u
+   ret
+   push-stack
+   eval-and-push 5u 0u
+   eval-and-push 25u 1u
+   eval-and-push 4u 0u
+   eval-and-push 25u 1u
+   eval-and-push 2u 0u
+   eval-and-push 25u 1u
+   push-lit 10
+   ret
+   push-stack
+   push-lit 1
+   push-lit 2
+   eval-and-push 4u 1u
+   ret
+\end{verbatim}
+\end{mdframed}
+
+The assembled binary form of the IR is as follows:
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  4242 7303 0000 0073 7464 7501 0000 0000
+  0000 0075 0c00 0000 0000 0000 6603 0000
+  0000 0000 0075 0000 0000 0000 0000 7519
+  0000 0000 0000 0075 0200 0000 0000 0000
+  7539 0000 0000 0000 0075 0300 0000 0000
+  0000 7523 0000 0000 0000 0075 0600 0000
+  0000 0000 6605 0000 0000 0000 0066 0900
+  0000 0000 0000 660b 0000 0000 0000 0075
+  0400 0000 0000 0000 7534 0000 0000 0000
+  0075 0500 0000 0000 0000 660c 0000 0000
+  0000 0066 0700 0000 0000 0000 7550 0000
+  0000 0000 0075 4400 0000 0000 0000 7547
+  0000 0000 0000 0066 0a00 0000 0000 0000
+  6601 0000 0000 0000 0066 0200 0000 0000
+  0000 ff30 80ff 2000 0000 0000 0000 0100
+  0000 0000 0000 1501 0000 0000 0000 7002
+  0000 0000 0000 0100 0000 0000 0000 1003
+  0000 0000 0000 0402 0000 0000 0000 1504
+  0000 0000 0000 1702 0000 0005 0000 1706
+  0000 0002 0000 0200 0000 0000 0000 fe00
+  0000 0000 0000 2000 0000 0000 0000 0100
+  0000 0000 0000 f200 0000 0000 0000 0507
+  0000 0000 0000 0100 0000 0000 0000 1008
+  0000 0000 0000 0409 0000 0000 0000 2607
+  0000 0000 0000 100a 0000 0000 0000 040b
+  0000 0000 0000 2607 0000 0000 0000 1707
+  0000 0005 0000 1706 0000 0002 0000 150c
+  0000 0000 0000 1709 0000 0005 0000 1706
+  0000 0002 0000 150d 0000 0000 0000 170b
+  0000 0005 0000 1706 0000 0002 0000 150e
+  0000 0000 0000 0200 0000 0000 0000 0200
+  0000 0000 0000 2400 0000 0000 0000 2000
+  0000 0000 0000 0100 0000 0000 0000 f200
+  0000 0000 0000 050f 0000 0000 0000 0100
+  0000 0000 0000 2810 0000 0000 0000 0411
+  0000 0000 0000 1711 0000 0005 0000 1706
+  0000 0002 0000 170f 0000 0005 0000 1706
+  0000 0002 0000 1707 0000 0005 0000 1706
+  0000 0002 0000 1512 0000 0000 0000 0200
+  0000 0000 0000 0200 0000 0000 0000 2400
+  0000 0000 0000 2000 0000 0000 0000 150c
+  0000 0000 0000 1513 0000 0000 0000 170f
+  0000 0002 0000 2400 0000 0000 0000 2000
+  0000 0000 0000 0100 0000 0000 0000 f200
+  0000 0000 0000 050f 0000 0000 0000 0100
+  0000 0000 0000 2814 0000 0000 0000 0411
+  0000 0000 0000 2815 0000 0000 0000 0200
+  0000 0000 0000 0200 0000 0000 0000 2400
+  0000 0000 0000 2000 0000 0000 0000 2816
+  0000 0000 0000 2400 0000 0000 0000 2000
+  0000 0000 0000 1711 0000 0005 0000 1706
+  0000 0002 0000 170f 0000 0005 0000 1706
+  0000 0002 0000 1707 0000 0005 0000 1706
+  0000 0002 0000 1517 0000 0000 0000 2400
+  0000 0000 0000 2000 0000 0000 0000 1518
+  0000 0000 0000 1519 0000 0000 0000 170f
+  0000 0002 0000 2400 0000 0000 0000
+\end{verbatim}
+\end{mdframed}
+
+\section{Holistic Test Example: Quicksort}
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  "---
+  Holistic test: Quicksort.
+  !>>
+  !<< [1 2 3 4 5]
+  "
+
+  import 'std' \
+
+  bind #quicksort ,\ L,
+    (L ?#empty\Std ift (!!pop\Std []), (!!pop\Std
+      bind ~h (L #hd\Std)
+      also ~t (L #tl\Std)
+      then (~t (~h >\Std) /filter\Std #quicksort
+            [~h]
+            ~t (~h <=\Std) /filter\Std #quicksort
+        #concat\Std #concat\Std)))
+  then ([5 4 3 2 1] #quicksort !println\Std)
+\end{verbatim}
+\end{mdframed}
+
+The assembled text form of the IR is as follows:
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  push-stack
+  push-scope
+  push-lit 'std'
+  import 1u
+  push-scope
+  push-fun 19u
+  bind 1u
+  closure 1u
+  push-lnil
+  push-lit 5
+  push-lit 4
+  push-lit 3
+  push-lit 2
+  push-lit 1
+  end-list
+  eval-and-push 1u 0u
+  eval-and-push 25u 1u
+  pop-scope
+  terminate
+  push-stack
+  push-scope
+  install
+  fun-arg 2u
+  eval-and-push 2u 0u
+  eval-and-push 36u 1u
+  jf 30u
+  eval-and-push 27u 1u
+  push-lnil
+  end-list
+  jump 50u
+  eval-and-push 27u 1u
+  push-scope
+  call 64u
+  bind 3u
+  call 60u
+  bind 4u
+  eval-and-push 4u 0u
+  call 56u
+  eval-and-push 59u 1u
+  eval-and-push 1u 0u
+  push-lnil
+  eval-and-push 3u 0u
+  end-list
+  eval-and-push 4u 0u
+  call 52u
+  eval-and-push 59u 1u
+  eval-and-push 1u 0u
+  eval-and-push 57u 1u
+  eval-and-push 57u 1u
+  pop-scope
+  pop-scope
+  ret
+  push-stack
+  eval-and-push 3u 0u
+  eval-and-push 13u 1u
+  ret
+  push-stack
+  eval-and-push 3u 0u
+  eval-and-push 10u 1u
+  ret
+  push-stack
+  eval-and-push 2u 0u
+  eval-and-push 32u 1u
+  ret
+  push-stack
+  eval-and-push 2u 0u
+  eval-and-push 30u 1u
+  ret
+\end{verbatim}
+\end{mdframed}
+
+The assembled binary form of the IR is as follows:
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  4242 7303 0000 0073 7464 7501 0000 0000
+  0000 0075 1300 0000 0000 0000 6605 0000
+  0000 0000 0066 0400 0000 0000 0000 6603
+  0000 0000 0000 0066 0200 0000 0000 0000
+  6601 0000 0000 0000 0075 0000 0000 0000
+  0000 7519 0000 0000 0000 0075 0200 0000
+  0000 0000 7524 0000 0000 0000 0075 1e00
+  0000 0000 0000 751b 0000 0000 0000 0075
+  3200 0000 0000 0000 7540 0000 0000 0000
+  0075 0300 0000 0000 0000 753c 0000 0000
+  0000 0075 0400 0000 0000 0000 7538 0000
+  0000 0000 0075 3b00 0000 0000 0000 7534
+  0000 0000 0000 0075 3900 0000 0000 0000
+  750d 0000 0000 0000 0075 0a00 0000 0000
+  0000 7520 0000 0000 0000 00ff 3080 ff20
+  0000 0000 0000 0001 0000 0000 0000 0015
+  0100 0000 0000 0070 0200 0000 0000 0001
+  0000 0000 0000 0010 0300 0000 0000 0004
+  0200 0000 0000 0026 0200 0000 0000 0011
+  0000 0000 0000 0015 0400 0000 0000 0015
+  0500 0000 0000 0015 0600 0000 0000 0015
+  0700 0000 0000 0015 0800 0000 0000 0013
+  0000 0000 0000 0017 0200 0000 0900 0017
+  0a00 0000 0200 0002 0000 0000 0000 00fe
+  0000 0000 0000 0020 0000 0000 0000 0001
+  0000 0000 0000 00f2 0000 0000 0000 0005
+  0b00 0000 0000 0017 0b00 0000 0900 0017
+  0c00 0000 0200 0038 0d00 0000 0000 0017
+  0e00 0000 0200 0011 0000 0000 0000 0013
+  0000 0000 0000 0030 0f00 0000 0000 0017
+  0e00 0000 0200 0001 0000 0000 0000 0028
+  1000 0000 0000 0004 1100 0000 0000 0028
+  1200 0000 0000 0004 1300 0000 0000 0017
+  1300 0000 0900 0028 1400 0000 0000 0017
+  1500 0000 0200 0017 0200 0000 0900 0011
+  0000 0000 0000 0017 1100 0000 0900 0013
+  0000 0000 0000 0017 1300 0000 0900 0028
+  1600 0000 0000 0017 1500 0000 0200 0017
+  0200 0000 0900 0017 1700 0000 0200 0017
+  1700 0000 0200 0002 0000 0000 0000 0002
+  0000 0000 0000 0024 0000 0000 0000 0020
+  0000 0000 0000 0017 1100 0000 0900 0017
+  1800 0000 0200 0024 0000 0000 0000 0020
+  0000 0000 0000 0017 1100 0000 0900 0017
+  1900 0000 0200 0024 0000 0000 0000 0020
+  0000 0000 0000 0017 0b00 0000 0900 0017
+  1a00 0000 0200 0024 0000 0000 0000 0020
+  0000 0000 0000 0017 0b00 0000 0900 0017
+  0d00 0000 0200 0024 0000 0000 0000 00
+\end{verbatim}
+\end{mdframed}
+
+\section{The Test Suite Script: Prefect (Zihang Chen)}
+
+When Prefect is invoked, it automatically searches the current working directory for files with extension \texttt{.t}. For each \texttt{.t} file, if the filename starts with two underscores, it is simply ignored.
+
+The test input and expected output are all embedded in the comments of their respective test case files:
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  "Some optional background or rationale description of this test case.
+  ---
+  Mandatory test case description
+  !>> optional test input
+  !<< optional expected output"
+\end{verbatim}
+\end{mdframed}
+
+A test is said to be passed if and only if it exits normally and print to the standard output exactly the expected output.
+
+\begin{mdframed}[style=cl]
+  \begin{minted}{ruby}
+#! /usr/bin/env ruby
+
+require 'open3'
+require 'colorize'
+
+class Prefect
+  # This class tests per file.
+  IN_PREFIX = '!>> ?'
+  OUT_PREFIX = '!<< ?'
+
+  PAT = /.*".*---\n(.*)\n#{IN_PREFIX}([^"]*)\n#{OUT_PREFIX}([^"]*)"/m
+  # This means that a testcase description consists of three parts:
+  # (1) the text description part that tells what this testcase is about
+  # (2) the input part, led by !>>\space
+  # (3) the expected output part, led by !<<\space
+
+  def initialize(fp, **ctx)
+    @ctx = ctx
+    @fp = fp.chop.chop
+
+    open(fp) {|f|
+      @content = f.read
+    }
+
+    extract_info
+  end
+
+  def extract_info
+    matches = PAT.match(@content)
+    unless matches.nil?
+      @description, @input, @expected_output = matches.captures
+      @description.strip!
+    end
+  end
+
+  def execute_ok(idx)
+    pretty_input = if @input == ''
+                     'None'.light_cyan
+                   else
+                     @input.white
+                   end
+    pretty_output = if @expected_output == ''
+                      'None'.light_cyan
+                    else
+                      @expected_output.white
+                    end
+
+    puts "Testcase #{('#' + idx.to_s).blue}: #{@description}
+---
+Input: #{pretty_input}
+Output: #{pretty_output}"
+
+    out, err, status = Open3.capture3(@ctx[:weave_path],
+                                    "#{@fp}.t",
+                                    '-o',
+                                    "temp/#{@fp}.w")
+
+    if status.exitstatus != 0
+      [false, out]
+      return
+    end
+
+    if ARGV[0] == '-t'
+      puts "Tracing #{@fp}.w =>"
+      output, _ = Open3.capture2(
+          @ctx[:tvm_path], "temp/#{@fp}.w", '-t', :stdin_data=>@input
+      )
+    else
+      output, err, status = Open3.capture3(
+          @ctx[:tvm_path], "temp/#{@fp}.w", :stdin_data=>@input
+      )
+    end
+
+    if status.exitstatus != 0
+      [false, err]
+      return
+    end
+
+    if output == @expected_output
+      [true, output]
+    else
+      [false, output]
+    end
+  end
+end
+
+if __FILE__ == $0
+  require 'fileutils'
+  FileUtils.remove_entry_secure 'temp'
+  FileUtils.mkdir 'temp'
+
+  SUFFIX = 't'
+  WEAVE_PATH = '../build/src/compiler/weave'
+  TVM_PATH = '../build/src/vm/tvm'
+  make_prefect = lambda {|fp| Prefect.new(
+    fp,
+    :weave_path=>WEAVE_PATH,
+    :tvm_path=>TVM_PATH
+  )}
+
+  cnt = 0
+  results = {}
+  Dir.foreach '.' do |entry|
+    if entry =~ /[^.]*\.#{SUFFIX}/
+      if entry.start_with? '__'
+        next
+      end
+
+      cnt += 1
+      ok, out = make_prefect.call(entry).execute_ok cnt
+
+      puts "Real output: #{out}\n"
+      if ok
+        results[entry] = :ok
+        puts "#{entry} =====> #{'[OK]'.green}"
+      else
+        results[entry] = :failed
+        puts "#{entry} =====> #{'[FAILED]'.red}"
+      end
+
+      puts '-' * 42
+    end
+  end
+
+  count = results.inject({:ok => 0, :failed => 0}) do |acc, kv|
+    _, v = kv
+    acc[v] += 1
+    acc
+  end
+
+  if count != {}
+    if count[:ok] > 0
+      ok = count[:ok].to_s.green
+    else
+      ok = 0.to_s
+    end
+
+    if count[:failed] > 0
+      failed = count[:failed].to_s.red
+    else
+      failed = 0.to_s
+    end
+    puts "Summary: #{ok} passed, #{failed} failed."
+  end
+end
+  \end{minted}
+\end{mdframed}
+
+\section{Tests Overview (Zihang Chen)}
+
+16 tests were included in the test suite.
+
+\begin{itemize}
+\item \texttt{bind.t}
+
+tests whether nested \texttt{bind} forms and \texttt{also} clauses work or not.
+
+\item \texttt{functional.t}
+
+tests some of the functional features of Towel, for example, currying.
+
+\item \texttt{gcd.t}
+
+tests if tail recursion and chained \texttt{if} forms work.
+
+\item \texttt{idle.t}
+
+tests if \texttt{.idle} works.
+
+\item \texttt{ift-iff.t}
+
+tests whether \texttt{ife}, \texttt{ifne}, \texttt{ift}, \texttt{iff} and phonies work.
+
+\item \texttt{import.t}
+
+tests whether implicit import and explicit import work as expected.
+
+\item \texttt{list.t}
+
+tests various functions for enumerables, for example, \mstd{\#hd}, \mstd{\#t1}, etc.
+
+\item \texttt{macro.t}
+
+tests if shared sequences work, also tests the expressiveness of Towel.
+
+\item \texttt{obj.t}
+
+mimic an object-oriented programming situation, intended as testing for function closures.
+
+\item \texttt{partial.t}
+
+tests if partial function application is stable.
+
+\item \texttt{phony.t}
+
+tests if phony, partial function application and \mstd{!invoke} can work together.
+
+\item \texttt{quicksort.t}
+
+a holistic test, tests if non-tail recursion, the stability of \texttt{bind-then} forms in non-tail recursive environment, list functions, and the overall stability of the virtual machine.
+
+\item \texttt{rnd.t}
+
+tests if the extension mechanism of the virtual machine works.
+
+\item \texttt{test.t}
+
+the hello world test.
+
+\end{itemize}
+
+\chapter{Lessons Learned}
+
+\section{Don't Panic!}
+
+First of all, OCaml is great (but not perfect). Be patient and learn how to program in OCaml. It will change your life.
+
+Discuss your ideas with your teammates, explain your code to people, fix your bugs right away. If you cannot explain your idea or code to others, you don't understand them at all.
+
+Don't be afraid to rewrite 90\% of your code. And make sure every time you do this, you reduce 10\% of the code.
+
+\subsection{Some Practical Advices}
+\begin{enumerate}
+\item RTFM!! It is hard to understand even the words in them at first, but you'll get to the gist after reading them for 10 times.
+
+\item Code style matters.
+
+\item Use GitHub to host your code, enjoy the little deep green squares in your Contributions chart.
+
+\item Use \texttt{opam}, \texttt{Batteries} and \texttt{Findlib}. Learn to program OCaml in Emacs, or at least Vim. Never program in Sublime Text.
+
+\item When in trouble, first use \texttt{ocamldebug} to see the backtrace and identify the line number where your program blows up. Then use print to debug. (And maybe the time travel feature of \texttt{ocamldebug}.)\footnote{Because OCaml loses most of the type information after compilation, you can't really get something useful out of the debugger.}
+
+\item Always wrap \texttt{Hashtbl.find} in a \texttt{try} expression, because it's really frustrating to see only a \texttt{Failure: Not\_found} printed when your program runs into trouble.
+
+\item Don't panic.
+\end{enumerate}
 
 \begin{appendices}
 \chapter{Project Log (up to Dec 10)}
@@ -3747,6 +4427,10 @@ Date:   Thu Dec 10 15:16:26 2015 -0500
 
     add more tests and texts
 \end{verbatim}
+
+\chapter{Full Code Listing}
+
+\input{../play/xxx.tex}
 
 \end{appendices}
 
