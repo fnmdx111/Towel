@@ -9,6 +9,8 @@ This script outputs the following files:
   * tasm_parser.mly
   * tasm_scanner.mll
   * tasm_stringify.ml
+  * tasm_bytecode.ml
+  * tasm_inv_bytecode.ml
 for a minimal TASM parser.
 =end
 

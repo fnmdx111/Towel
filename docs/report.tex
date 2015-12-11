@@ -10,6 +10,7 @@
 \usepackage{minted}
 \usepackage{xltxtra}
 \usepackage{appendix}
+\usepackage{xcolor}
 \usepackage{tikz}
 \usetikzlibrary{positioning}
 \usetikzlibrary{shapes, arrows, shadows}
@@ -48,7 +49,7 @@ frametitlerulewidth=2pt}
 rightline=true,innerleftmargin=10,innerrightmargin=10,
 frametitle={Code Listing},
 frametitlerule=true,frametitlerulecolor=white,
-frametitlebackgroundcolor=magenta,
+frametitlebackgroundcolor=orange,
 frametitlerulewidth=2pt}
 
 \mdfdefinestyle{warning}{%
@@ -107,6 +108,30 @@ Once you have full-fledged functional framework, you have the whole world. For e
 
 Why a virtual machine? Because we think this is the most portable and easy way to do a prototype for a new language. After you got the language working, you can do all kinds of crazing things, like compiling the bytecode that the VM reads into a native application.
 
+\chapter{A Short ``Hello, world!'' Tutorial to the Towel Programming Language}
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  import 'std' @ (1)
+
+  'Hello, world!' (2) (3) !println (4)
+\end{verbatim}
+\end{mdframed}
+
+Now, let me explain something:
+\begin{enumerate}
+\item By default, this isn't any standard library function available until you explicitly import the module \texttt{Std}. See also \autoref{ssec:import}.
+\item Strings in Towel are quoted by single quotes. See also \autoref{sec:w-literal}.
+\item When you write something literal, Towel pushes it immediately onto the stack. See also \autoref{sec:basics}.
+\item When you write something that's not a literal, but a name, Towel finds out what the name is bound to, and begin to evaluate that value. After the evaluation, it pushes the result onto the stack, if any. See also \autoref{sec:def-name} for how to define a name. See \autoref{sec:eval-rule} for how Towel normally runs your program.
+\end{enumerate}
+
+To see more examples, please read \autoref{chap:examples}.
+
+If you want to learn more about this novel language, do read on for the Towel Reference Manual, where you will learn every aspect of the language.
+
+Don't panic!
+
 \part{The Towel Reference Manual}
 
 \chapter{Lexical Elements}\label{chap:grammar}
@@ -128,7 +153,7 @@ Punctuations used in the Towel programming language are as follows:
 \item Any unprintable character is reserved and won't be used.
 \end{itemize}
 
-\section{Names}
+\section{Names}\label{sec:def-name}
 
 Names are used for naming (or to be more precise, referencing to) values. Valid names should not start with reserved punctuations, lowercased letters, and numbers.
 
@@ -313,7 +338,7 @@ A word, can be one of the following:
 
 You should also know that the computational model Towel uses is based on stacks, or to put it more precisely, stack of stacks. That is to say, when you invoke a function, a new stack in created for that particular function, and after it returns the new stack gets destroyed. This avoids potential corruption of only a single stack.
 
-\section{Rules for Evaluation}
+\section{Rules for Evaluation}\label{sec:eval-rule}
 
 When you reference to a word, Towel does the following:
 \begin{itemize}
@@ -326,13 +351,13 @@ When you reference to a word, Towel does the following:
 \item For bind-then form, it pushes a new scope, evaluates the values on stack that get bound (both \texttt{bind} clause and \texttt{also} clause) and binds the values evaluated to the names, then it evaluates the \texttt{then} clause within current scope. Finally it pops the scope.
 \end{itemize}
 
-\section{Rules for Scoping}
+\section{Rules for Scoping}\label{sec:scope-rule}
 
 Only two forms in Towel can create a new scope: the function form and the \texttt{bind-then} form. This means that a scope is created when entering a function, or a \texttt{bind-then} form, and implies that a scope is destroyed when exiting a function, or a \texttt{bind-then} form.
 
 A name is only referenceable within the scope it is bound, plus the child scopes of that scope. For closures, the captured names are poured into the function's scope by default.
 
-\section{Literals}
+\section{Literals}\label{sec:w-literal}
 
 A literal is a literal value whose type is of the data types we have talked about in \autoref{chap:data-types}.
 
@@ -627,7 +652,7 @@ You just accidentally changed the value of the Answer without even noticing it!
 
 Modules, or namespaces, in Towel, are sets of names. Mechanisms like this prevent names of various files from colliding into each other.
 
-\subsection{Importing a Module}
+\subsection{Importing a Module}\label{ssec:import}
 
 To import a module, use the \texttt{import} form.
 \begin{mdframed}[style=example]
@@ -2118,6 +2143,10 @@ Here's the major changes made in the code repository:
 \section{Tools and Languages Used in Developemnt}
 
 \begin{itemize}
+\item OCaml 4.02.
+
+\item \texttt{opam} for installing OCaml packages, \texttt{findlib} for compiling my source code with the packages, and \texttt{ocamldebug} for some information on stack trace. Overall package usage: \texttt{Batteries}, \texttt{Stdint}, \texttt{Sha}, \texttt{Extlib}, \texttt{menhir}.
+
 \item Emacs 24.5 with \texttt{tuareg-mode} (OCaml syntax
   highlighting), \texttt{merlin} (syntax and semantics checking,
   linting) and \texttt{ocp-indent} (indenting OCaml). These are
@@ -2131,8 +2160,6 @@ Here's the major changes made in the code repository:
 
 \item \XeTeX{} for document compilation and AUCTeX for \LaTeX ~editing.
 
-\item \texttt{opam} for installing OCaml packages, \texttt{findlib} for compiling my source code with the packages, and \texttt{ocamldebug} for some information on stack trace. Overall package usage: \texttt{Batteries}, \texttt{Stdint}, \texttt{Sha}, \texttt{Extlib}, \texttt{menhir}.
-
 \item Git for project version control, GitHub for project hosting, and Google for some of the problem solving. English for understanding the OCaml and Batteries manual, also the solutions I found on Stackoverflow.
 \end{itemize}
 
@@ -2143,6 +2170,8 @@ See Appendix \autoref{project-log}.
 \chapter{Architectural Design}
 
 \section{Overall}
+
+In this chapter, we consider the term intermediate representation to be synonymous with the term Towel Assembly.
 
 \begin{figure}[H]
   \centering
@@ -2166,7 +2195,7 @@ See Appendix \autoref{project-log}.
   \label{fig:overall}
 \end{figure}
 
-\subsection{The Towel Compiler (Zihang Chen)}
+\section{The Towel Compiler (Zihang Chen)}
 
   The compiler frontend (module \texttt{Weave}) first invokes \texttt{Switches.parse} to parse the switch configuration for the source code. Then it gets the abstract syntax tree out of the source code by tokenizing and parsing it with modules \texttt{Scanner.token} and \texttt{Parser.sentence}.
 
@@ -2224,7 +2253,7 @@ See Appendix \autoref{project-log}.
   \label{fig:compiler-arch}
 \end{figure}
 
-\subsection{The Towel Virtual Machine (Zihang Chen)}
+\section{The Towel Virtual Machine (Zihang Chen)}
 
 Things are much simpler on the VM-side. The virtual machine frontend \texttt{Tvm} first reads in the bytecode representation of IR, transform it back into IR AST by \texttt{Tasm\_inv\_bytecode.parse\_bytecode}. Then invokes \texttt{Nvm.exec} to execute all the instructions parsed.
 
@@ -2282,6 +2311,41 @@ The \texttt{Nvm.exec} depends on many other functions from other modules to work
   \caption{Virtual Machine Architecture}
   \label{fig:vm-arch}
 \end{figure}
+
+\section{The Towel Assembly Components}
+
+The script \texttt{ccg.rb} generates a whole bunch of Towel Assembly related modules for the compiler or the virtual machine to generate bytecode or parse text form IR.
+
+The generated modules include:
+\begin{itemize}
+\item \texttt{tasm\_ast.mli}
+
+defines abstract syntax tree types
+
+\item \texttt{tasm\_scanner.mll}
+
+scanner for text form IR
+
+\item \texttt{tasm\_parser.mly}
+
+parser for text form IR
+
+\item \texttt{tasm\_stringify.ml}
+
+provides functions for converting AST to human-readable string
+
+\item \texttt{tasm\_bytecode.ml}
+
+provides functions for converting AST to VM-readable bytecode
+
+\item \texttt{tasm\_inv\_bytecode.ml}
+
+provides functions for parsing bytecode back to AST
+\end{itemize}
+
+\begin{mdframed}[style=detail]
+  The \texttt{ccg.rb} script reads information on the instructions from the accompanied Ruby script \texttt{inst.rb}. So when tweaking instructions for the Towel Assembly Language, only \texttt{inst.rb} is changed.
+\end{mdframed}
 
 \chapter{Test Plan}
 
@@ -2943,6 +3007,8 @@ Don't be afraid to rewrite 90\% of your code. And make sure every time you do th
 \item RTFM!! It is hard to understand even the words in them at first, but you'll get to the gist after reading them for 10 times.
 
 \item Code style matters.
+
+\item Remember to quote your data type constructor and its arguments with a pair of parentheses when working with function application. The OCaml compiler is really stupid about this: \texttt{some\_function Some(x)}. The right way to do it is \texttt{some\_function (Some x)}, or \texttt{some\_function (Some(x))}. There are many other traps like this that will ruin a whole day for you, so watch out!
 
 \item Use GitHub to host your code, enjoy the little deep green squares in your Contributions chart.
 
