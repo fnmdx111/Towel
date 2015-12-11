@@ -149,15 +149,7 @@ let find_closure ctx tree =
               (match ib with
                  Ast.IfBody(ib1, ib2) ->
                  __find_in locals true ib1;
-                 __find_in locals true ib2))
-         | Ast.CtrlSeqMatchForm(Ast.PatternsAndMatches(pams)) ->
-           List.iter (function Ast.PatternAndMatch(ws, body) ->
-               __find_in locals true body;
-               List.iter (function
-                     Ast.WName(_) -> ()
-                   (* Names in patterns are not to be resolved, but to be
-                      bound to new values. *)
-                   | _ as w -> __find_in locals false w) ws) pams)
+                 __find_in locals true ib2)))
       | Ast.WFunction(f) ->
         (match f with
            Ast.Function(args, body)
@@ -174,9 +166,6 @@ let find_closure ctx tree =
         __find_in locals true bt
       | Ast.WImport(_) -> ()
       | Ast.WExport(_) -> ()
-      | Ast.WIdle -> ()
-      | Ast.WPhony -> ()
-      | _ -> () (* Unused words. *)
   in __find_in [] ctx.is_body tree;
   table;;
 
@@ -225,7 +214,6 @@ let rec g_lit ctx inst_ctx lit =
     |~~| (let r = flmap wl (g_word ctx inst_nil_ctx)
           in aggregate r)
     |~~| (line END_TUPLE)
-  | _ -> line NOT_IMPLEMENTED
 
 and g_import ctx imp =
   let is_explicit, ss = match imp with Ast.ExplicitImport(ss) -> true, ss
@@ -325,82 +313,6 @@ and g_name ctx inst_ctx n =
 and g_ctrl ctx =
   function
     Ast.CtrlSeqIfForm(i) -> g_if ctx i
-  | Ast.CtrlSeqMatchForm(m) -> g_match ctx m
-
-and g_match ctx =
-  let pattern_counter = Common.counter ()
-  in let _UID = uniq64 ()
-  in let action_label i =
-       Printf.sprintf "%s-p%s" _UID @@ tu64 i
-  in let match_end_label = _UID -- "end"
-
-  in let _g_pat_and_act =
-       function
-         Ast.PatternAndMatch(ws, w)
-         -> let label = action_label @@ pattern_counter ()
-         in let new_names = ref []
-
-         in let map_pattern =
-              function
-                Ast.WName(pn) as w ->
-                let n = match pn with
-                    Ast.NRegular(x) -> x
-                  | Ast.NTailCall(x) ->
-                    (ignore @@ List.map (lookup_name ctx.scp_stk) x); x
-                    (* We can't invoke a name that does not exist yet. So we'll do a
-                       intented name existence checking here by looking up all the
-                       names. *)
-
-                in (match n with
-                      x::[] ->
-                      (try if lookup_name ctx.scp_stk x = Uint64.zero
-                         then (new_names := x::!new_names;
-                               push_name ctx.scp_stk x @@ name_uid x.Ast.name_repr)
-                         else ()
-                       with Exc.NameNotFoundError(_) ->
-                         (new_names := x::!new_names);
-                         (push_name ctx.scp_stk x @@ name_uid x.Ast.name_repr))
-                    (* Users might bind some new names in this pattern,
-                             so if I don't deal with these new names, it
-                             might result in a NameNotFoundError. *)
-
-                    | _ -> failwith "Illegal name binding");
-                (* You can't bind to names in other namespaces. *)
-
-                g_word {ctx with mode = 2; is_body = false;
-                                 is_backquoted = false}
-                  inst_nil_ctx w
-              (* I have to log this name into current scope if it does not
-                 belong to it, because in this situation, user is binding new
-                 names in patterns *)
-              | _ as w ->
-                g_word {ctx with mode = 2; is_body = false;
-                                 is_backquoted = false} inst_nil_ctx w
-
-         in let pattern_inst = aggregate (lmap map_pattern ws)
-         in let match_inst = if sw_hungry_if ctx.sw
-              then line (HMATCH(ArgLabel(Label(
-                  negate_label label))))
-              else line (MATCH(ArgLabel(Label(
-                  negate_label label))))
-         in let action_inst = g_word {ctx with mode = 1; is_body = true;
-                                               is_backquoted = false}
-                inst_nil_ctx w
-         in let ret = cnil
-                      |~~| pattern_inst
-                      |~~| match_inst
-                      |~~| action_inst
-                      |~~| (line (JUMP(ArgLabel(Label(match_end_label)))))
-                      |~~| (put_label [negate_label label])
-         in List.iter (pop_name ctx.scp_stk) !new_names; ret
-         (* I have to remove the new names because they belong only here,
-            not the incoming patterns. *)
-
-  in function
-      Ast.PatternsAndMatches(ps)
-      -> cnil
-         |~~| (aggregate @@ lmap _g_pat_and_act ps)
-         |~~| (put_label [match_end_label])
 
 and g_if ctx inst =
   let _UID = uniq64 ()
@@ -598,9 +510,6 @@ and g_word ctx inst_ctx = function
   | Ast.WBind(b) -> g_bind ctx b
   | Ast.WImport(is) -> g_import ctx is
   | Ast.WExport(ns) -> export ctx ns
-  | Ast.WIdle -> line IDLE
-  | Ast.WPhony -> line PUSH_PHONY
-  | _ -> line NOT_IMPLEMENTED;;
 
 let compile cst fn sw =
   let scope_stack_init = push_scope []

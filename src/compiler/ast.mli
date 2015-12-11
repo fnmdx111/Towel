@@ -23,7 +23,6 @@ and pvalue_content =
   | VList of word list
   | VString of string
   | VTuple of word list
-  | VAlTypeLiteral of altype_lit
 
 and backquote =
     BQValue of pvalue
@@ -42,13 +41,9 @@ and word =
   | WSequence of sequence
   | WControl of control_sequence
   | WFunction of function_sform
-  | WAt of at_sform
   | WImport of import
   | WExport of pname list
-  | WPhony
   | WBind of bind_sform
-  | WAlType of altype_sform
-  | WIdle
 
 and sequence =
     SharedSequence of word list
@@ -67,12 +62,8 @@ and if_sform =
   | IfT of if_body
   | IfF of if_body
 
-and pattern = PatternAndMatch of word list * word
-and match_sform = PatternsAndMatches of pattern list
-
 and control_sequence =
     CtrlSeqIfForm of if_sform
-  | CtrlSeqMatchForm of match_sform
 
 and arg_def =
     ArgDef of pname
@@ -84,24 +75,6 @@ and function_sform =
 and bind_body = BindBody of pname * word
 
 and bind_sform = BindThen of bind_body list * word
-
-and altype_parameter = AlTypeParameter of atom list
-and altype_case_def_item =
-    AlTypeCaseDefItemAtom of atom
-  | AlTypeCaseDefItemName of pname
-  | AlTypeCaseDefItemNameWithParameter of pname * altype_parameter
-and altype_case_def = AlTypeCaseDef of altype_case_def_item list * atom
-and altype_def = AlTypeDef of pname * altype_case_def list
-and altype_sform = AlType of altype_def list * word
-
-and altype_lit_constructor = AlTypeLiteralConstructor of atom * name
-and altype_lit_item = AlTypeLiteralItemWord of word
-                    | AlTypeLiteralItemConstructor of altype_lit_constructor
-and altype_lit =
-    AlTypeLiteral of altype_lit_item list * altype_lit_constructor
-
-and at_sform =
-    At of word * word
 
 and terminator = EOF
 

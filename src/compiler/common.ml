@@ -35,7 +35,6 @@ and lit_stringify = function
 | VList(l) -> list_stringify l
 | VString(ss) -> string_stringify ss
 | VTuple(ws) -> tuple_stringify ws
-| VAlTypeLiteral(alt) -> "(ADT not implemented)"
 | _ -> "i'm just too lazy"
 
 and seq_stringify seq =
@@ -56,12 +55,6 @@ and cs_stringify cs =
       IfBody(w1, w2) -> P.sprintf "%s { %s; %s }" s
                           (word_stringify w1)
                           (word_stringify w2)
-  in let pattern_stringify p =
-       match p with
-         PatternAndMatch(p, m) ->
-         P.sprintf "pattern %s -> %s;"
-           (words_stringify p)
-           (word_stringify m)
   in match cs with
     CtrlSeqIfForm(i) ->
     (match i with
@@ -75,10 +68,6 @@ and cs_stringify cs =
      | IfNEZ(ib) -> if_stringify "nez" ib
      | IfT(ib) -> if_stringify "t" ib
      | IfF(ib) -> if_stringify "f" ib)
-  | CtrlSeqMatchForm(m) ->
-    (match m with
-       PatternsAndMatches(ps) -> String.concat "; "
-                                   (List.map pattern_stringify ps))
 
 and arg_def_stringify d =
     match d with
@@ -101,41 +90,6 @@ and fun_stringify = function
     P.sprintf "fun %s = %s"
       (String.concat "; " (List.map arg_def_stringify ds))
       (word_stringify w)
-and at_stringify = function
-    At(w1, w2) ->
-    P.sprintf "%s@%s" (word_stringify w1) (word_stringify w2)
-
-and altype_parameter_stringify = function
-    AlTypeParameter(ats) ->
-    String.concat " " (List.map
-                         (fun x -> P.sprintf "'%s" (atom_stringify x))
-                         ats)
-
-and altype_case_def_item_stringify = function
-    AlTypeCaseDefItemAtom(a) -> (atom_stringify a)
-  | AlTypeCaseDefItemName(n) -> (pname_stringify n)
-  | AlTypeCaseDefItemNameWithParameter(n, aps) ->
-    P.sprintf "(%s %s)"
-      (altype_parameter_stringify aps)
-      (pname_stringify n)
-
-and altype_case_def_stringify = function
-    AlTypeCaseDef(its, a) ->
-    P.sprintf "%s of %s" (atom_stringify a)
-      (String.concat " * "
-         (List.map altype_case_def_item_stringify its))
-
-and altype_def_stringify = function
-    AlTypeDef(n, acds) ->
-    P.sprintf "(%s: %s)"
-      (pname_stringify n)
-      (String.concat " | " (List.map altype_case_def_stringify acds))
-
-and altype_stringify = function
-    AlType(atds, w) ->
-    P.sprintf "%s in %s"
-      (String.concat " also " (List.map altype_def_stringify atds))
-      (word_stringify w)
 
 and word_stringify w =
   let _w s n = P.sprintf "(%s of %s)" s n in
@@ -146,13 +100,9 @@ and word_stringify w =
   | WSequence(seq) -> _w (seq_stringify seq) "seq"
   | WControl(cs) -> _w (cs_stringify cs) "cs"
   | WFunction(f) -> _w (fun_stringify f) "fun"
-  | WAt(a) -> _w (at_stringify a) "@"
   | WBind(b) -> _w (bind_stringify b) "bind"
   | WImport(is) -> "some imports"
   | WExport(ns) -> "some exports"
-  | WPhony -> "phony"
-  | WAlType(alt) -> _w (altype_stringify alt) "al-type"
-  | WIdle -> "idle"
 
 and words_stringify ws =
   String.concat "/" (List.map word_stringify ws)

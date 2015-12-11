@@ -6,8 +6,8 @@ open Exc
 %}
 
 %token IFGEZ IFGZ IFLEZ IFLZ IFE IFNE IFEZ IFNEZ IFT IFF
-%token MATCH FUNCTION BIND ALSO THEN AT TYPE IMPORT EXPORT
-%token SLASH BQUOTE COMMA SEMICOLON LAMBDA
+%token FUNCTION BIND ALSO THEN AT IMPORT EXPORT
+%token SLASH BQUOTE COMMA LAMBDA
 %token LBRACKET RBRACKET LPAREN RPAREN LBRACE RBRACE
 
 %token <Ast.atom> ATOM
@@ -30,24 +30,12 @@ lit_list:
 lit_tuple:
   LBRACKET SLASH list(word) RBRACKET { VTuple($3) }
 
-lit_altype_literal_constructor:
-  ATOM SLASH name { AlTypeLiteralConstructor($1, $3) }
-
-lit_altype_literal_item:
-  word { AlTypeLiteralItemWord($1) }
-| lit_altype_literal_constructor { AlTypeLiteralItemConstructor($1) }
-
-lit_altype_literal:
-  LBRACKET AT nonempty_list(lit_altype_literal_item) RBRACKET
-    lit_altype_literal_constructor { AlTypeLiteral($3, $5) }
-
 literal:
   LITERAL { $1 }
 | STRING { {value_content = VString($1)} }
 | ATOM { {value_content = VAtom($1) } }
 | lit_list { {value_content = $1} }
 | lit_tuple { {value_content = $1} }
-| lit_altype_literal { {value_content = VAlTypeLiteral($1)} }
 
 backquote:
   literal BQUOTE { BQValue($1) }
@@ -191,32 +179,8 @@ if_sform:
     $startpos($2) $startofs($1) $endofs($2)
   }
 
-pattern:
-  list(word) COMMA restricted_word { PatternAndMatch($1, $3) }
-| list(word) COMMA error {
-    err "unexpected action clause form"
-      $startpos($3) $startofs($1) $endofs($3)
-  }
-(*
- why does this rule have something to do with conflicts of a function rule?
-| list(word) error {
-    err "expected a comma for action clause"
-      $startpos($2) $startofs($1) $endofs($2)
-  }
-*)
-
-match_sform:
-  MATCH separated_nonempty_list(SEMICOLON, pattern) {
-    PatternsAndMatches($2)
-  }
-| MATCH error {
-    err "expected pairs of pattern-and-actions"
-    $startpos($2) $startofs($1) $endofs($2)
-  }
-
 control_sequence:
   if_sform { CtrlSeqIfForm($1) }
-| match_sform { CtrlSeqMatchForm($1) }
 
 name:
   separated_nonempty_list(SLASH, NAME) { NRegular($1) }
@@ -228,12 +192,6 @@ name:
     err "expected a name (possibly with a namespace reference)"
     $startpos($3) $startofs($1) $endofs($3)
   }
-
-restricted_word:
-  name { WName($1) }
-| backquote { WBackquote($1) }
-| literal { WLiteral($1) }
-| sequence { WSequence($1) }
 
 function_:
   FUNCTION list(arg_def) COMMA word { Function($2, $4) }
@@ -263,38 +221,6 @@ bind_sform:
     err "expected a name" $startpos($2) $startofs($1) $endofs($2)
   }
 
-(*
-at_sform:
-  restricted_word AT word { At($1, $3) }
-| restricted_word AT error {
-    err "unexpected form" $startpos($1) $startofs($1) $endofs($1)
-  }
-*)
-
-altype_parameter:
-  LBRACE nonempty_list(ATOM) RBRACE { AlTypeParameter($2) }
-
-altype_case_def_item:
-  ATOM { AlTypeCaseDefItemAtom($1) }
-| NAME { AlTypeCaseDefItemName($1) }
-| altype_parameter NAME { AlTypeCaseDefItemNameWithParameter($2, $1) }
-
-altype_case_def:
-  LBRACKET AT list(altype_case_def_item) RBRACKET ATOM {
-    AlTypeCaseDef($3, $5)
-  }
-| ATOM { AlTypeCaseDef([], $1) }
-
-altype_def:
-  NAME separated_nonempty_list(COMMA, altype_case_def) {
-    AlTypeDef($1, $2)
-  }
-
-altype_sform:
-  TYPE separated_nonempty_list(ALSO, altype_def) THEN word {
-    AlType($2, $4)
-  }
-
 import:
   IMPORT list(STRING) SLASH {
     ExplicitImport($2)
@@ -318,7 +244,6 @@ word:
 | import { WImport($1) }
 | export { WExport($1) }
 | name { WName($1) }
-| altype_sform { WAlType($1) }
 
 sequence:
   LPAREN list(word) RPAREN { Sequence($2) }

@@ -46,7 +46,6 @@ let _SQUOTE = '\''
 let _DQUOTE = '"'
 let _BQUOTE = '`'
 let _COMMA = ','
-let _SEMICOLON = ';'
 let _LPAREN = '('
 let _RPAREN = ')'
 let _LBRACKET = '['
@@ -64,16 +63,16 @@ let string_lit = _SQUOTE string_item* _SQUOTE
    https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals*)
 
 let alpha = ['a'-'z']
-let reserved_char = [',' ';' '.' '\'' '\\' '`' '@'
+let reserved_char = [',' '.' '\'' '\\' '`' '@'
                      '(' ')' '[' ']' '{' '}'
                      ' ' '\t' '\n' '\r']
 let common_valid_char = ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '.'
-                         '|' ':' '<' '>' '?' '/' 'a'-'z' 'A'-'Z' '0'-'9']
+                         '|' ':' '<' '>' '?' '/' 'a'-'z' 'A'-'Z' '0'-'9' ';']
 let common_valid_char_no_digits =
-  ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '.'
+  ['~' '!' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '.' ';'
    '|' ':' '<' '>' '?' '/' 'a'-'z' 'A'-'Z']
 
-let valid_upper_char = ['~' '!' '#' '$' '%' '^' '&' '*' '_' '=' '.'
+let valid_upper_char = ['~' '!' '#' '$' '%' '^' '&' '*' '_' '=' '.' ';'
                         '|' ':' '<' '>' '?' '/' 'A'-'Z']
 
 let digit = ['0'-'9']
@@ -108,7 +107,6 @@ rule token = parse
 | _NEWLINE { Lexing.new_line lexbuf; token lexbuf }
 | _BQUOTE { BQUOTE }
 | _COMMA { COMMA }
-| _SEMICOLON { SEMICOLON }
 | _LPAREN { LPAREN }
 | _RPAREN { RPAREN }
 | _LBRACKET { LBRACKET }
@@ -128,12 +126,10 @@ rule token = parse
 | "iff" { IFF }
 | "ife" { IFE }
 | "ifne" { IFNE }
-| "match" { MATCH }
 | "bind" { BIND }
 | "also" { ALSO }
 | "then" { THEN }
 | "fun" { FUNCTION }
-| "type" { TYPE }
 | "import" { IMPORT }
 | "export" { EXPORT }
 | ",\\" { LAMBDA }
