@@ -490,6 +490,7 @@ and g_fun ctx inst_ctx fun_ =
                         |~~| preamble
                         |~~| (line INSTALL)
                         |~~| fun_args
+                        |~~| (line SWEEP)
                         |~~| body_inst
                         |~~| (cline [end_label] (Some(POP_SCOPE)))
                         |~~| (line RET)

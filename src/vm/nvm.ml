@@ -50,6 +50,7 @@ let ntos = List.tl;;
 
 let ctxs_ = [{mod_id = _MAIN_MODULE_ID; ret_addr = -1;
               list_make_stack = [];
+              is_tail_recursive_call = false;
               scp_count = 0;
               curfun = {st = -1;
                         mod_id = _MAIN_MODULE_ID;
@@ -154,6 +155,7 @@ let exec should_trace should_warn insts =
                 takes care for scopes created by functions. *)
              (tos ctxs).curfun.closure;
          {mod_id = curmod.id;
+          is_tail_recursive_call = false;
           ret_addr = next_ip;
           scp_count = 0;
           list_make_stack = [];
@@ -195,8 +197,7 @@ let exec should_trace should_warn insts =
     in let invoke_regular fr =
          let nmod = Hashtbl.find modules fr.T.mod_id
          in __exec (push_cur_ip fr)
-           {flags with is_tail_recursive_call = false;
-                       curmod = nmod}
+           {flags with curmod = nmod}
            fr.st
 
     (* `dsp' points to the next slot of TOS. *)
@@ -342,6 +343,14 @@ let exec should_trace should_warn insts =
           in npush scps k (n, -m)) fr.closure;
       __exec ctxs flags next_ip
 
+    | SWEEP -> trace "sweeping for tail recursive stacks";
+      if (tos ctxs).is_tail_recursive_call
+      then begin
+        dspurge dss;
+        BatDynArray.add dss (dinit ())
+      end else ();
+      __exec ctxs flags next_ip
+
     | PACK -> trace "packing";
       let n = match (dspop dss) with
           OVUFixedInt(i) -> Uint64.to_int i
@@ -473,9 +482,7 @@ let exec should_trace should_warn insts =
                    closure = Hashtbl.create 32;
                    is_partial = false}
       in
-      __exec (push_cur_ip nfrec)
-        {flags with is_tail_recursive_call = false}
-        (to_pc st)
+      __exec (push_cur_ip nfrec) flags (to_pc st)
 
     | INVOKE -> trace "invoking tos";
       let f = dspop dss
@@ -649,7 +656,7 @@ Something is wrong with the compiler.");
            then BatDynArray.delete_last ds
 
       in let steal_arg () =
-           if flags.is_tail_recursive_call
+           if (tos ctxs).is_tail_recursive_call
            then if dsis_empty dss <> 0
              then begin
                if dsis_empty dss = 2
@@ -739,18 +746,17 @@ Something is wrong with the compiler.");
             OVFunction(frec) ->
             let new_ctxs = {(tos ctxs) with curfun = frec;
                                             scp_count = 0;
+                                            is_tail_recursive_call = true;
                                             list_make_stack = []}
                            ::(ntos ctxs)
             in let tail_ip = frec.st |> succ
             (* Bypass both the push-scope and push-stack instructions. *)
             in if frec.mod_id = curmod.id
             then __exec new_ctxs
-                {flags with is_tail_recursive_call = true;
-                            scps = remove_scps scps (tos ctxs).scp_count}
+                {flags with scps = remove_scps scps (tos ctxs).scp_count}
                 tail_ip
             else __exec new_ctxs
-                {flags with is_tail_recursive_call = true;
-                            scps = remove_scps scps (tos ctxs).scp_count;
+                {flags with scps = remove_scps scps (tos ctxs).scp_count;
                             curmod = Hashtbl.find modules frec.mod_id}
                 tail_ip
           | _ -> failwith "Tail recursing a non-function.")
@@ -881,8 +887,7 @@ Something is wrong with the compiler.");
   in Hashtbl.replace modules _MAIN_MODULE_ID main;
   Hashtbl.replace main.imports _SELF_MODULE_ID _MAIN_MODULE_ID;
 
-  __exec ctxs_ {is_tail_recursive_call = false;
-                dss = dinit ();
+  __exec ctxs_ {dss = dinit ();
                 is_stepping = false;
                 scps = [];
                 curmod = Hashtbl.find modules _MAIN_MODULE_ID}
