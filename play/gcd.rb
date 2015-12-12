@@ -29,7 +29,7 @@ def put_src fp, path
     if entry =~ /^tasm.*\.ml.?$/
       next
     end
-    if ['.travis.yml', 'jumps.ml', 'tokens.ml',
+    if ['.travis.yml', 'jumps.ml', 'tokens.ml', 'arithmetics.ml',
         'typer.ml', 'built_in.ml', 'sscoping.ml', 'temp'].include? entry
       next
     end
