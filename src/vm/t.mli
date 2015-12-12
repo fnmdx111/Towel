@@ -11,7 +11,7 @@ type closure_t = (name_t * module_id_t, value_t ref) Hashtbl.t
 and type_hint_t = THInt | THAtom | THFixedInt | THUFixedInt | THString
                 | THFloat | THList | THPhony
                 | THFunction | THNil
-                | THTuple | THType | THAlType | THAlTypeValue
+                | THTuple | THType
 and fun_t = {st: line_no_t;
              mod_id: module_id_t;
              closure: closure_t;
@@ -28,5 +28,3 @@ and value_t = OVInt of Big_int.big_int
             | OVTuple of value_t list ref
             | OVNil
             | OVTypeHint of type_hint_t
-            | OVAlType of unit
-            | OVAlTypeValue of unit * unit;;

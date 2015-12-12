@@ -5,11 +5,6 @@ let lbl:(string, uint64) Hashtbl.t = Hashtbl.create ~random:true 512;;
 
 let replace_label =
   function (* I could have generate this with again. But,... nah... *)
-    MATCH(ArgLabel(Label(s)))
-    -> MATCH(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
-  | HMATCH(ArgLabel(Label(s)))
-    -> HMATCH(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
-
   | JUMP(ArgLabel(Label(s)))
     -> JUMP(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
 

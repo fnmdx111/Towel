@@ -31,7 +31,7 @@ module Inst
     ['pack', 0x1c],
     ['invoke', 0x27],
     ['add', 0x50], ['sub', 0x51], ['mul', 0x52],
-    ['div', 0x53], ['pow', 0x54], ['mod', 0x55], ['equ', 0x56],
+    ['div', 0x53], ['mod', 0x55], ['equ', 0x56],
     ['and', 0x57], ['or', 0x58], ['xor', 0x59], ['not', 0x5a],
     ['shl', 0x5b], ['shr', 0x5c], ['lshr', 0x5d], ['dup', 0x19],
     ['load-ext', 0xf1], ['extcall', 0xf0],
@@ -41,8 +41,6 @@ module Inst
   unary_instructions_all = [
     ['bind', 0x04], ['fun-arg', 0x05],
     ['jump', 0x30],
-    ['match', 0xb10],
-    ['hmatch', 0xb11],
     ['push-lit', 0x15],
     ['call', 0x28],
     ['push-fun', 0x10],
