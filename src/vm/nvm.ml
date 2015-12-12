@@ -49,6 +49,8 @@ let tos = List.hd;;
 let ntos = List.tl;;
 
 let ctxs_ = [{mod_id = _MAIN_MODULE_ID; ret_addr = -1;
+              list_make_stack = [];
+              scp_count = 0;
               curfun = {st = -1;
                         mod_id = _MAIN_MODULE_ID;
                         closure = Hashtbl.create 1;
@@ -135,6 +137,8 @@ let exec should_trace should_warn insts =
     in let dss = flags.dss
     in let scps = flags.scps
 
+    in let list_make_stack = (tos ctxs).list_make_stack
+
     in let push_cur_ip cur_fun =
          let new_closure = Hashtbl.copy cur_fun.closure
          in Hashtbl.iter
@@ -151,11 +155,13 @@ let exec should_trace should_warn insts =
              (tos ctxs).curfun.closure;
          {mod_id = curmod.id;
           ret_addr = next_ip;
+          scp_count = 0;
+          list_make_stack = [];
           curfun = {cur_fun with closure = new_closure}}::ctxs
 
-    in let __put_val x = if List.length flags.list_make_stack = 0
+    in let __put_val x = if List.length list_make_stack = 0
          then dspush dss x
-         else let cur_ref = tos flags.list_make_stack
+         else let cur_ref = tos list_make_stack
            in cur_ref := x::(!cur_ref)
 
     in let return _ nscps =
@@ -167,7 +173,13 @@ let exec should_trace should_warn insts =
         then let r = dspop dss
           in begin
             dspurge dss;
-            __put_val r (* Copy return value to caller's dss. *)
+            let __ret_lmstk = (ctxs |> ntos |> tos).list_make_stack
+                (* second top ctx *)
+            in if List.length __ret_lmstk = 0
+            then dspush dss r
+            else let cur_ref = tos __ret_lmstk
+              in cur_ref := r::(!cur_ref)
+              (* Copy return value to caller's dss. *)
           end else dspurge dss;
         (* If we purge (and pop) the current stack then copy the return value
            there won't be a problem if the two contexts are in the same
@@ -175,6 +187,10 @@ let exec should_trace should_warn insts =
         __exec (ntos ctxs) {flags with curmod = tmod;
                                        scps = nscps} tctx.ret_addr
       end
+
+    in let inc_scp_count () =
+         {(tos ctxs) with scp_count = succ (tos ctxs).scp_count}::
+         (ntos ctxs)
 
     in let invoke_regular fr =
          let nmod = Hashtbl.find modules fr.T.mod_id
@@ -187,28 +203,29 @@ let exec should_trace should_warn insts =
     in let tos_idx () = ((dsp (BatDynArray.last dss)),
                          (dsp dss))
 
+    in let __push_new_ref_to_toctxs nr =
+         {(tos ctxs) with list_make_stack = nr::list_make_stack}
+         ::(ntos ctxs)
+
     in let push_new_list type_ =
          (* 1 for list, 2 for tuple *)
          let nr = ref []
          in let nv = if type_ = 1 then OVList(nr) else OVTuple(nr)
-         in if List.length flags.list_make_stack = 0
+         in if List.length list_make_stack = 0
          then begin
            dspush dss nv;
-           __exec ctxs {flags with list_make_stack =
-                                     nr::flags.list_make_stack}
-             next_ip
-         end else let cur_ref = tos flags.list_make_stack
+           __exec (__push_new_ref_to_toctxs nr) flags next_ip
+         end else let cur_ref = tos list_make_stack
            in let () = cur_ref := nv::(!cur_ref)
            in (* No push operation in this situation. *)
-           __exec ctxs {flags with list_make_stack =
-                                        nr::flags.list_make_stack}
-             next_ip
+           __exec (__push_new_ref_to_toctxs nr) flags next_ip
 
     in let end_list () =
-         let tos = tos flags.list_make_stack
-         in tos := List.rev !tos;
-         __exec ctxs {flags with list_make_stack =
-                                   ntos flags.list_make_stack}
+         let _tos = tos list_make_stack
+         in _tos := List.rev !_tos;
+         __exec ({(tos ctxs) with list_make_stack = ntos list_make_stack}
+                 ::(ntos ctxs))
+           flags
            next_ip
 
     in let resolve_name n m =
@@ -713,17 +730,27 @@ Something is wrong with the compiler.");
       in let mid = vm_mod_id _mid
       in let v = resolve_name nid mid
 
+      in let rec remove_scps _scps count =
+           if count = 0
+           then _scps
+           else remove_scps (pop_scope _scps) (pred count)
+
       in (match v with
             OVFunction(frec) ->
-            let new_ctxs = {(tos ctxs) with curfun = frec}::(ntos ctxs)
-            in let tail_ip = frec.st |> succ |> succ |> succ
+            let new_ctxs = {(tos ctxs) with curfun = frec;
+                                            scp_count = 0;
+                                            list_make_stack = []}
+                           ::(ntos ctxs)
+            in let tail_ip = frec.st |> succ
             (* Bypass both the push-scope and push-stack instructions. *)
             in if frec.mod_id = curmod.id
             then __exec new_ctxs
-                {flags with is_tail_recursive_call = true}
+                {flags with is_tail_recursive_call = true;
+                            scps = remove_scps scps (tos ctxs).scp_count}
                 tail_ip
             else __exec new_ctxs
                 {flags with is_tail_recursive_call = true;
+                            scps = remove_scps scps (tos ctxs).scp_count;
                             curmod = Hashtbl.find modules frec.mod_id}
                 tail_ip
           | _ -> failwith "Tail recursing a non-function.")
@@ -800,7 +827,8 @@ Something is wrong with the compiler.");
         __exec ctxs flags next_ip
 
       | PUSH_SCOPE -> trace "pushing scope";
-        __exec ctxs {flags with scps = push_scope scps} next_ip
+        __exec (inc_scp_count ())
+          {flags with scps = push_scope scps} next_ip
 
       | POP_SCOPE -> trace "popping scope";
         (* No GC whatsoever, let OCaml take care of that for me. *)
@@ -855,7 +883,6 @@ Something is wrong with the compiler.");
 
   __exec ctxs_ {is_tail_recursive_call = false;
                 dss = dinit ();
-                list_make_stack = [];
                 is_stepping = false;
                 scps = [];
                 curmod = Hashtbl.find modules _MAIN_MODULE_ID}
