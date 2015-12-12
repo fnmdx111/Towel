@@ -30,4 +30,4 @@ then (
 )
 
 bind ~my-tuple [\ 1 2 [\ 3 4] [5 6] 7]
-then (~my-tuple #t3 #t1 !println)
+then (~my-tuple #3 #1 !println)
