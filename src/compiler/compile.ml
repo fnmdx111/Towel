@@ -133,7 +133,6 @@ let find_closure ctx tree =
                E)
             B should still be in the closure set. So should E. *)
            Ast.Sequence(ws) ->
-           (* This part is really pain in the butt. *)
            let new_scope = locals
            in List.iter (__find_in new_scope false) ws
          | Ast.SharedSequence(ws) ->
@@ -160,10 +159,11 @@ let find_closure ctx tree =
                  push_name new_locals pn Uint64.one) args;
            __find_in new_locals true body)
       | Ast.WBind(Ast.BindThen(bs, bt)) ->
-        List.iter (function
-              Ast.BindBody(pn, b) -> push_name locals pn Uint64.one;
-              __find_in locals false b) bs;
-        __find_in locals true bt
+        let new_locals = push_scope locals
+        in List.iter (function
+              Ast.BindBody(pn, b) -> push_name new_locals pn Uint64.one;
+              __find_in new_locals false b) bs;
+        __find_in new_locals true bt
       | Ast.WImport(_) -> ()
       | Ast.WExport(_) -> ()
   in __find_in [] ctx.is_body tree;
