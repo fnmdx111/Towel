@@ -140,7 +140,7 @@ Don't panic!
 Keywords in the Towel programming language is as follows:
 \begin{verbatim}
 if>=0 if>0 if<=0 if<0 if~0 if=0 ift iff ife ifne
-match fun bind type also then export import ,\
+fun bind also then export import ,\
 \end{verbatim}
 
 \section{Punctuations}
@@ -161,15 +161,14 @@ More formally,
 \begin{verbatim}
   unprintables ::= [all the unprintable ASCII characters]
   whitespaces ::= ['\n' '\t' ' ' '\r']
-  reserved_punct ::= ['`' ''' '"' ',' ';' '\' '@' 
+  reserved_punct ::= ['`' ''' '"' ',' '\' '@' 
                       '(' ')' '[' ']' '{' '}' whitespaces unprintables]
   valid_punct ::= ['!' '~' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '|'
-                   ':' '<' '>' '?' '/']
+                   ':' '<' '>' '?' '/' ';']
   BQUOTE ::= '`'
   SQUOTE ::= '''
   DQUOTE ::= '"'
   COMMA ::= ','
-  SEMICOLON ::= ';'
   PERIOD ::= '.'
   SLASH ::= '\'
   AT ::= '@'
@@ -461,6 +460,7 @@ Tuples are fixed length lists, this means that you cannot CDR from them, nor CON
   [\] "an empty tuple"
 \end{verbatim}
 \end{mdframed}
+
 \section{Sequence}
 
 Sequences are short-hand forms for creating anonymous functions with no arguments. You can create a sequence by writing the sequence body between a pair of parentheses.
@@ -510,6 +510,7 @@ You can backquote only limit types of words:
   backquote. See also \autoref{ssec:backquote} and
   \autoref{ssec:macro}.
 \end{mdframed}
+
 \section{\texttt{if} Forms}
 
 Towel supports 10 kinds of \texttt{if} forms for the sake of readability and convenience. They are of the same form, while differing in the predicate they use.
@@ -705,7 +706,7 @@ You can also export names in your module so that they are visible to other modul
   bind A 1
   also B 2
   also C 3
-  then export A B C @.
+  then export A B C @
 \end{verbatim}
 \end{mdframed}
 
@@ -836,25 +837,25 @@ Let's not forget about bitwise arithmetic functions:
 \begin{itemize}
 \item \arithstd{:and}
 
-bitwise and between \marg1 and \marg2
+bitwise and between \marg1 and \marg2; (works for \texttt{true} and \texttt{false} too)
 \item \arithstd{:or}
 
-bitwise or between \marg1 and \marg2
+bitwise or between \marg1 and \marg2; (works for \texttt{true} and \texttt{false} too)
 \item \arithstd{:not}
 
-bitwise not \marg1
+bitwise not operation on \marg1; (works for \texttt{true} and \texttt{false} too)
 \item \arithstd{:xor}
 
 bitwise xor between \marg1 and \marg2
-\item \arithstd{:shl}
+\item \marg{x} \mla \marg{n} \mla \mstd{:shl}
 
-bitwise shift left \marg1 for \marg2 bits
-\item \arithstd{:shr}
+bitwise shift left \marg{x} for \marg{n} bits, \marg{n} is an unsigned fixed integer
+\item \marg{x} \mla \marg{n} \mla \mstd{:shr}
 
-bitwise shift right \marg1 for \marg2 bits
-\item \arithstd{:lshr}
+bitwise shift right \marg{x} for \marg{n} bits, \marg{n} is an unsigned fixed integer
+\item \marg{x} \mla \marg{n} \mla \mstd{:lshr}
 
-bitwise logical shift right \marg1 for \marg2 bits
+bitwise logical shift right \marg{x} for \marg{n} bits, \marg{n} is an unsigned fixed integer
 \end{itemize}
 
 \begin{mdframed}[style=hint]
@@ -863,11 +864,11 @@ bitwise logical shift right \marg1 for \marg2 bits
   The equality and non-equality function works for most of the types (including type \texttt{Type}).
   The comparison functions only work for numbers because they are implemented using the substraction function.
 
-  Bitwise functions only work for fixed integer and unsigned fixed integer.
+  Bitwise functions only work for integer types.
 \end{mdframed}
 
 \begin{mdframed}[style=hint]
-  The above functions must be applied to values of the same type. Otherwise the TVM will throw an error and exit.
+  The above functions (except bitwise shifting ones) must be applied to values of the same type. Otherwise the TVM will throw an error and exit.
 \end{mdframed}
 
 \subsection{Conversion Functions}
@@ -1066,33 +1067,41 @@ generates a random floating point number within the range of $[0.0, 1.0]$.
 \end{itemize}
 
 
-\chapter{Weaving a Towel Program}
+\chapter{Running a Towel Program}
 
-The compiler for the Towel programming language is codenamed \texttt{weave}, you can find it in \texttt{build/src/compiler} after successfully compiling the whole project with
+\section{Weaving a Piece of Code}
+
+The compiler for the Towel programming language is codenamed \texttt{weave}, you can find it in \texttt{build/src/compiler} after successfully compiling the compiler portion of the project with
 \begin{mdframed}[style=example]
 \begin{verbatim}
-  ./waf configure build --tvm --compiler --native
+  ./waf configure build --compiler --native
 \end{verbatim}
 
-\textit{*This will build both the compiler and the TVM. The built binaries are both standalone.}
+\textit{*This will build a standalone compiler executable.}
 \end{mdframed}
 
 To compile a source file \texttt{foo.t}, and want the compiled output to be \texttt{bar.w}, use
+
 \begin{verbatim}
         path-to-weave foo.t -o bar.w
 \end{verbatim}
 
+\subsection{Advanced Usages}
+
 If you want to see the human-readable bytecode file, apply -t to \texttt{weave}, for example
+
 \begin{verbatim}
         path-to-weave foo.t -o bar.l -t
 \end{verbatim}
 
 If you want to read the unassembled compiled file (human-readable) for debugging purposes, apply -r to \texttt{weave} like this
+
 \begin{verbatim}
         path-to-weave foo.t -o bar.o -r
 \end{verbatim}
 
 If you have a human-readable bytecode file, and want to compile into VM-readable bytecode file, apply -b to \texttt{weave}, e.g.
+
 \begin{verbatim}
         path-to-weave foo.l -o bar.w -b
 \end{verbatim}
@@ -1107,6 +1116,41 @@ If you have a human-readable bytecode file, and want to compile into VM-readable
   By default, files that contains the exported names of the module have the extension of \texttt{.e}, meaning exportation.
 
   And finally recommended extension for human-readable bytecode file is \texttt{.l}.
+\end{mdframed}
+
+\section{Executing the Woven Binary}
+
+You will have to build the Towel Virtual Machine before executing a bytecode. You can locate it in \texttt{build/src/vm} after compiling the VM portion of the project with the following commandline:
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  ./waf configure build --tvm --native
+\end{verbatim}
+
+\textit{*This will build the standalone Towel Virtual Machine executable.}
+\end{mdframed}
+
+\begin{mdframed}[style=hint]
+  Normally you may want to apply \texttt{--native} to Waf to build a native version of the Towel Virtual Machine, otherwise the average loading time and execution time will be longer.
+
+  Use \texttt{./waf test} with native builds and non-native builds to feel the difference.
+\end{mdframed}
+
+With the \texttt{tvm} executable available, you can run your bytecode-compiled programs with
+\begin{verbatim}
+        path-to-tvm foo.w
+\end{verbatim}
+
+To debug your program, use \texttt{-t} to trace the execution of the virtual machine.
+\begin{verbatim}
+        path-to-tvm foo.w -t
+\end{verbatim}
+
+\begin{mdframed}[style=hint]
+  The output size may be enormous for even a small piece of code. We recommend you to redirect stderr to a file, and analyze the problems with that file.
+\begin{verbatim}
+        path-to-tvm foo.w -t 2> trace.log
+\end{verbatim}
 \end{mdframed}
 
 \chapter{Examples}
@@ -1313,7 +1357,7 @@ Here in this example, we will show you how to call functions from OCaml using th
 
 Below is the code listing of the OCaml-side wrapper for some Tk GUI functions. Notice how this wrapper interacts with the TVM via pushing and popping elements from \texttt{dss}, i.e. the data stack stack.
 
-\begin{mdframed}[style=example]
+\begin{mdframed}[style=cl]
   \begin{minted}{ocaml}
   open Tk;;
   open T;;
@@ -1348,7 +1392,7 @@ Below is the code listing of the OCaml-side wrapper for some Tk GUI functions. N
 
 Then you may want to write a wrapper from Towel-side so that you can call the OCaml wrapper more conveniently.
 
-\begin{mdframed}[style=example]
+\begin{mdframed}[style=cl]
 \begin{verbatim}
   import '.w' \
 
@@ -1546,6 +1590,14 @@ Stack argument that appears first is popped first, and so forth.
 Also the term TOS and \sarg{SOME} are often interchangeable if there exists only one stack argument.
   \item \parg{SOME} is the same as \sarg{SOME}, except that \parg{SOME} is popped out from the stack forever.
   \end{itemize}
+\end{mdframed}
+
+\begin{mdframed}[style=hint]
+Almost every nullary instruction is wrapper by an inline anonymous function (i.e. shared sequence) in the module \texttt{.w} so that they can be invoked. Because this is a very low-level module, so we prepend a dot to it, meaning to hide it from regular users.
+
+Also because of its low-levelness, we can only code this module in the Towel Assembly Language, so a Ruby script \texttt{std\_gen.rb} is used to automatically generate this primitive wrapper module.
+
+Run \texttt{ruby std\_gen.rb} and see \texttt{.w.l} and \texttt{.w.e} for detail.
 \end{mdframed}
 
 \subsection{\texttt{0x01} \inst{push-scope}}
@@ -1769,7 +1821,7 @@ Both of them test if the data stack is empty. \inst{je} jumps to \marg{POS} if i
 
 \section{Arithmetic Instructions}
 
-\subsection{\texttt{0x50} \inst{add}, \texttt{0x51} \inst{sub}, \texttt{0x52} \inst{mul}, \texttt{0x53} \inst{div}, \texttt{0x54} \inst{pow}}
+\subsection{\texttt{0x50} \inst{add}, \texttt{0x51} \inst{sub}, \texttt{0x52} \inst{mul}, \texttt{0x53} \inst{div}}
 
 Takes two arguments \parg{1} and \parg{2} from stack. Does arithmetic operations with \parg{1} and \parg{2}, and pushes \texttt{\parg{2} op \parg{1}}. These instructions work for all the number types\footnote{Atoms are not numbers.}.
 
@@ -1871,7 +1923,15 @@ Exports the value bound by the name ID \marg{UID} to the module's \texttt{exs} f
 
 \subsection{\texttt{0x71} \inst{dint}}
 
-Invokes the debug interrupt handler. See also \url{https://github.com/qwert42/ketivm/blob/master/vm/keti.py#L164}, which is an implementation of a similar instruction.
+TVM pauses execution, and invokes the debug interrupt handler, which waits for the user to input a debug command of one line and then go on executing. Currently supported commands are
+\begin{itemize}
+\item \texttt{ss}: print scope stack
+\item \texttt{ds}: print data stack stack
+\item \texttt{vi}: print the value at given stack index.
+\item \texttt{ln}: lookup the index the given name is bound to
+\end{itemize}
+
+See also \url{https://github.com/qwert42/ketivm/blob/master/vm/keti.py#L164}, which is an implementation of a similar instruction.
 
 \subsection{\texttt{0x72} \inst{type} \parg{X}}
 
@@ -2091,8 +2151,8 @@ Particularly,
 \item \texttt{then} and \texttt{else} clause both starts a new line, i.e.
   \begin{minted}{ocaml}
     if something
-    then some other thing
-    else something else
+    then some_other_thing
+    else something_else
   \end{minted}
 \item Prefer \texttt{begin} and \texttt{end} over parentheses.
 \item Modularize the source files: the functions contained in one OCaml file should only serve one purpose. Except some modules, such as \texttt{Common}.
@@ -2100,14 +2160,14 @@ Particularly,
   \begin{minted}{ocaml}
     let x = Some(1)
     in if something
-    then try if something
-             then ahh
-             else ohh
-         with Error ->
-           failwith ``something is wrong''
-    else match a with
-        Some(x) -> x
-      | None -> failwith ``nothing here''
+      then try if something
+               then ahh
+               else ohh
+           with Error ->
+             raise Failure
+      else match a with
+          Some(x) -> x
+        | None -> raise NothingHere
   \end{minted}
 \end{itemize}
 
@@ -2140,6 +2200,7 @@ Here's the major changes made in the code repository:
 \item System Architect: Zihang Chen
 \item Testers: Zihang Chen, Baochan Zheng, Guanlin Chen
 \end{itemize}
+
 \section{Tools and Languages Used in Developemnt}
 
 \begin{itemize}
@@ -2155,7 +2216,7 @@ Here's the major changes made in the code repository:
 \item Ruby 2.2.3 is used for test automation and compiler/VM source code
   generation (to write as less boilerplate code as possible).
 
-\item Waf (a Python3 tool) is used for the building framework of the
+\item Waf (a Python3 tool) is used as the building framework of the
   project, Python3 is used for the building script.
 
 \item \XeTeX{} for document compilation and AUCTeX for \LaTeX ~editing.
@@ -2259,10 +2320,6 @@ Things are much simpler on the VM-side. The virtual machine frontend \texttt{Tvm
 
 The function \texttt{Nvm.exec} basically implements all the instructions available. However, for certain instructions that are quite alike, for example, the arithmetic instructions and branching instructions, we use Ruby scripts to generate respective code for them, then invoke them in \texttt{Nvm.exec}.\footnote{An alternative to do this is by \texttt{camlp4}.}
 
-\begin{mdframed}[style=example]
-  \texttt{Nvm.exec} calls \texttt{Jumps.branch} to do branching, which is generated by \texttt{jmg.rb} (jump generator) before the project is built.
-\end{mdframed}
-
 \begin{mdframed}[style=detail]
 The \texttt{Nvm.exec} depends on many other functions from other modules to work. For example,
 
@@ -2274,9 +2331,9 @@ The \texttt{Nvm.exec} depends on many other functions from other modules to work
 \item The module \texttt{Nstack} provides support for the stack data
   structure and various operations used by \texttt{Nvm.exec}.
 
-\item The module \texttt{Arithmetics} (Baochan Zheng, Guanlin Chen) provides implementation for various arithmetics instructions.
+\item The module \texttt{Arithmetics} provides implementation for various arithmetics instructions.
 
-\item The module \texttt{Jumps} we've talked above provides branching control.
+\item The module \texttt{Jumps} provides \texttt{Jumps.branch} to do branching.
 
 \item The module \texttt{Dscoping} provides data structure and operations for dynamic scoping.
 
@@ -2352,7 +2409,7 @@ provides functions for parsing bytecode back to AST
 \section{Individual Test Examples}
 
 \subsection{\texttt{partial.t}}
-\begin{mdframed}[style=example]
+\begin{mdframed}[style=cl]
 \begin{verbatim}
   "---
   Tests partial function application.
@@ -2369,9 +2426,38 @@ provides functions for parsing bytecode back to AST
 \end{verbatim}
 \end{mdframed}
 
+The raw text form of the IR is as follows:
+
+\begin{mdframed}[style=cl]
+\begin{verbatim}
+  push-stack
+  push-scope
+  push-lit 'std'
+  import 1u
+  push-scope
+  call :6e59cf543-1u-st
+  bind 1u
+  push-lit 43
+  eval-and-push 1u 0u
+  eval-and-push 25u 1u
+  push-lit 42
+  eval-and-push 1u 0u
+  eval-and-push 25u 1u
+  pop-scope
+  terminate
+:6e59cf543-1u-st push-stack
+  push-lit 1
+  eval-and-push 4u 1u
+:6e59cf543-1u-end ret
+:6e59cf543-1u-real-end
+\end{verbatim}
+
+Raw text form IR are trivial. We won't show more of these.
+\end{mdframed}
+
 The assembled text form of the IR is as follows:
 
-\begin{mdframed}[style=example]
+\begin{mdframed}[style=cl]
 \begin{verbatim}
   push-stack
   push-scope
@@ -2397,7 +2483,7 @@ The assembled text form of the IR is as follows:
 
 The assembled binary form of the IR is as follows:
 
-\begin{mdframed}[style=example]
+\begin{mdframed}[style=cl]
 \begin{verbatim}
   4242 7303 0000 0073 7464 7501 0000 0000
   0000 0075 0f00 0000 0000 0000 662b 0000
@@ -2419,7 +2505,7 @@ The assembled binary form of the IR is as follows:
 
 \subsection{\texttt{bind.t}}
 
-\begin{mdframed}[style=example]
+\begin{mdframed}[style=cl]
 \begin{verbatim}
   "---
   Tests if nested bind and also works.
@@ -2452,7 +2538,7 @@ The assembled binary form of the IR is as follows:
 
 The assembled text form of the IR is as follows:
 
-\begin{mdframed}[style=example]
+\begin{mdframed}[style=cl]
 \begin{verbatim}
    push-stack
    push-scope
@@ -2544,7 +2630,7 @@ The assembled text form of the IR is as follows:
 
 The assembled binary form of the IR is as follows:
 
-\begin{mdframed}[style=example]
+\begin{mdframed}[style=cl]
 \begin{verbatim}
   4242 7303 0000 0073 7464 7501 0000 0000
   0000 0075 0c00 0000 0000 0000 6603 0000
@@ -2608,7 +2694,7 @@ The assembled binary form of the IR is as follows:
 
 \section{Holistic Test Example: Quicksort}
 
-\begin{mdframed}[style=example]
+\begin{mdframed}[style=cl]
 \begin{verbatim}
   "---
   Holistic test: Quicksort.
@@ -2632,7 +2718,7 @@ The assembled binary form of the IR is as follows:
 
 The assembled text form of the IR is as follows:
 
-\begin{mdframed}[style=example]
+\begin{mdframed}[style=cl]
 \begin{verbatim}
   push-stack
   push-scope
@@ -2707,7 +2793,7 @@ The assembled text form of the IR is as follows:
 
 The assembled binary form of the IR is as follows:
 
-\begin{mdframed}[style=example]
+\begin{mdframed}[style=cl]
 \begin{verbatim}
   4242 7303 0000 0073 7464 7501 0000 0000
   0000 0075 1300 0000 0000 0000 6605 0000
@@ -2767,17 +2853,19 @@ When Prefect is invoked, it automatically searches the current working directory
 
 The test input and expected output are all embedded in the comments of their respective test case files:
 
-\begin{mdframed}[style=example]
+\begin{mdframed}[style=detail]
 \begin{verbatim}
   "Some optional background or rationale description of this test case.
   ---
-  Mandatory test case description
+  Mandatory test case description.
   !>> optional test input
   !<< optional expected output"
 \end{verbatim}
+
+Again, we are using the exclamation mark to denote the side-effected outer world.
 \end{mdframed}
 
-A test is said to be passed if and only if it exits normally and print to the standard output exactly the expected output.
+A test is said to be passed if and only if it exits normally and prints to the standard output exactly the expected output.
 
 \begin{mdframed}[style=cl]
   \begin{minted}{ruby}
@@ -2994,13 +3082,15 @@ the hello world test.
 
 \chapter{Lessons Learned}
 
-\section{Don't Panic!}
+\section{Zihang Chen}
 
 First of all, OCaml is great (but not perfect). Be patient and learn how to program in OCaml. It will change your life.
 
-Discuss your ideas with your teammates, explain your code to people, fix your bugs right away. If you cannot explain your idea or code to others, you don't understand them at all.
+Discuss your ideas with your teammates, explain your code to people, fix your bugs right away. Keep a memo at hand, even before sleep.
 
-Don't be afraid to rewrite 90\% of your code. And make sure every time you do this, you reduce 10\% of the code.
+If you cannot explain your idea or code to others, you don't understand them at all.
+
+Don't be afraid to rewrite 90\% of your code. Make sure every time you do this, you reduce 10\% of the code.
 
 \subsection{Some Practical Advices}
 \begin{enumerate}
@@ -3020,6 +3110,18 @@ Don't be afraid to rewrite 90\% of your code. And make sure every time you do th
 
 \item Don't panic.
 \end{enumerate}
+
+\part{The Future}
+
+Although the project has accomplished most of the goals it set at the very beginning, there's still much that's left to be improved or done. For example, a native compiler that compile the intermediate representation to C code, and then procure a native application using \texttt{gcc} or \texttt{clang}.
+
+What's more challenging, is to design a statically typed Towel. Static-typed stack-based language are rare because of their dynamic nature: a function's effect on the stack (or to put it in a StrongForth term, stack-effect) is generally not known until it is executed. So statically typing Towel will require information we don't usually define in value-based languages, namely, how many elements will be pushed (or popped, depending on the semantics of the function) after it finishes, and all their types. Type inferring is possible as well, but I suspect that the Hindly-Milner type system won't work here without any modification.
+
+Other from the ideas above, currently, compilation error messages on the compiler-side are still very vague. It may be necessary to rewrite the compiler the fourth time to plug in line number tracing or something like that. Error handling on the VM-side is also considered very weak. Adding some kind of error recovery mechanism seems useful.
+
+Better debugging facilities need to be implemented. Unlike OCaml, Towel is a dynamic language, there are still much information to use for debugging purposes at runtime.
+
+There are also still large parts missing in the standard library, for example, file I/O, mutable data structure (arrays, etc.), string manipulation functions, regular expression, networking, and so on.
 
 \begin{appendices}
 \chapter[Project Log]{Project Log \footnote{Up to only feature freeze. Bug-fix commits may not have been included.}}
