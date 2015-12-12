@@ -11,6 +11,7 @@
 \usepackage{xltxtra}
 \usepackage{appendix}
 \usepackage{xcolor}
+\usepackage[nottoc,numbib]{tocbibind}
 \usepackage{tikz}
 \usetikzlibrary{positioning}
 \usetikzlibrary{shapes, arrows, shadows}
@@ -2193,7 +2194,7 @@ Particularly,
 
 \section{Project Timeline}
 
-We had no designated project timeline whatsoever. By the time I consider the language to have become stable, it was about two weeks before the report due. Obviously, we got lucky.
+We had no designated project timeline whatsoever. By the time I consider the language to have become stable\footnote{Although I fixed another several severe bugs later.}, it was about just right about two weeks before the report due. We got lucky.
 
 Here's the major changes made in the code repository:
 
@@ -2280,20 +2281,20 @@ In this chapter, we consider the term intermediate representation to be synonymo
 
   The compiler frontend (module \texttt{Weave}) first invokes \texttt{Switches.parse} to parse the switch configuration for the source code. Then it gets the abstract syntax tree out of the source code by tokenizing and parsing it with modules \texttt{Scanner.token} and \texttt{Parser.sentence}.
 
-  Then it invokes module \texttt{Compile.compile} to transform the AST data structure to the AST of intermediate representation (or AST of bytecode). During this phase, \texttt{Compile} makes use of \texttt{Cseg.(|\mtilde ~\mtilde ~|)} and \texttt{Tasm\_ast} to build the IR AST.
+  Then it invokes module \texttt{Compile.compile} to transform the AST data structure to the AST of intermediate representation (or AST of bytecode). During this phase, \texttt{Compile} makes use of \texttt{Cseg.(|\mtilde ~\mtilde ~|)} and \texttt{Tasm\_ast} to build the IR AST, it also take advantage of module \texttt{Scoping} to do scope analysis at the same time.
 
   \begin{mdframed}[style=detail]
     Module \texttt{Cseg} defines an infix operator \texttt{(|\mtilde ~\mtilde ~|)} to represent the concatenation of two \texttt{Tasm\_ast.asm} into one. This greatly simplifies the work for code generation.
 
-    The \texttt{Compile.compile} function basically invokes the code generation function \texttt{Compile.g\_word} for each word in the AST. And for each kind of word, \texttt{Compile.g\_word} call all kinds of other code generation functions, for example, for \texttt{Ast.WFunction}, it calls \texttt{Compile.g\_fun}.
+    The \texttt{Compile.compile} function basically invokes the code generation function \texttt{Compile.g\_word} for each word in the AST. And for each kind of word, \texttt{Compile.g\_word} call all kinds of other code generation functions, for example, for \texttt{Ast.WFunction}, it calls \texttt{Compile.g\_fun}. We didn't import many code optimizations, so all of the \texttt{g\_*} functions are somewhat trivial.
   \end{mdframed}
 
-  With the IR AST, the compiler invokes \texttt{assemble.ml:assemble} to get rid of all the labels, and replace them with absolute positions. After this step, the compiler gets Assembled IR AST.
+  With the IR AST, the compiler invokes \texttt{Assemble.assemble} to get rid of all the labels, and replace them with absolute positions. After this step, the compiler gets Assembled IR AST.
 
-  In the last step, the compiler invokes \texttt{tasm\_bytecode.ml:b\_asm} to get the bytecode representation of the IR.
+  In the last step, the compiler invokes \texttt{Tasm\_bytecode.b\_asm} to get the bytecode representation of the IR.
 
   \begin{mdframed}[style=hint]
-  The above mainly talked about the very common invocation to the compiler, for other uses, for example, outputing text version of Assembled IR AST, the compiler uses \texttt{tasm\_stringify.ml:p\_asm}.
+  The above mainly talked about the very common invocation to the compiler, for other uses, for example, outputing text version of Assembled IR AST, the compiler uses \texttt{Tasm\_stringify.p\_asm}.
 
   See also \autoref{fig:compiler-arch}.
   \end{mdframed}
@@ -2336,7 +2337,7 @@ In this chapter, we consider the term intermediate representation to be synonymo
 
 \section{The Towel Virtual Machine (Zihang Chen)}
 
-Things are much simpler on the VM-side. The virtual machine frontend \texttt{Tvm} first reads in the bytecode representation of IR, transform it back into IR AST by \texttt{Tasm\_inv\_bytecode.parse\_bytecode}. Then invokes \texttt{Nvm.exec} to execute all the instructions parsed.
+Things are much simpler on the VM-side. The virtual machine frontend \texttt{Tvm} first reads in the bytecode representation of IR, transforms it back into IR AST by invoking \texttt{Tasm\_inv\_bytecode.parse\_bytecode}. Then invokes \texttt{Nvm.exec} to execute all the instructions parsed.
 
 The function \texttt{Nvm.exec} basically implements all the instructions available. However, for certain instructions that are quite alike, for example, the arithmetic instructions and branching instructions, we use Ruby scripts to generate respective code for them, then invoke them in \texttt{Nvm.exec}.\footnote{An alternative to do this is by \texttt{camlp4}.}
 
@@ -3162,6 +3163,27 @@ There are also still large parts missing in the standard library, for example, f
 \end{mdframed}
 
 \input{../play/xxx.tex}
+
+\renewcommand\bibname{References}
+
+\begin{thebibliography}{9}
+\bibitem{gcc-manual}
+The GNU Project. \textit{The GNU C Reference Manual}.
+\url{http://www.gnu.org/software/gnu-c-manual/gnu-c-manual.html}, 2015-12-12.
+
+\bibitem{ocaml-manual}
+Xavier Leroy, Damien Doligez, Alain Frisch, Jacques Garrigue, Didier Rémy and Jérôme Vouillon. \textit{The OCaml System Release 4.02 - Documentation and User's Manual}.
+\url{http://caml.inria.fr/pub/docs/manual-ocaml/}, 2015-12-12.
+
+\bibitem{ocaml-libref}
+Xavier Leroy, Damien Doligez, Alain Frisch, Jacques Garrigue, Didier Rémy and Jérôme Vouillon. \textit{The OCaml Library Reference}. \url{http://caml.inria.fr/pub/docs/manual-ocaml/libref/index.html}, 2015-12-12.
+
+\bibitem{batteries-manual}
+The OCaml Batteries Team. \textit{Batteries User Guide}. \url{http://ocaml-batteries-team.github.io/batteries-included/hdoc2/}, 2015-12-12.
+
+\bibitem{funk}
+Naser AlDuaij, Senyao Du, Noura Farra, Yuan Kang, Andrea Lottarini. \textit{Funk Programming Language Final Report}. \url{http://www.cs.columbia.edu/~sedwards/classes/2012/w4115-fall/reports/Funk.pdf}, 2015-12-12.
+\end{thebibliography}
 
 \end{appendices}
 
