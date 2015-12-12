@@ -628,8 +628,6 @@ Simply type \texttt{bind} followed by the name and the value. Use keyword \textt
 \begin{mdframed}[style=warning]
 Note that all the computations are done on stacks, so are bindings. That is to say that, the values that get bound exists on stacks. So you may want to be careful about this.
 
-You may overflow your stack by using the \texttt{bind-then} form in a series of tail recursive calls if you forget to pop the values you bind previously.\footnote{Tail recursive calls in Towel don't offer you a whole new stack (or to say erase the stack for you), but rather continue to use the same stack the caller have been using.}
-
 Fasten your seat belts for the next two examples.
 
 \begin{verbatim}
@@ -740,7 +738,7 @@ If you want to turn on/off these switches, type in the switch names on first lin
 \end{verbatim}
 \end{mdframed}
 
-If \texttt{hungry} is turned on, \texttt{if} forms will be compiled to their respective hungry versions, which consume the TOS they test against when the test finishes, i.e. immediately after falling in particular branches or after failing to fall in any of the branches. This is useful when you want to be thrifty about stack spaces.
+If \texttt{hungry} is turned on, \texttt{if} forms will be compiled to their respective hungry versions, which consume the TOS they test against when the test finishes, i.e. immediately after falling in the true branches. This is useful when you want to be thrifty about stack spaces.
 
 \begin{mdframed}[style=hint]
   You can also achieve this with \texttt{hungry} turned off by calling \mstd{!!pop} explicitly.
@@ -795,9 +793,6 @@ multiply \marg1 and \marg2
 \item \arithstd{/}
 
 divide \marg1 by \marg2
-\item \arithstd{**}
-
-\marg1 to the power of \marg2
 \item \arithstd{\%}
 
 \marg1 modulo \marg2
@@ -979,16 +974,16 @@ get the length of \marg{l}
 \subsubsection{Tuple-only Functions}
 
 \begin{itemize}
-\item \marg{n} \mla \marg{t} \mla \mstd{\#tn}
+\item \marg{n} \mla \marg{t} \mla \mstd{\#n}
 
 get the \marg{n}-th element of \marg{t}
-\item \marg{t} \mla \mstd{\#t1}
+\item \marg{t} \mla \mstd{\#1}
 
 get the first element of \marg{t}
-\item \marg{t} \mla \mstd{\#t2}
+\item \marg{t} \mla \mstd{\#2}
 
 get the second element of \marg{t}
-\item \marg{t} \mla \mstd{\#t3}
+\item \marg{t} \mla \mstd{\#3}
 
 get the third element of \marg{t}
 \end{itemize}
@@ -1255,7 +1250,7 @@ A quick explanation: \texttt{(@ if\textasciitilde 0 +, -)} is bound to name \tex
 
 \subsection{Object-oriented Programming}
 
-\subsubsection{Not Even Close}
+\subsubsection{A Not-even-close One}
 
 \begin{mdframed}[style=example]
 \begin{verbatim}
@@ -1265,8 +1260,8 @@ A quick explanation: \texttt{(@ if\textasciitilde 0 +, -)} is bound to name \tex
          then [\ (2) Accessor` (3) ] (4)
   then bind Instance1-methods (41 Class)
        also Instance2-methods (42 Class)
-       then bind Instance1-accessor (Instance1-methods #t1 (5))`
-            also Instance2-accessor (Instance2-methods #t1)`
+       then bind Instance1-accessor (Instance1-methods #1 (5))`
+            also Instance2-accessor (Instance2-methods #1)`
             then (Instance1-accessor !println
                   Instance2-accessor !println)
 \end{verbatim}
@@ -1298,19 +1293,19 @@ which is exactly what we would be expecting.
 
   also Shape ,\ ~type, (7)
     bind __type ~type
-    also Type fun`, #t1 "dirty hack to make this work with >>send"
+    also Type fun`, #1 "dirty hack to make this work with >>send"
     also Area #t2`
     then [\__type [\Type` Area`]]
 
   then bind __meta-Shape ('' Shape)
-       also :type (__meta-Shape #t2 #t1) (1)
-       also :area (__meta-Shape #t2 #t2)
+       also :type (__meta-Shape #t2 #1) (1)
+       also :area (__meta-Shape #t2 #2)
 
        also Circle ,\ Radius,
          bind __radius Radius (2)
          also ~super ('Circle' Shape) (3)
 
-         then bind Type (~super #t1)
+         then bind Type (~super #1)
               also Area ,\, (__radius !!dup 3.14159 * *) (4)
 
               then [\Type` Area`] (5)
@@ -1321,7 +1316,7 @@ which is exactly what we would be expecting.
 
           also ~super ('Rectangle' Shape)
 
-          then bind Type (~super #t1)
+          then bind Type (~super #1)
                also Area ,\, (__width __height *)
   
                then [\Type` Area`]
@@ -1457,7 +1452,7 @@ The Towel virtual machine is basically a stack-based state machine that accepts 
 
 \section{Execution Stack}
 
-Execution stack is where context of function calls are stored. A context of a function call consists the return address of the function call, the module id of the return address is in\footnote{The PC jumps around different instruction arrays of different modules.}, the function value of the function being called.
+Execution stack is where context of function calls are stored. A context of a function call consists the return address of the function call, the module id of the return address is in\footnote{The PC jumps around different instruction arrays of different modules.}, the function value of the function being called, whether the call is made in a tail recursive fashion, etc.
 
 When a new function call is made, the context of this call is pushed onto the execution stack, followed by the instruction pointer jumping to the start position of the function, and the \texttt{curmod} field being switched to the target module. When the instruction \texttt{ret} is met, the function returns. TVM pops the TOS on execution stack and jumps to the return address stored in this TOS and switch back to the original module according to the \texttt{ctx\_t} value.
 
@@ -1484,7 +1479,7 @@ Normally, when a new function call is made, a new data stack is pushed onto the 
 
 \section{Flags}
 
-Flags stores the essential states for the virtual machine to run. For example, \texttt{is\_tail\_recursive\_call} records if the virtual machine is executing a tail recursive function. \texttt{curmod} records the current module whose instructions the PC is pointing at. \texttt{dss} is the data stack stack we talked about above. \texttt{scps} stores all the the names in scope stack (\texttt{scope\_t list}) for dynamic scoping.
+Flags stores the essential states for the virtual machine to run. For example, \texttt{curmod} records the current module whose instructions the PC is pointing at. \texttt{dss} is the data stack stack we talked about above. \texttt{scps} stores all the the names in scope stack (\texttt{scope\_t list}) for dynamic scoping.
 
 \section{Module table}
 
@@ -1655,7 +1650,7 @@ Makes a new function value and pushes it onto the stack without evaluating it. I
 
 \subsection{\texttt{0x11} \inst{push-lnil} and \texttt{0x12} \inst{push-tnil}}
 
-Makes a new list or tuple on top of the current data stack. TVM also puts the pointer of its content onto \texttt{flags.list\_make\_stack} to keep track where to put new values (such as values from \inst{push-lit}, \inst{push-lnil} or \inst{push-tnil}), when TVM reaches \inst{end-list} or \inst{end-tuple}, the ref on top of \texttt{flags.list\_make\_stack} is popped.
+Makes a new list or tuple on top of the current data stack. TVM also puts the pointer of its content onto \texttt{ctx\_t.list\_make\_stack} of the top most \texttt{ctx\_t} value to keep track where to put new values (such as values from \inst{push-lit}, \inst{push-lnil} or \inst{push-tnil}), when TVM reaches \inst{end-list} or \inst{end-tuple}, the ref on top of \texttt{ctx\_t.list\_make\_stack} of the top most \texttt{ctx\_t} is popped.
 
 \begin{mdframed}[style=detail]
   Only selected instructions have effect on these list pointers:
@@ -1676,7 +1671,7 @@ Ends current list or tuple construction.
 
 \subsection{\texttt{0x15} \inst{push-lit} \marg{LIT}}
 
-Pushes a literal \marg{LIT} onto the stack or the list pointer on top of \texttt{flags.list\_make\_stack}.
+Pushes a literal \marg{LIT} onto the stack or the list pointer on top of \texttt{ctx\_t.list\_make\_stack}.
 
 \subsection{\texttt{0x16} \inst{push-name} \marg{NID} \marg{MID}}
 
@@ -1746,9 +1741,26 @@ Pops the current data stack.
 
 Finds the function the two arguments references to, then calls it in a tail recursive manner.
 
+\begin{mdframed}[style=detail]
+  Some complications with the current implementation of tail recursion:
+  \begin{itemize}
+  \item If you use something that pushes a new scope in a tail recursion, and before this scope is popped, you tail recursed the same function again, then your scoping are leaking.
+
+The right way to do this is to count how many scopes are pushed during this tail call context, and before the next tail call, pop as many scopes as the counter indicates.
+  \item Don't remember to clear the \texttt{ctx\_t} field \texttt{list\_make\_stack}. This is likely to be ignored. However, this implies that calling a function in a tail recursive manner during a list creation will most like get you wrong results.
+  \end{itemize}
+\end{mdframed}
+
 \subsection{\texttt{0x24} \inst{ret} \sarg{RET\_VAL}}
 
 Take care of the return value of the function. Pops the execution stack. And jumps to the return address.
+
+\begin{mdframed}[style=detail]
+  The actual implementation is a bit harder than this, because you have to handle the situation where a function returns its return value into a pending list or tuple, e.g. \texttt{[(1 2 +)]}.
+
+Also note that because we're returning control to the caller, the pending list or tuple we seek is in the caller's \texttt{ctx\_t}, i.e. second top most value of \texttt{ctxs}, rather than the TOS of \texttt{ctxs}.
+\end{mdframed}
+
 
 \subsection{\texttt{0x25} \inst{shared-ret}}
 
@@ -1762,10 +1774,6 @@ Assumes \sarg{FUN} is a function, takes two argument to describe the name \sarg{
   Because you only need to capture names from self-module, so \marg{MID} is often left being zero\footnote{The self-module ID, i.e. the ID modules reference themselves to.} when compiling.
 \end{mdframed}
 
-\subsection{\texttt{0xf2} \inst{install} \sarg{FUN}}
-
-Install the captured names of \sarg{FUN} into current scope so that users can reference them.
-
 \subsection{\texttt{0x27} \inst{invoke} \parg{FUN}}
 
 Assumes TOS is a function, then invokes it. \parg{FUN} is popped before evaluating it.
@@ -1773,6 +1781,18 @@ Assumes TOS is a function, then invokes it. \parg{FUN} is popped before evaluati
 \subsection{\texttt{0x28} \inst{call} \marg{START}}
 
 Records $PC + 1$ as the return address, then jumps to \marg{START}.
+
+\subsection{\texttt{0x29} \inst{install} \sarg{FUN}}
+
+Install the captured names of \sarg{FUN} into current scope so that users can reference them.
+
+\subsection{\texttt{0x2a} \inst{sweep}}
+
+Sweeps the stack to get rid of all the existing elements. Used under tail recursive calls to avoid stack leakage.
+
+\begin{mdframed}[style=hint]
+  This instruction is generated for every function after all the \inst{fun-arg} instructions are finished. But it's only operational when \texttt{ctx.is\_tail\_recursive\_call} is \texttt{true}.
+\end{mdframed}
 
 \begin{mdframed}[style=hint]
   This instruction only jumps within the same module.
@@ -2117,13 +2137,13 @@ The original idea of Towel was to create an esoteric programming language like \
 
 But this soon turned out to be infeasible when you want to name more than 26 things. So the one-character grammar idea got abandoned.
 
-But still, I want to create something different, especially in the way the programs will look like. So I thought to myself, we already have the Lisp family (prefix), as well as the ML family (infix). Let's do postfix!\footnote{At that time, I didn't realize that there are so many postfix languages already!} Soon the idea of stack-based postfix-syntaxed functional language soon came into being. Then I named it after my favorite novel series.
+But still, I want to create something different, especially in the way the programs will look like. So I thought to myself, we already have the Lisp family (prefix), as well as the ML family (infix). Let's do postfix!\footnote{At that time, I didn't realize that there are so many postfix languages already!} Soon the idea of stack-based postfix-syntaxed functional language came into being. Then I named it after my favorite novel series.
 
 \section{Specification and Development Process}
 
-Specification was not clear at the beginning of the development, but became clearer and clearer as the development goes on.
+Specification was not clear at the beginning of the development, but became clearer and clearer as the development went on.
 
-The three of us get together every Monday afternoon before meeting with Professor Edwards. We would discuss the newly implemented parts and ideas, and hoped this discussion would identify as much flaws as possible. Then during the week, new parts would get developed, and flaws fixed.
+The three of us get together every Monday afternoon before meeting with Professor Edwards. We would discuss the newly implemented parts and ideas, and hoped this discussion would clearify things for them as well as myself, and identify as much flaws as possible. Then during the week, new parts would get developed, and flaws fixed.
 
 Later in the development (after the test suite was implemented as well as several test cases), the development process began to be like Test-Driven Development spontaneously.
 
@@ -2189,7 +2209,7 @@ Here's the major changes made in the code repository:
 \item Dec 3: Extension mechanism added to the VM.
 \item Dec 4: The language become dynamic officially (dynatowel branch merged into master).
 \item Dec 6: Bytetowel merged.
-\item Dec 10: Feature freeze.
+\item Dec 11: Feature freeze.
 \end{itemize}
 
 \section{Roles and Responsibilities}
@@ -2369,7 +2389,7 @@ The \texttt{Nvm.exec} depends on many other functions from other modules to work
   \label{fig:vm-arch}
 \end{figure}
 
-\section{The Towel Assembly Components}
+\section{The Towel Assembly Components (Zihang Chen)}
 
 The script \texttt{ccg.rb} generates a whole bunch of Towel Assembly related modules for the compiler or the virtual machine to generate bytecode or parse text form IR.
 
@@ -3048,7 +3068,7 @@ tests whether implicit import and explicit import work as expected.
 
 \item \texttt{list.t}
 
-tests various functions for enumerables, for example, \mstd{\#hd}, \mstd{\#t1}, etc.
+tests various functions for enumerables, for example, \mstd{\#hd}, \mstd{\#1}, etc.
 
 \item \texttt{macro.t}
 
@@ -3068,7 +3088,7 @@ tests if phony, partial function application and \mstd{!invoke} can work togethe
 
 \item \texttt{quicksort.t}
 
-a holistic test, tests if non-tail recursion, the stability of \texttt{bind-then} forms in non-tail recursive environment, list functions, and the overall stability of the virtual machine.
+a holistic test, tests if non-tail recursion, the stability (whether something leaks or not) of \texttt{bind-then} forms in non-tail recursive environment, list functions, and the overall stability of the virtual machine.
 
 \item \texttt{rnd.t}
 
@@ -3077,6 +3097,10 @@ tests if the extension mechanism of the virtual machine works.
 \item \texttt{test.t}
 
 the hello world test.
+
+\item \texttt{zip.t}
+
+tests if complicated list creation works (especially, function calls inside list literals) and the stability of tail recursions.
 
 \end{itemize}
 
@@ -3091,6 +3115,8 @@ Discuss your ideas with your teammates, explain your code to people, fix your bu
 If you cannot explain your idea or code to others, you don't understand them at all.
 
 Don't be afraid to rewrite 90\% of your code. Make sure every time you do this, you reduce 10\% of the code.
+
+You'll never get to fix all your bugs.
 
 \subsection{Some Practical Advices}
 \begin{enumerate}
@@ -3127,1476 +3153,13 @@ There are also still large parts missing in the standard library, for example, f
 \chapter[Project Log]{Project Log \footnote{Up to only feature freeze. Bug-fix commits may not have been included.}}
 \label{project-log}
 
-\begin{verbatim}
-commit 6b14ac3fb7e502749f1b4427ddd5d48f4d647b66
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Sep 24 09:30:45 2015 -0400
-
-    Initial commit
-
-commit be3c048d649099ceb8fdc0c0a65d2e3e089086af
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Sep 27 01:16:57 2015 -0400
-
-    proposal 1
-
-commit 561f4165f5af9d831ad91b74b4267a39a70ce068
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Oct 7 17:23:45 2015 -0400
-
-    first stage of lexer and parser and ast types
-
-commit d3999c3048c620333be23f4420f7aaa19147d422
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Oct 8 00:18:40 2015 -0400
-
-    compilable version, which unfortunately wont work, but debuggable with menhir
-
-commit cf6b0de9ceacab07d9fcf23814f4e479cd32a5a3
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Oct 8 09:28:02 2015 -0400
-
-    compact ast, removed most of the `list(word)`
-
-commit c04f7a82d120571264f9bb1b1be5a5c68c415029
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Oct 8 09:37:55 2015 -0400
-
-    temporarily stash
-
-commit 28c19f77f610756727428fe43774456abc1e6cd1
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Oct 8 13:22:20 2015 -0400
-
-    reduce AT and add BQUOTE backquote
-
-commit b0f3c4255d355dea0b1dbb25e5a3fc958a80177f
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Oct 8 13:26:02 2015 -0400
-
-    add BQUOTE backquote
-
-commit 0bc4304992fecb3927b2db6b096f3f280e2d5cc4
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Oct 9 20:53:56 2015 -0400
-
-    no warnings
-
-commit 68bfc48a5b2875c9a255f95058c684b3d3737255
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Oct 9 20:57:53 2015 -0400
-
-    enhance namespace resolving
-
-commit 10f3f091ddfac20e885cb90d8271e51dd9e921a1
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Oct 10 02:09:38 2015 -0400
-
-    somewhat working parser and lexer
-
-commit 4ca60339a2c2aad4e757b5bed40e4ec649c891e7
-Merge: 28c19f7 10f3f09
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Oct 10 02:16:08 2015 -0400
-
-    merge from compact-ast
-
-commit 1594b9903a7c6dc002357569a113f2ed22bbfdd5
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Oct 10 02:42:03 2015 -0400
-
-    redesign type definition
-
-commit a4ae88601b412909d1074eb47dc002f6eb4a0e8a
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Oct 10 18:10:49 2015 -0400
-
-    change bind-in to bind-then, remove bind
-
-commit 1a95d291dfb4837d3db8917ba1fbf13d0af4ac38
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Oct 10 18:13:54 2015 -0400
-
-    organize structure
-
-commit 36345fdad8ce4833610ea3c6fbf500c56af583fb
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Oct 10 18:26:06 2015 -0400
-
-    add .tar.gz target
-
-commit 0582ba86d341cfd3b9e2fd0e9a8322322a1ba097
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 12 17:06:11 2015 -0400
-
-    remove lots of ifs
-
-commit eb2ecb7f87883811439bbac337b35d2f4c86fc71
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 12 17:06:37 2015 -0400
-
-    remove lots of ifs
-
-commit 79039e946ed81e7182d492992d6d5e70b04e09b4
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 12 17:07:26 2015 -0400
-
-    lots of improvements
-
-commit 1f5ad1a1899bca7e2accccc31e90a3c172d48f29
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 12 17:22:15 2015 -0400
-
-    change seq delim to braces
-
-commit 2423bd073a05efc2d316aed53c6e70007140018e
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 12 17:22:39 2015 -0400
-
-    update eval rule
-
-commit cd214c23d826223423a542d8cee2eb2465f833fd
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 12 23:09:48 2015 -0400
-
-    add ifs again and fine-tuned error messages
-
-commit 3fca92d6e65341559604b171c540dba962b05a35
-Merge: 2423bd0 cd214c2
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 12 23:13:21 2015 -0400
-
-    Merge pull request #1 from qwert42/rich-preds
-    
-    add ifs again and fine-tuned error messages
-
-commit c305ffd451492aec8dbd04a4be069e3d16b62726
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Oct 13 13:55:59 2015 -0400
-
-    update makefile
-
-commit 10e55e7578295da69a1d7fa914c85b9cacd4829b
-Merge: 3fca92d c305ffd
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Oct 13 13:56:27 2015 -0400
-
-    Merge pull request #2 from qwert42/rich-preds
-    
-    update makefile
-
-commit e74b5e1ac9a10b904bf094eb54c9f55721989676
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Oct 14 20:11:03 2015 -0400
-
-    stash
-
-commit 7e9a8e97ed13db3cd545703cc4502eb2fe60af49
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Oct 15 18:35:09 2015 -0400
-
-    add bind also
-
-commit 0bf11ece77103f2dcd4c0b0a1284b6ff03126e0c
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Oct 16 13:46:20 2015 -0400
-
-    add type declaration grammar
-
-commit ea1c5b36d500664495fd7b0e5c751e522c19a72d
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Oct 16 14:42:55 2015 -0400
-
-    fix premature terminator
-
-commit a8f41d13a1670659c028fecc8ba78b98cdabea1b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Oct 16 21:28:57 2015 -0400
-
-    add altype literal grammar
-
-commit e931e1541da05b287ff3983193274c0704291561
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Oct 16 21:32:22 2015 -0400
-
-    update adtsf grammar definition
-
-commit 3bd462816f709a3c2a38823316bd389a8ca0dbf5
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Oct 17 19:16:37 2015 -0400
-
-    fix negative number scanning
-
-commit 904b1e7c1ef966809702e4fa0ed37a92d423036b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Oct 17 19:17:04 2015 -0400
-
-    add example for elements of programs
-
-commit 4718ce6534ccc1098157268d4173901d805cc536
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Oct 17 20:57:11 2015 -0400
-
-    add more descriptions
-
-commit 2e2d004476a4399e2569cce34a990de1328789e3
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Oct 18 01:53:02 2015 -0400
-
-    add something new
-
-commit f42c3fa063286c4fe36eb17d24f178e9c6b6a425
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Oct 18 12:14:23 2015 -0400
-
-    fix escape sequence scanning
-
-commit 4a7e0c63348616400d1b78c43b68dac0733e086a
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Oct 18 22:56:31 2015 -0400
-
-    fix typo
-
-commit 6e87374d69a457e28622fa722c6c4a80793482e2
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Oct 18 23:25:17 2015 -0400
-
-    Update quicksort.w
-
-commit 07d9e15f17591658ecb3819464f46834ca63f997
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 19 00:19:30 2015 -0400
-
-    add comments for review
-
-commit c1d21192764b8b53a01f8557862fa4681b4a18f3
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 19 00:21:06 2015 -0400
-
-    Update quicksort.w
-
-commit c7b6e801693b9a1a28f549403c3d2898bdf81521
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 19 00:51:13 2015 -0400
-
-    Update gcd.w
-
-commit cb9061eade02ffb6fa0adc0b278853ab7a873f4d
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 19 11:26:49 2015 -0400
-
-    merge
-
-commit 9e7c7271f7ee5f6671ae3dbcc70ffe0ac8d8ecb3
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 19 12:07:50 2015 -0400
-
-    fix [Head]
-
-commit a5ed176e26c7e754881ea8303d3cd45663c89ec8
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 19 12:09:37 2015 -0400
-
-    remove push-list argument
-
-commit 9dcf5e80b71e29f03b87baba9b9f27fbf39e270e
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 19 12:11:23 2015 -0400
-
-    remove shared-seq push-stack
-
-commit 05459f72ccc318d7b2abc855e4135b5af43bdcc6
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Oct 20 17:23:22 2015 -0400
-
-    change altype decl to postfix fashion
-
-commit f8df1fdce3723b5c1997c70f2051af7a1118656b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Oct 20 17:23:30 2015 -0400
-
-    add TODO
-
-commit 9c611b38721436d09e35ae16910e0c2675f1f119
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Oct 20 17:23:43 2015 -0400
-
-    stash LRM
-
-commit 081a6bc3f89ea783183f36e719d7481e0315e56b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Oct 22 00:13:18 2015 -0400
-
-    add manual
-
-commit 49f4a15948899a2cf4f006aba4589b77c423277b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Oct 22 16:52:17 2015 -0400
-
-    hope this commit ends the paper work for a while
-
-commit 4076cf8b28d8885f0049f5199e82519a68cd7760
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Oct 22 21:29:41 2015 -0400
-
-    add new docs
-
-commit 35eb27e784c2b53d145a2e5492acdb66e7589298
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Oct 22 21:32:12 2015 -0400
-
-    add tail recursion and at symbol
-
-commit 215cfb65051be7048acb7172c4eb4a4256e57b87
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Oct 24 20:49:38 2015 -0400
-
-    enhance number literals
-
-commit b5713c0797a1fcd49ffe6c2861df0adc0a22b835
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Oct 25 16:18:12 2015 -0400
-
-    change to waf build system
-
-commit b5d5d66d56bfba08c101231db0514499253d6b1b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Oct 25 17:40:33 2015 -0400
-
-    restrict float token
-
-commit 089a785c6745ca6ad082687d8e63d337457243ac
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 26 12:00:57 2015 -0400
-
-    add readme
-
-commit cba6266d372f576da854c35c98f0782655262214
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 26 12:01:11 2015 -0400
-
-    change to python3
-
-commit 706d95f32d050b69145ffb321cf7b80c28aba1c2
-Merge: 4076cf8 cba6266
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Oct 26 12:02:59 2015 -0400
-
-    Merge pull request #3 from qwert42/tail-recursive
-    
-    Tail recursive
-
-commit 3e16c66a222f878ce82beb7658ed90d4a97c1549
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 2 22:18:35 2015 -0500
-
-    stash compiler prototype
-
-commit a1f41c30d541332825c1e4653ba3f83633259bc7
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 2 22:19:03 2015 -0500
-
-    stash manual
-
-commit a566c4426da2fd7742df85785778b3142e196371
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 2 22:19:31 2015 -0500
-
-    amend asm manual
-
-commit 224355af65723d395ec5980e1e564ccaac704939
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 2 22:34:22 2015 -0500
-
-    remove name_ref_key
-
-commit d4d29c3bfce61b49326299cef1dbf1b0b5ab66d8
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 3 16:36:32 2015 -0500
-
-    compiler 90%
-
-commit f92a968bef03b61601b695b5bd971ef22cb4fa09
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 3 20:50:42 2015 -0500
-
-    first somewhat working compiler version
-
-commit 5eed46fa4cb3db014cf3670c7008cc286568b3df
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 3 21:34:59 2015 -0500
-
-    add ufint and big int support
-
-commit 5608397e1783fd9e70e6f49e5bd7e25f3d10720a
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 3 21:43:57 2015 -0500
-
-    update manual
-
-commit 504b7dd208f9545fb9b7c425cfbf25c4bdc36fcf
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Nov 4 21:03:37 2015 -0500
-
-    i just cant remember what i did
-
-commit 61c023e02f7c76c7384d13b5ddfd6f6255e123b0
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Nov 4 21:17:27 2015 -0500
-
-    update readme
-
-commit e5323f2f660f6f072a01e37778b50246c8ff2e66
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Nov 5 20:24:57 2015 -0500
-
-    a
-
-commit 7a22edd382e9c1079f01da2aaffb8842f70c8360
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Nov 7 22:32:47 2015 -0500
-
-    fix certain bugs
-
-commit e1e498d298ea09332214d4dea34884d7f1ee2294
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Nov 7 23:04:48 2015 -0500
-
-    resolve certain grammar issues
-
-commit 55e0fc68f47c2b5ba521caac41b1670efeafb664
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 00:47:57 2015 -0500
-
-    resolve some more issues
-
-commit de01a09cd6e1f2743c88b50cb42424f6c6ef19cf
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 01:25:44 2015 -0500
-
-    refine mechanisms about backquotes
-
-commit 8d84f19b79930a783d448414c0dcb6f9d7664fc2
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 01:43:19 2015 -0500
-
-    fix passing wrong inst ctx in g_seq
-
-commit 56e99458c56a5d8122e65f8ea7aa6faaa4a007c3
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 12:37:26 2015 -0500
-
-    fix some backquoted seq issues again
-
-commit 3a77d8c0c9627712509584b201e124e2e6aa8526
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 12:40:03 2015 -0500
-
-    Update cseg.ml
-
-commit 988b7e6df18dc1334b36f36e40cb5be6878173a1
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 12:41:52 2015 -0500
-
-    Update scoping.ml
-
-commit db05d67ce3a053c6317ff39dad1dd0c8ac7795f4
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 12:59:38 2015 -0500
-
-    change tasm to library
-
-commit 9d7f5a2c3109f8e6899add7bd628e63133b2b327
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 13:06:48 2015 -0500
-
-    change tasm to library
-
-commit f37054c18ec1e1be5d579b8c02ef04923a461bbf
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 17:55:31 2015 -0500
-
-    yeehaaaa
-
-commit a7c35dd547dad29bf38c7343d141be408df558ca
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 18:23:55 2015 -0500
-
-    sync instruction modifications
-
-commit 8c65d6f6fa94611fdff8b8811b5ee3b44cbdfc70
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 20:05:53 2015 -0500
-
-    add towel-mode
-
-commit 96349b71f7646d374cac856ddf9d92c4676ca950
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 20:10:22 2015 -0500
-
-    Update ccg.py
-
-commit 1acd486b01fc013848e7c15c5c9a701b13ee93f1
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 20:11:23 2015 -0500
-
-    Update TODO
-
-commit 6bc36f0780b18a3ff2f9ada4a39d6f92a375a896
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 22:51:11 2015 -0500
-
-    Update README.md
-
-commit 47865a17230952ef3c1c4c3e99f76aa53ba08d59
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 23:28:40 2015 -0500
-
-    Update README.md
-
-commit 17152d5e68644c5278a903b3c2bccc573958c6f1
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 8 23:32:46 2015 -0500
-
-    Update README.md
-
-commit 0392e2fbd40d69b5230e34e6655aa238fb1dfdd4
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 9 00:13:59 2015 -0500
-
-    Update README.md
-
-commit d431dd33318ba718fac22fdd0c8311383be2d271
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 9 01:07:13 2015 -0500
-
-    Update README.md
-
-commit 3e5f696d503fb093ef8b8e1d1362af1a66a7e98f
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 9 14:27:27 2015 -0500
-
-    reverse branch instructions
-
-commit ec8d953081fccc88ed647d3c295b9f141772d7a0
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 9 17:42:16 2015 -0500
-
-    change name indices to uint64
-
-commit 78b1a46a0ceaa1f85a302861a520a41853c96c67
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 9 17:50:01 2015 -0500
-
-    change jump pos to uint64
-
-commit 70f94b2f1c4bdbe83e0f17f98776d425ad4cc832
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 10 14:49:51 2015 -0500
-
-    add import and export phrases
-
-commit e1b67b9ee1af813189232f40531411e1ab549b35
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 10 15:28:24 2015 -0500
-
-    add import and export statements
-
-commit 816a470e21d61333394fd544b9af4c5cda40fc62
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 10 15:30:54 2015 -0500
-
-    stash vm changes
-
-commit c9b80646072fc22ee6186648e0bef4deb45716d3
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 10 15:42:03 2015 -0500
-
-    update gitignore
-
-commit 4cf8afa4793b44371dfaa55f7dfb1e0d3c2b912d
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Nov 11 12:35:16 2015 -0500
-
-    add multiline comment
-
-commit d37caf38e5a491084212563bb5d1685e083338e8
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Nov 14 18:27:21 2015 -0500
-
-    add prefect test suite
-
-commit 111dda2c588477f02712f3b15511f79718aeddda
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Nov 14 18:28:36 2015 -0500
-
-    Update README.md
-
-commit 16381dc0e8a54d680953ba135e6511c90bbe505b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Nov 14 18:29:25 2015 -0500
-
-    Update wscript
-
-commit a01a7f2d912ac871bd5516d51064c589a3d2969a
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 15 13:58:17 2015 -0500
-
-    add .e files gen and import mechanism
-
-commit 91c669dd9392cfaf17fa5f08497e0dae7e147162
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 15 23:11:07 2015 -0500
-
-    hello world!
-
-commit 01edd76fb943f31d4f63d974920da5c21d9cae2d
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 15 23:43:59 2015 -0500
-
-    unquote scanned string
-
-commit 2224d9951370714c0ef34f0cab982d9b1d18b2c6
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 16 00:18:57 2015 -0500
-
-    amend prefect test suite
-
-commit 819b6f63a34f0f360a713892433eea3fc623f0b5
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 16 00:26:37 2015 -0500
-
-    amend prefect test suite
-
-commit e3d94dc14eadd778a9c500866cfdb59d71d0423e
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 16 02:21:09 2015 -0500
-
-    add branch instructions
-
-commit 6a78a47f2d989611ef5c54baf418134c9842230b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 16 15:19:18 2015 -0500
-
-    (tail recursive) gcd working
-
-commit bc2472f37f0eb661ffb9e012f24530e1ca97a5af
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 16 15:21:11 2015 -0500
-
-    amend test description
-
-commit 492a06a87b7e05316bd39d01e70d2df149fcb571
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 16 16:54:44 2015 -0500
-
-    merge all the orts
-
-commit 1ffcd2b5aaef9e68b2ad2af2ae209afbef119427
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 17 01:37:09 2015 -0500
-
-    change to ccg.rb
-
-commit e77b6a44673fb0bfb219135afdf3499c08d7ba64
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 17 12:38:04 2015 -0500
-
-    add idle
-
-commit cd3683c754b61939afd84d0c64bf7e7b67ba6e22
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 17 12:39:56 2015 -0500
-
-    add pop
-
-commit f9678e005a9db253cdbbf196be0b5e3c962b7d60
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 17 12:40:38 2015 -0500
-
-    add idle 2
-
-commit 20a65ee00228b9c244c14bf98475121a046a4181
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 17 12:41:13 2015 -0500
-
-    fix branching instruction label args
-
-commit 132a1dd873418be434f00887d87f175d4ab47e19
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 17 12:42:07 2015 -0500
-
-    dont remember
-
-commit 79f36dfbfebe9dcf4806845d0fcc082c9e215c8e
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 17 12:42:23 2015 -0500
-
-    update readme
-
-commit 3b37049e0cf3992fb89130df6a70f9024700cf4f
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 17 12:42:34 2015 -0500
-
-    add sqrt example
-
-commit 360cd649f1bbb604b500df51d2cbbb83411c065b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 17 12:49:58 2015 -0500
-
-    change std naming standard
-
-commit 0087e38f969c49d3562cebf463ed1865f5be3c05
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 17 15:31:19 2015 -0500
-
-    prepare for generalized arithmetics
-
-commit c33f631c999cbe8749996323a8669c092eec8dca
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 17 15:43:50 2015 -0500
-
-    fix import mechanism
-
-commit bee96ae57f55adec4a03dc86548d206db1fb8bc4
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Nov 17 20:37:32 2015 -0500
-
-    add std_gen
-
-commit 1bbb971cdc5d160b00a948ae2cca5e5554b36633
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Nov 21 19:17:16 2015 -0500
-
-    add function backquote
-
-commit 98c087aea73d1b95c49aefc3a32eb93763f84645
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Nov 21 21:51:50 2015 -0500
-
-    add push-lit
-
-commit a9e0c4b9c33b26e2d1b81ba1b0599476429531d8
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Nov 21 21:53:13 2015 -0500
-
-    add partial fun-arg
-
-commit 138f0cb5a1f80217e993d75cf5706e897023c300
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sat Nov 21 21:53:37 2015 -0500
-
-    add stacked list/tuple creation
-
-commit 57cd0428ff4646e34e22df1845e039165c8dec9c
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 23 11:35:24 2015 -0500
-
-    add closure set to fun_t, remove them from funpool
-
-commit 1de084738b6c5ad2e2482f7c49ae72a1f08bf818
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 23 11:35:58 2015 -0500
-
-    finish std-gen script
-
-commit 8131e4007ddc62a335af81a1810059336cfa2b3f
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 23 11:36:31 2015 -0500
-
-    recover to *-tuple and *-list insts
-
-commit a78410b0bde4ade7854b3f06e813985a5692bc06
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 23 11:36:53 2015 -0500
-
-    fix ref number to BQFun
-
-commit f7cefd74055547cda9abfefeef7de5c18eeab4af
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 23 11:37:25 2015 -0500
-
-    add VAtom to tasm_ast.mli
-
-commit 383bdc857a4133f682efb32745ffced29bd969d1
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 23 12:19:23 2015 -0500
-
-    fix atom stringifying
-
-commit 4e0c9f4760998268ce8d6918af1b33c84d3b4218
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 23 12:19:57 2015 -0500
-
-    fix true and false atom_repr
-
-commit cc117db2422032646dd042aad675f34c5aafc643
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 23 12:20:08 2015 -0500
-
-    fix warnings
-
-commit b215176231833466c05d183eba1b644d608e3042
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 23 12:52:04 2015 -0500
-
-    add ift-f and import tests
-
-commit deadfc7d3ea8fd3d36c75128268beddfc614c1e5
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 23 13:14:17 2015 -0500
-
-    add phony (stack bottom indicator)
-
-commit 704eb448875515ef6fc6c7cb2bf571a8cc8a8f3f
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 23 15:06:16 2015 -0500
-
-    add phony
-
-commit afdb02c69f629c80c3add57589fcd7fde1c6f32b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Nov 25 14:51:14 2015 -0500
-
-    stash changes
-
-commit 5b1947dea3e5e6501d14631a622624e31291972c
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Nov 26 02:26:30 2015 -0500
-
-    get rid of some warnings
-
-commit dd83c647ede6424a27e364967174be0746f69bf8
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Nov 26 02:27:24 2015 -0500
-
-    refactor
-
-commit 01e1ab3a73a19385065a128954e4b955cf9a2b40
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Nov 26 02:28:47 2015 -0500
-
-    cope with new function grammar
-
-commit 94c2aeb06d50f904710c1be75a05784ed3bfc12a
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 00:03:34 2015 -0500
-
-    remove hjne
-
-commit b8db2dd469e0a785e3417fec2b146bc8be8ed2cc
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 00:04:55 2015 -0500
-
-    refactor vm
-
-commit f7dbbbffb6aac8dc492dddd33994c605d0ac7ea5
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 00:05:49 2015 -0500
-
-    add new highlighting
-
-commit 305c0b2bef2317ca06a92c8351ae0b22b470b109
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 16:05:09 2015 -0500
-
-    resolve regression
-
-commit 39cb55cd44d8995ffeef795247e624b99399c3f5
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 16:06:04 2015 -0500
-
-    add !rev built-in
-
-commit 354ef3a31340eb1f66b3417665a34a5fa15f46f3
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 16:35:08 2015 -0500
-
-    refine seq code generation
-
-commit e347db7536184ffed753ff91769377ca893c0592
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 16:35:40 2015 -0500
-
-    redef reverse and pack arity
-
-commit 905648856ca365c17c3609432686aba90c0c9e14
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 18:21:22 2015 -0500
-
-    remove equ instructions
-
-commit 19d4ca85e302021a926ca275a918727eb996ce7c
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 18:21:54 2015 -0500
-
-    add abs module id to avoid import collision
-
-commit cfc2e9b603514232ff5374b7b68eee1fbcd09235
-Merge: 19d4ca8 704eb44
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 18:25:40 2015 -0500
-
-    merge to master
-
-commit 97f57a4385309d31608445079afe0e6c82d1a785
-Merge: 704eb44 cfc2e9b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 18:26:08 2015 -0500
-
-    Merge branch 'ortless'
-
-commit 8a90269f19e019129abe57ae095bd3f32fa7cac3
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 18:41:14 2015 -0500
-
-    Update README.md
-
-commit 3155431d8637e3a40a0a670fb0fe031a62435799
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 21:46:42 2015 -0500
-
-    fix warning
-
-commit c13b79ce59bbb822c073a113c7ce562ea3674399
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 21:47:30 2015 -0500
-
-    remove about 20 instructions
-
-commit 8a4c3b944fdc16e5f20c4fae86744ae28686ce65
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 22:45:14 2015 -0500
-
-    add push-list etc.
-
-commit bf1d398fb3026e497a344051e332d5226c421868
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Nov 29 22:45:27 2015 -0500
-
-    add partial fun test
-
-commit 6f362d06f4101a4e777eff42f83545a58335a984
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 30 13:04:38 2015 -0500
-
-    add invoke inst
-
-commit bff1a4601b419bead8c7a4b4d531dc48c5605ded
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 30 13:05:09 2015 -0500
-
-    remove OVLNil and OVTNil
-
-commit 051116e3a287eaaf833a94455a45f250e08c8e9b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 30 20:23:41 2015 -0500
-
-    rename make-fun and push-fun
-
-commit b80d4cc434f8562a9826d9c8f30234c4d6651369
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 30 20:44:18 2015 -0500
-
-    fix potential partial fun arg issue
-
-commit 21a6c5c79315e80d09bc7f351e239db6c34aec3e
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 30 20:54:21 2015 -0500
-
-    rm unused file
-
-commit 3f1ff9e3a42b2177a00e8500e19b8b90cd9298a2
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 30 21:36:07 2015 -0500
-
-    remove period terminator (really no point in this)
-
-commit b2364f1e4cd6fc5a71492f97c0d3b693578c6095
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Nov 30 21:36:59 2015 -0500
-
-    add list operations
-
-commit 2fa2ef3373e982f8220281a7f660d917a07b2be1
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Dec 1 00:08:27 2015 -0500
-
-    add type sig to std lib
-
-commit 8942b9f92cdc5b3673cc817ba2a5c4051f7e26fe
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Dec 1 14:21:19 2015 -0500
-
-    add cons
-
-commit c145ac9fbc78400a337e8d16a120e1b549651bae
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Dec 1 14:22:38 2015 -0500
-
-    hide std lib funs
-
-commit 6b500686fa76119eacbaaf189b59e3e85f0d3f36
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Dec 1 14:23:01 2015 -0500
-
-    handle compile failure and exec failure
-
-commit bb6b840307475a9b774bc715bcba4fc008565f56
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Dec 1 15:57:01 2015 -0500
-
-    fix bind push-name
-
-commit 19e96d2643bb64fec3563e498259a2dec2aa7a23
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Dec 1 15:57:47 2015 -0500
-
-    get rid of dot at the end of .e files
-
-commit f8eee5e5109b4f29f0d48f54eedb71de082a9540
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Dec 1 15:59:26 2015 -0500
-
-    add new std lib, but broke imp import
-
-commit 781602e1f1ce374f30e357fc9f85f20265f2e7e7
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Dec 1 17:23:17 2015 -0500
-
-    fix imp import by counting name ids
-
-commit 1ca7baef5176b94e2cfc4932a1d37474e2ed6d78
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 14:26:34 2015 -0500
-
-    fix relative importing and name resolving
-
-commit fe762e4a3c3d928b0d5a03fabdab1e6298d1519c
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 14:28:13 2015 -0500
-
-    change to rel import
-
-commit 529325a262fee81d559887bcc52fb0976354c779
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 14:28:31 2015 -0500
-
-    add mod and equ
-
-commit c834997d2e65d0e49882ce725a302e8d9397c35a
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 14:29:14 2015 -0500
-
-    add functional library fun and test
-
-commit b714c0dccb8f86e0ee80cdb1325b6021dd0f7709
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 14:56:19 2015 -0500
-
-    refine EQU, add :filter
-
-commit 4699eaa9ddbbec794aa421732baa23cff5e9ed36
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 15:13:24 2015 -0500
-
-    add travis
-
-commit 2916cc76f6437b0bdace50f45a41e746d9081ef5
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 15:18:30 2015 -0500
-
-    set sudo: true
-
-commit 7c4c883c266059c559a1305d0e00a9b5f0ed9196
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 15:21:59 2015 -0500
-
-    change to source install opam
-
-commit dc3f120def68622d9b3b77f0665ad20f6e1381a0
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 15:28:34 2015 -0500
-
-    change to source install opam
-
-commit 389ee7fd9794d74600235e9867c9d10bec4f52d9
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 15:31:21 2015 -0500
-
-    .
-
-commit 05c1de2f120cb7a07f5f74cb446737cd745b196a
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 15:33:42 2015 -0500
-
-    fix typo
-
-commit 4328355ae6dcb6cb5f3ee6eb10d54f2d008d4b98
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 15:39:59 2015 -0500
-
-    fix ruby install
-
-commit d91d288efdc6c9b279435f4f20ce3d3ad8112f2b
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 19:50:12 2015 -0500
-
-    fix seq label issues
-
-commit 548173944a670593fe3058e71e5e746e04a18a70
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 19:50:48 2015 -0500
-
-    add /flip and /foldr
-
-commit b282f4f673f8b3768cd3d4f06fb1ec997d0ebbc7
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 19:57:21 2015 -0500
-
-    fix recursive fun args
-
-commit 873b98a6ee548c645040d83627743951dd182819
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 20:05:03 2015 -0500
-
-    update comment
-
-commit 516174a90141904bb3b5b8860b0623d5fd9fa1f9
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 20:24:40 2015 -0500
-
-    add lambda token
-
-commit 5ca39838852d2044bf294e440e1282257290a678
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 21:34:06 2015 -0500
-
-    fix branching insts
-
-commit cec55ebbd89eb147eef9f74bddd1b61d6d4bcf1f
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 21:36:48 2015 -0500
-
-    fix phony mechanism
-
-commit 13110e8f8f0d1563cfc3eda30e9da82613fecf9f
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 22:16:17 2015 -0500
-
-    add aliases to list functions
-
-commit 901df6d3ac29e9299b0aa207900501de25ffbfa5
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 23:23:08 2015 -0500
-
-    .
-
-commit d3a6dcaae2018e114d1e83fdb059fe3c040f8d25
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 2 23:32:07 2015 -0500
-
-    add .gitattributes
-
-commit 3ebcb3cda7a7f217edc493c22e30b26cc6417862
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 3 14:41:12 2015 -0500
-
-    fix rel import name resolving
-
-commit 652e9c30583ce174d703de65dd1517942641c9b8
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 3 14:45:00 2015 -0500
-
-    support test suppression by prefixing __
-
-commit 85242c0892e452c551b66aa69d86d9bc2163fc86
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 3 14:46:35 2015 -0500
-
-    add built-in and some stack insts
-
-commit bfe25336ff1e4cdfab02c03009bd2332d1c6769d
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 3 19:26:25 2015 -0500
-
-    fix closure binding
-
-commit a6c30f7ff740c61bafb78ee419815ef6f82e394e
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 3 19:55:10 2015 -0500
-
-    implement ext module mechanism
-
-commit 5646e45ae7fb541b07376e7a19b63bb8a6234c1e
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 3 20:04:16 2015 -0500
-
-    add new gitignore entries
-
-commit 156b5c6a0c0faf619a6d74b6dfbbfdda84d94ae9
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 3 21:39:34 2015 -0500
-
-    add something new
-
-commit 00d86e6fa1a8f7883c750cc04cbfb3f5020cd159
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 3 21:45:41 2015 -0500
-
-    Update README.md
-
-commit b95f09835365db65c1be98bbe3ba63af1b0e9207
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 3 23:51:32 2015 -0500
-
-    fix je and hje, remove built-in
-
-commit db7d9c87ec4d7b96df096c27f1c53e0d334b5d28
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 00:33:13 2015 -0500
-
-    amend towel asm defs
-
-commit b444ef28d99c1da86083941a12869178c609cd97
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 00:55:19 2015 -0500
-
-    add ext howto
-
-commit ce8a6feb02f26f3e4164e29ffb8e2427f96407be
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 00:56:25 2015 -0500
-
-    remove sh files
-
-commit a09fd42d932eae637b2b6026379ea47b17f84d8c
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 01:00:16 2015 -0500
-
-    refine prefect
-
-commit b8cf11a7352557048dae5e8dc8bd02c4c8921204
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 01:02:04 2015 -0500
-
-    update readme
-
-commit 41a86a44f4b1426495a440342538c6eb15f7aa2f
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 03:23:54 2015 -0500
-
-    update towel asm manual
-
-commit 87293913668a22375078420e2f1c9078e2a5cf46
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 03:24:23 2015 -0500
-
-    hello world tk!
-
-commit f735768503b8f6b6ca67a0702b1fbd23fc0bc244
-Merge: 2fa2ef3 8729391
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 03:24:43 2015 -0500
-
-    Merge pull request #6 from qwert42/dynatowel
-    
-    Dynatowel!
-
-commit 507bdd554e4f80e10d7471780be633c934b893be
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 03:27:56 2015 -0500
-
-    Update README.md
-
-commit 7f9244d7c81efc7b729fdf08d31a72cdbfca9833
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 03:28:16 2015 -0500
-
-    Update README.md
-
-commit 163a5f2835bac4ec9c514b04ef6c87052e36e9d5
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 03:29:09 2015 -0500
-
-    update towel asm manual
-
-commit 1ad889deaa22b89ccf5f1e98f9f9368c0f090043
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 12:40:49 2015 -0500
-
-    Update std_gen.rb
-
-commit af387a8e6b80ecee89a285a97846f4f6319f72ce
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 13:33:19 2015 -0500
-
-    change ~pred to ?pred
-
-commit 38586b2f52f0a682eaad359ed3a1b9a4b577b499
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 13:34:05 2015 -0500
-
-    update TODO
-
-commit ac954d940d2d7e414ad8f86384194f773d854e2c
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Fri Dec 4 22:57:54 2015 -0500
-
-    make some amend
-
-commit da1de6834be64c68ea7f7d003dfa16a1a5a43065
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Dec 6 01:09:12 2015 -0500
-
-    add bytecode representation
-
-commit d4f37a6da1f1e1bd99700d100cbdf6fa10071d1e
-Merge: 38586b2 da1de68
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Dec 6 01:12:16 2015 -0500
-
-    Merge pull request #7 from qwert42/bytetowel
-    
-    Bytetowel
-
-commit 7009ae603c7be6d59af1a7090951f42f4d1007cc
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Dec 6 01:14:44 2015 -0500
-
-    lose unnecessary dep
-
-commit 38f75bf930408e8c9ff50bc7508365a45ef8bbfb
-Merge: d4f37a6 7009ae6
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Dec 6 01:15:18 2015 -0500
-
-    Merge pull request #8 from qwert42/bytetowel
-    
-    lose unnecessary dep
-
-commit 0bfc5a5172ad7d638ed412afb463621487fb98ce
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Dec 6 10:31:48 2015 -0500
-
-    remove idle and phony from grammar, add them to .w
-
-commit 5305ba6d176d83e90b30e314ea6cdb3d4b741902
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Dec 6 13:44:32 2015 -0500
-
-    fix tk bytecode parsing error
-
-commit 50777b2378654ea411b4c27235d4d01a01af62f2
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Sun Dec 6 17:38:50 2015 -0500
-
-    refactor name resolving
-
-commit 14112bb342ce799fc41ed558a3fb8db63cebaa2a
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Dec 7 00:58:28 2015 -0500
-
-    add install instruction, quicksort still fails
-
-commit f66076f650d698ab796ed3b60272c87c14c24481
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Dec 7 00:58:57 2015 -0500
-
-    opt std stack usage
-
-commit fb4c2794d20845cb825e331058b5a8dfd0ce3bbd
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Dec 7 00:59:08 2015 -0500
-
-    add *** debug instruction
-
-commit 460551dc02d3c88aa45879ffd1e3f5aeddd6c314
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Dec 7 00:59:50 2015 -0500
-
-    add tests; quicksort.t still fails
-
-commit 9f2388ba1fe117347fe6482ca5a517b24e55fc12
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Dec 7 01:00:47 2015 -0500
-
-    add one more test
-
-commit adb1d3c7520d7ef4fb066ef9cb92d2493837986a
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Dec 7 12:49:49 2015 -0500
-
-    fix scope overflow
-
-commit ec64e870e210f65d5cdf0e151648bc8e3630a503
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Dec 7 13:14:32 2015 -0500
-
-    add more wrappers for .w
-
-commit 9092e09ff9b7b8ed2fc75b150a736ae9df45f1b8
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Mon Dec 7 23:16:04 2015 -0500
-
-    add type reflection, opt name resolve
-
-commit 1fc75f2ac775b26c260e2ff9f84308ddd59f48cb
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Dec 8 01:15:09 2015 -0500
-
-    remove all the compiler-side type decls
-
-commit b19997c08908aabde7940a5ddc0d68657539b505
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Dec 8 19:02:41 2015 -0500
-
-    change list inflation mechanism
-
-commit d4df4251fc4f2c2b7a12727ca389795b7a96180f
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Dec 8 19:13:52 2015 -0500
-
-    be conservative about put_val
-
-commit fa8caf0c0b04e27cae92c3513f2b67d10291d67c
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Tue Dec 8 23:56:30 2015 -0500
-
-    add tuple-at
-
-commit 1eaf57d5e94b5e7924258b267fc820b4dc264d81
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Wed Dec 9 15:47:10 2015 -0500
-
-    revise manual
-
-commit dbbe42bcfd500f2f199cc6154d13c99670a5e09d
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 10 02:17:23 2015 -0500
-
-    modify import instruction format
-
-commit b2910cbb2828487174e59efba7771c9e72f53544
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 10 02:17:39 2015 -0500
-
-    add report
-
-commit 8c8234d4d286ff65c7294121944c28c35e4b7555
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 10 11:38:40 2015 -0500
-
-    change copy to ref in closure
-
-commit 6999be5b9484309ff2a608483976a4079a965d57
-Author: Zihang Chen <chsc4698@gmail.com>
-Date:   Thu Dec 10 15:16:26 2015 -0500
-
-    add more tests and texts
-\end{verbatim}
+\input{../play/log.tex}
 
 \chapter{Full Code Listing}
+
+\begin{mdframed}[style=hint]
+  Source code is also available online at \url{https://github.com/qwert42/Towel}.
+\end{mdframed}
 
 \input{../play/xxx.tex}
 
