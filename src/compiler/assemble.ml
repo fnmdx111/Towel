@@ -4,7 +4,7 @@ open Stdint;;
 let lbl:(string, uint64) Hashtbl.t = Hashtbl.create ~random:true 512;;
 
 let replace_label =
-  function (* I could have generate this with again. But,... nah... *)
+  function (* I could have generate this with script. But,... nah... *)
   | JUMP(ArgLabel(Label(s)))
     -> JUMP(ArgLit(VUFixedInt(Hashtbl.find lbl s)))
 

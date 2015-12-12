@@ -101,7 +101,7 @@ let find_closure ctx tree =
         Hashtbl.replace table
           ((lookup_name outer_scope (List.hd ns)), Uint64.zero) 1
 
-    else (* See nvm.ml:209 for why we don't need to put ext names in closure.
+    else (* See nvm.ml:218 for why we don't need to put ext names in closure.
             Hashtbl.replace table
             (lookup_ext_name ctx.ext_scope_meta ns) 1 *)
       ()
