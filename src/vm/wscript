@@ -25,7 +25,7 @@ def build(ctx):
     aff_mlis = []
     non_exec_mls = ['dscoping', 'tasm_inv_bytecode']
     some_more_mls0 = ['vm_t']
-    some_more_mls1 = ['imp', 'jumps', 'built_in', 'ext']
+    some_more_mls1 = ['imp', 'jumps', 'ext', 'arithmetics']
     some_more_mls2 = ['nvm']
     target_mls = ['tvm']
 
@@ -41,6 +41,11 @@ def build(ctx):
 
     ctx.exec_command([
         'ruby', 'src/vm/jmg.rb',
+        'src/vm'
+    ])
+
+    ctx.exec_command([
+        'ruby', 'src/vm/amg.rb',
         'src/vm'
     ])
 

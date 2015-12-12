@@ -5,7 +5,6 @@ bind + fun` ~1 ~2, (~1 ~2 ..+\.w)
 also - fun` ~1 ~2, (~1 ~2 ..-\.w)
 also * fun` ~1 ~2, (~1 ~2 ..*\.w)
 also / fun` ~1 ~2, (~1 ~2 ../\.w)
-also ** fun` ~1 ~2, (~1 ~2 ..**\.w)
 also % fun` ~1 ~2, (~1 ~2 ..%\.w)
 also = fun` ~1 ~2, (~1 ~2 ..=\.w)
 
@@ -17,7 +16,11 @@ also <> fun` ~1 ~2, (~1 ~2 = ift false, true)
 
 also :and fun` ~1 ~2, (~1 ~2 ..and\.w)
 also :or fun` ~1 ~2, (~1 ~2 ..or\.w)
-also :not fun` ~1 ~2, (~1 ~2 ..not\.w)
+also :not fun` ~, (~ ..not\.w)
+also :xor fun` ~1 ~2, (~1 ~2 ..xor\.w)
+also :shl fun` ~x ~n, (~x ~n ..shl\.w)
+also :shr fun` ~x ~n, (~x ~n ..shr\.w)
+also :lshr fun` ~x ~n, (~x ~n ..lshr\.w)
 
 also ~fint fun` ~1, (~1 ..2fint\.w)
 "Use tilde as prefix for all the conversion functions."
@@ -81,7 +84,7 @@ also /filter fun` ~l ?pred, (
                  (.!pop\.w ~x ~acc ..cons\.w))
   /foldl #rev@)
 also /flip fun` ~1 ~2 ~f, (~2 ~1 ~f)
-also #len fun` ~1, (0 ~1 fun` ~acc _, (~acc 1 ..+\.w) /foldl@)
+also #len fun` ~1, (0u ~1 fun` ~acc _, (~acc 1u ..+\.w) /foldl@)
 also !# #len`
 
 also /apply fun` ~args ~f, (~args .!unpack\.w ~f)
@@ -90,8 +93,10 @@ also !invoke .!invoke\.w`
 
 also ~idle ..idle\.w`
 
-then export + - * / ** % = :and :or ~fint ~ufint ~int ~float ~str !print
+then export + - * / % =
+:and :or :xor :shl :shr :lshr
+~fint ~ufint ~int ~float ~str !print
 !println #hd #tl #cons ?#empty #t1 #t2 #t3 /id /foldl #rev /map /filter
-/flip /foldr |#| #concat <# #> <#> ?# <<# !# /apply !read > >= < <= <> :not
-!!pop !!dup !!pack !!unpack $$ ^? #tn ~idle !invoke @
+/flip /foldr |#| #concat <# #> <#> ?# <<# !# #len /apply !read > >= < <= <>
+:not !!pop !!dup !!pack !!unpack $$ ^? #tn ~idle !invoke @
 

@@ -40,11 +40,14 @@ if __FILE__ == $0
             ['sub', '..-'],
             ['mul', '..*'],
             ['div', '../'],
-            ['pow', '..**'],
             ['mod', '..%'],
             ['equ', '..='],
             ['and', '..and'],
             ['or', '..or'],
+            ['xor', '..xor'],
+            ['shl', '..shl'],
+            ['shr', '..shr'],
+            ['lshr', '..lshr'],
             ['not', '..not']]
     instn, funn = i
 
@@ -82,6 +85,6 @@ if __FILE__ == $0
 
   w.puts 'terminate'
 
-  File.open '.w.o', 'w' do |f| f.puts w.string end
+  File.open '.w.l', 'w' do |f| f.puts w.string end
   File.open '.w.e', 'w' do |f| f.puts e.string end
 end

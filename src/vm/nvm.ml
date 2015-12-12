@@ -10,7 +10,7 @@ open Vm_t;;
 open Nstack;;
 open Printf;;
 open Common;;
-open Built_in;;
+open Arithmetics;;
 open Ext;;
 
 let vm_name = Uint64.to_int;;
@@ -365,8 +365,6 @@ let exec should_trace should_warn insts =
         | OVTuple(_) -> OVTypeHint(THTuple)
         | OVNil -> OVTypeHint(THNil)
         | OVTypeHint(_) -> OVTypeHint(THType)
-        | OVAlType(_) -> OVTypeHint(THAlType)
-        | OVAlTypeValue(_, _) -> OVTypeHint(THAlTypeValue)
       in dspush dss n;
       __exec ctxs flags next_ip
 
@@ -468,20 +466,31 @@ let exec should_trace should_warn insts =
             OVFunction(frec) -> invoke_regular frec
           | _ -> failwith "invoking non-function value")
 
-    | SUB -> trace "substracting";
-      let v1 = dspop dss
-      in let v2 = dspop dss
-      in dspush dss (match v1, v2 with
-          (* [| v2 | v1 |], when evaluating v2 v1 -, we want v2 - v1. *)
-            OVFixedInt(i), OVFixedInt(j) ->
-            OVFixedInt(Int64.sub j i)
-          | OVUFixedInt(i), OVUFixedInt(j) ->
-            OVUFixedInt(Uint64.sub j i)
-          | OVFloat(i), OVFloat(j) ->
-            OVFloat(j -. i)
-          | OVInt(i), OVInt(j) ->
-            OVInt(Big_int.sub_big_int j i)
-          | _ -> failwith "Incompatible type to do substraction.");
+    | ADD
+    | SUB
+    | MUL
+    | DIV
+    | MOD
+    | AND
+    | OR
+    | XOR -> binary_arithmetics inst dss;
+      __exec ctxs flags next_ip
+
+    | TO_FINT
+    | TO_UFINT
+    | TO_INT
+    | TO_FLOAT
+    | TO_STR -> conversions inst dss;
+      __exec ctxs flags next_ip
+
+    | SHL
+    | SHR
+    | LSHR ->
+      shift_arithmetics inst dss;
+      __exec ctxs flags next_ip
+
+    | NOT ->
+      unary_arithmetics inst dss;
       __exec ctxs flags next_ip
 
     | EQU -> trace "testing equality";
@@ -509,27 +518,6 @@ let exec should_trace should_warn insts =
                      then OVAtom(Uint64.one)
                      else OVAtom(Uint64.zero));
         __exec ctxs flags next_ip
-
-    | TO_FINT -> trace "casting to fint";
-      let v = dspop dss
-      in dspush dss (OVFixedInt(match v with
-            OVFixedInt(i) ->
-            tvm_warning "casting from fint to fint!";
-            i
-          | OVUFixedInt(i) ->
-            Int64.of_uint64 i
-          | OVFloat(i) ->
-            Int64.of_float i
-          | OVInt(i) ->
-            Int64.of_string (Big_int.string_of_big_int i)
-          | OVString(s) ->
-            (* It is really not casting here, but you get the idea. *)
-            Int64.of_string s
-          | OVFunction(frec) ->
-            (* Leave it for debugging purposes. *)
-            Int64.of_int frec.st
-          | _ -> failwith "casting unsupported value to fint."));
-      __exec ctxs flags next_ip
 
     | JUMP(ArgLit(VUFixedInt(p))) -> trace "jumping";
       __exec ctxs flags (to_pc p)
