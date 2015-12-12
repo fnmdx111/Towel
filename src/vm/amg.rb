@@ -151,7 +151,7 @@ gen_shift = lambda do |inst, supported_data_types|
           else
             ''
           end
-    dts.push "#{typenames[d]}(i), #{OVUFixedInt[d]}(j) ->
+    dts.push "OVUFixedInt(i), #{typenames[d]}(j) ->
       let ii = Uint64.to_int i in #{typenames[d]}(#{modnames[d]}#{dot}#{opname} j ii)"
   end
 
