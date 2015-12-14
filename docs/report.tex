@@ -162,7 +162,7 @@ More formally,
 \begin{verbatim}
   unprintables ::= [all the unprintable ASCII characters]
   whitespaces ::= ['\n' '\t' ' ' '\r']
-  reserved_punct ::= ['`' ''' '"' ',' '\' '@' 
+  reserved_punct ::= ['`' ''' '"' ',' '\' '@'
                       '(' ')' '[' ']' '{' '}' whitespaces unprintables]
   valid_punct ::= ['!' '~' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '|'
                    ':' '<' '>' '?' '/' ';']
@@ -1319,7 +1319,7 @@ which is exactly what we would be expecting.
 
           then bind Type (~super #1)
                also Area ,\, (__width __height *)
-  
+
                then [\Type` Area`]
 
         then bind ~my-circle (42 Circle)
@@ -1441,6 +1441,7 @@ If you compile the OCaml-side wrapper correctly and run the last but one example
 \part{The Towel Assembly and Virtual Machine Manual}
 
 \chapter{An Overview on the Towel Virtual Machine}
+\label{chap:tvm-overview}
 
 The Towel virtual machine is basically a stack-based state machine that accepts and executes Towel Assembly Language. It reads instructions sequently from instruction buffer and does its computation on stacks. It has the following important parts:
 \begin{itemize}
@@ -2272,7 +2273,7 @@ In this chapter, we consider the term intermediate representation to be synonymo
     (compiler.east) -- (ir.north); \draw[->] (ir.south) -- (vm.east);
     \draw[->] (vm.west) -- (output.east);
   \end{tikzpicture}
-  
+
   \caption{Overall Architecture}
   \label{fig:overall}
 \end{figure}
@@ -2281,12 +2282,29 @@ In this chapter, we consider the term intermediate representation to be synonymo
 
   The compiler frontend (module \texttt{Weave}) first invokes \texttt{Switches.parse} to parse the switch configuration for the source code. Then it gets the abstract syntax tree out of the source code by tokenizing and parsing it with modules \texttt{Scanner.token} and \texttt{Parser.sentence}.
 
-  Then it invokes module \texttt{Compile.compile} to transform the AST data structure to the AST of intermediate representation (or AST of bytecode). During this phase, \texttt{Compile} makes use of \texttt{Cseg.(|\mtilde ~\mtilde ~|)} and \texttt{Tasm\_ast} to build the IR AST, it also take advantage of module \texttt{Scoping} to do scope analysis at the same time.
+  After that, it invokes module \texttt{Compile.compile} to transform the AST data structure to the AST of intermediate representation (or AST of bytecode). During this phase, \texttt{Compile} makes use of \texttt{Cseg.(|\mtilde ~\mtilde ~|)} and \texttt{Tasm\_ast} to build the IR AST, it also take advantage of module \texttt{Scoping} to do scope analysis at the same time.
 
   \begin{mdframed}[style=detail]
-    Module \texttt{Cseg} defines an infix operator \texttt{(|\mtilde ~\mtilde ~|)} to represent the concatenation of two \texttt{Tasm\_ast.asm} into one. This greatly simplifies the work for code generation.
+    Module \texttt{Cseg} defines an infix operator \texttt{(|\mtilde ~\mtilde ~|)} to represent the concatenation of two \texttt{Tasm\_ast.asm} data structures into one. This greatly simplifies the work for code generation. Because you can write the code generation part in a really straight-forward way, like this:
+    \begin{minted}[linenos]{ocaml}
+      let snippet = cnil
+                    |~~| preamble
+                    |~~| (line INSTALL)
+                    |~~| fun_args
+                    |~~| (line SWEEP)
+                    |~~| body_inst
+                    |~~| (cline [end_label] (Some(POP_SCOPE)))
+                    |~~| (line RET)
+                    |~~| (put_label [real_end_label])
 
-    The \texttt{Compile.compile} function basically invokes the code generation function \texttt{Compile.g\_word} for each word in the AST. And for each kind of word, \texttt{Compile.g\_word} call all kinds of other code generation functions, for example, for \texttt{Ast.WFunction}, it calls \texttt{Compile.g\_fun}. We didn't import many code optimizations, so all of the \texttt{g\_*} functions are somewhat trivial.
+    \end{minted}
+
+    The \texttt{Compile.compile} function basically takes a \texttt{Sentence}, then for each word in the \texttt{Sentence}, it invokes \texttt{g\_word}. For each kind of word, \texttt{g\_word} route them to respective \texttt{g\_*} functions. For every kind of word, there exists a \texttt{g\_*} function corresponding it.
+
+Each \texttt{g\_*} function takes a parameter \texttt{ctx} to keep track of the current context of the code generation, for example, the scope environment the piece of AST is in, or if the AST is in a backquote, etc.
+
+Some of the \texttt{g\_*} functions (specifically, those words that represents a single value, for example, literals, sequences, etc) also take another parameter \texttt{inst\_ctx} for the \texttt{g\_bind} function to generate proper \inst{bind} instruction.
+
   \end{mdframed}
 
   With the IR AST, the compiler invokes \texttt{Assemble.assemble} to get rid of all the labels, and replace them with absolute positions. After this step, the compiler gets Assembled IR AST.
@@ -2299,7 +2317,7 @@ In this chapter, we consider the term intermediate representation to be synonymo
   See also \autoref{fig:compiler-arch}.
   \end{mdframed}
 
-\begin{figure}[h]
+\begin{figure}[htbp]
   \centering
   \begin{tikzpicture}[ roundnode/.style={circle, draw=green!60,
       fill=green!5, very thick, minimum size=2cm},
@@ -2337,9 +2355,11 @@ In this chapter, we consider the term intermediate representation to be synonymo
 
 \section{The Towel Virtual Machine (Zihang Chen)}
 
-Things are much simpler on the VM-side. The virtual machine frontend \texttt{Tvm} first reads in the bytecode representation of IR, transforms it back into IR AST by invoking \texttt{Tasm\_inv\_bytecode.parse\_bytecode}. Then invokes \texttt{Nvm.exec} to execute all the instructions parsed.
+Things are much simpler on the VM-side. The virtual machine frontend \texttt{Tvm} first reads in the bytecode representation of IR, transforms it back into IR AST by invoking \texttt{Tasm\_inv\_bytecode.parse\_bytecode}. Then invokes \texttt{Nvm.exec} to execute all the instructions parsed. \texttt{Nvm.exec} is a simple wrapper function to bootstrap \texttt{Nvm.\_\_exec}, which actually does all the work.
 
-The function \texttt{Nvm.exec} basically implements all the instructions available. However, for certain instructions that are quite alike, for example, the arithmetic instructions and branching instructions, we use Ruby scripts to generate respective code for them, then invoke them in \texttt{Nvm.exec}.\footnote{An alternative to do this is by \texttt{camlp4}.}
+The function \texttt{Nvm.\_\_exec} implements all the instructions available in a very big \texttt{match} expression. After each execution of an instruction, it tail calls itself with the new state of the virtual machine (for example, \texttt{flags}, IP, etc.) to execute the next instruction pointed by IP. For more on the state of the Towel Virtual Machine, see also \autoref{chap:tvm-overview}.
+
+For certain instructions that are quite alike, for example, the arithmetic instructions and branching instructions, we use Ruby scripts to generate respective code for them, then invoke them in \texttt{Nvm.exec}.\footnote{An alternative to do this is by \texttt{camlp4}.} 
 
 \begin{mdframed}[style=detail]
 The \texttt{Nvm.exec} depends on many other functions from other modules to work. For example,
@@ -2362,7 +2382,7 @@ The \texttt{Nvm.exec} depends on many other functions from other modules to work
 \end{itemize}
 \end{mdframed}
 
-\begin{figure}[h]
+\begin{figure}[htbp]
   \centering
   \begin{tikzpicture}[ roundnode/.style={circle, draw=green!60,
       fill=green!5, very thick, minimum size=2cm},
@@ -3138,6 +3158,32 @@ You'll never get to fix all your bugs.
 \item Don't panic.
 \end{enumerate}
 
+\section{Baochan Zheng}
+
+Working on this unique project with a smart student is really challenging.
+
+  The most important thing I learnt this semester is that communication is 
+extremely important for a teamwork task. From the very beginning, we should 
+have argued more about our project and make it more achievable for us. Besides, 
+although we stick to meeting at least once a week, we are so used to listening to 
+Zihang’s idea and doing things he told us to, but never challenge him. This bad 
+habit makes us took lots of detours, for example we’ve been to “data stack stack 
+stack” things and wasted a lot of time on “object reference table” which is proved 
+to be an inefficient way. 
+
+  On the other hand, although we spent almost the whole semester in struggling 
+to follow Zihang’s crazy idea, we do learn a lot from him. He showed us how to 
+make a language general-purpose, how to make it efficient and elegant. And we 
+tried to build our own virtual machine (although our coding on virtual machine 
+was updated by Zihang after a essential change on basic structure), which is the 
+thing many other groups are not working on. What’s more, we even learnt the 
+basic rules of Ruby to finish the module coding. We gained deep understanding 
+on runtime environment, stack management and other things mentioned in 
+class.
+
+  Losing control of my own project doesn’t feel good, but I’m still happy about 
+having this chance to work with Zihang, and engaging in this crazy project.
+
 \part{The Future}
 
 Although the project has accomplished most of the goals it set at the very beginning, there's still much that's left to be improved or done. For example, a native compiler that compile the intermediate representation to C code, and then procure a native application using \texttt{gcc} or \texttt{clang}.
@@ -3174,6 +3220,21 @@ The GNU Project. \textit{The GNU C Reference Manual}.
 \bibitem{ocaml-manual}
 Xavier Leroy, Damien Doligez, Alain Frisch, Jacques Garrigue, Didier Rémy and Jérôme Vouillon. \textit{The OCaml System Release 4.02 - Documentation and User's Manual}.
 \url{http://caml.inria.fr/pub/docs/manual-ocaml/}, 2015-12-12.
+
+\bibitem{forth}
+J.V. Noble. \textit{A Beginner's Guide to Forth}. \url{http://galileo.phys.virginia.edu/classes/551.jvn.fall01/primer.htm}, 2015-12-12.
+
+\bibitem{strongforth}
+Stephan Becher. \textit{Introduction to StrongForth}. \url{http://www.arestlessmind.org/2009/02/03/intro.html}, 2015-12-12.
+
+\bibitem{postscript}
+Paul Bourke. \textit{PostScript Tutorial}. \url{http://paulbourke.net/dataformats/postscript/}. 2015-12-12.
+
+\bibitem{joylang}
+\textit{Joy (programming language)}. \url{https://en.wikipedia.org/wiki/Joy\_(programming\_language)}. 2015-12-12.
+
+\bibitem{joyofjoy}
+Language Perils. \textit{The Joy of Joy}. \url{http://ncreep.github.io/language\_perils/blog/2013-03-18-the-joy-of-joy.html}. 2015-12-12.
 
 \bibitem{ocaml-libref}
 Xavier Leroy, Damien Doligez, Alain Frisch, Jacques Garrigue, Didier Rémy and Jérôme Vouillon. \textit{The OCaml Library Reference}. \url{http://caml.inria.fr/pub/docs/manual-ocaml/libref/index.html}, 2015-12-12.
