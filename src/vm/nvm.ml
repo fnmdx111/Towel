@@ -355,18 +355,32 @@ let exec should_trace should_warn insts =
       let n = match (dspop dss) with
           OVUFixedInt(i) -> Uint64.to_int i
         | OVFixedInt(i) -> let r = Int64.to_int i
-          in if r < 0
-          then failwith "Invalid argument to pack (arg < 0)."
+          in if r < -1
+          then failwith "Invalid argument to pack (arg < -1)."
           else r
         | OVInt(i) -> let r = Big_int.int_of_big_int i
-          in if r < 0
-          then failwith "Invalid argument to pack (arg < 0)."
+          in if r < -1
+          then failwith "Invalid argument to pack (arg < -1)."
           else r
         | _ -> failwith "Invalid type of argument to pack."
-      in let nl = List.fold_left (fun acc _ ->
+      in if n = -1
+      then let rec __pop_until_empty acc =
+             let empty = dsis_empty dss
+             in if empty = 0
+             then __pop_until_empty ((dspop dss)::acc)
+             else if empty = 1
+             then acc
+             else begin let ds = BatDynArray.last dss
+               in BatDynArray.delete_last ds;
+               acc
+             end
+        in let acc = __pop_until_empty []
+        in dspush dss (OVTuple(ref acc));
+             __exec ctxs flags next_ip
+      else let nl = List.fold_left (fun acc _ ->
           (dspop dss)::acc) [] (BatList.range 1 `To n)
-      in dspush dss (OVTuple(ref nl));
-      __exec ctxs flags next_ip
+        in dspush dss (OVTuple(ref nl));
+        __exec ctxs flags next_ip
 
     | UNPACK -> trace "unpacking";
       let ns = match (dspop dss) with
