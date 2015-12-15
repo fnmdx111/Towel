@@ -421,6 +421,7 @@ let exec should_trace should_warn insts =
       let tos = dspop dss
       in (match tos with
             OVList(rls) -> dspush dss (List.hd !rls)
+          | OVString(s) -> dspush dss (OVString(BatString.head s 1))
           | _ -> failwith "Non hd-able value type.");
       __exec ctxs flags next_ip
 
@@ -428,6 +429,7 @@ let exec should_trace should_warn insts =
       let tos = dspop dss
       in (match tos with
             OVList(rls) -> dspush dss (OVList(ref (List.tl !rls)))
+          | OVString(s) -> dspush dss (OVString(BatString.tail s 1))
           | _ -> failwith "Non tl-able value type.");
       __exec ctxs flags next_ip
 
@@ -436,6 +438,10 @@ let exec should_trace should_warn insts =
       in let elem = dspop dss
       in (match l with
             OVList(rls) -> dspush dss (OVList(ref (elem::(!rls))))
+          | OVString(s) -> let ss = match elem with
+                OVString(ss) -> ss
+              | _ -> failwith "Cons'ing a non-string to a string."
+            in dspush dss (OVString(String.concat "" [ss; s]))
           | _ -> failwith "Cons'ing a non-list value.");
       __exec ctxs flags next_ip
 
@@ -447,6 +453,9 @@ let exec should_trace should_warn insts =
       in (match tos with
             OVList(rls)
           | OVTuple(rls) -> dspush dss (judge rls)
+          | OVString(s) -> if String.length s = 0
+            then dspush dss (OVAtom(Uint64.one))
+            else dspush dss (OVAtom(Uint64.zero))
           | _ -> failwith "Non is_empty-able value type.");
       __exec ctxs flags next_ip
 
