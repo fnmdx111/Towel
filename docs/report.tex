@@ -1,4 +1,3 @@
-
 \documentclass{report}
 
 \usepackage[left=1in, right=1in, top=1in, bottom=1in]{geometry}
@@ -15,7 +14,6 @@
 \usepackage{tikz}
 \usetikzlibrary{positioning}
 \usetikzlibrary{shapes, arrows, shadows}
-
 
 \usepackage[usenames, dvipsnames]{pstricks}
 \usepackage{epsfig}
@@ -109,29 +107,42 @@ Once you have full-fledged functional framework, you have the whole world. For e
 
 Why a virtual machine? Because we think this is the most portable and easy way to do a prototype for a new language. After you got the language working, you can do all kinds of crazing things, like compiling the bytecode that the VM reads into a native application.
 
-\chapter{A Short ``Hello, world!'' Tutorial to the Towel Programming Language}
+\chapter{A Short Tutorial to the Towel Programming Language}
 
+Welcome to the tutorial\footnote{We will assume you know the basics about how a stack-based language works.} and don't panic!
+
+Let's implement a summation function!
 \begin{mdframed}[style=example]
 \begin{verbatim}
   import 'std' @ (1)
 
-  'Hello, world!' (2) (3) !println (4)
+  bind (2) Fold-left ,\ (3) Acc Xs Fun,
+    (Xs ?# (4) ift (5) Acc,
+       (Acc Xs #hd Fun (6) Xs #tl Fun` (7) Fold-left@ (8)))
+  also Sum (0 (+` Fold-left) (9) /flip (10))
+  then ([1 10 11 20] (11) Sum !println (12))
 \end{verbatim}
 \end{mdframed}
 
 Now, let me explain something:
 \begin{enumerate}
 \item By default, this isn't any standard library function available until you explicitly import the module \texttt{Std}. See also \autoref{ssec:import}.
-\item Strings in Towel are quoted by single quotes. See also \autoref{sec:w-literal}.
-\item When you write something literal, Towel pushes it immediately onto the stack. See also \autoref{sec:basics}.
-\item When you write something that's not a literal, but a name, Towel finds out what the name is bound to, and begin to evaluate that value. After the evaluation, it pushes the result onto the stack, if any. See also \autoref{sec:def-name} for how to define a name. See \autoref{sec:eval-rule} for how Towel normally runs your program.
+\item Bind some name (see also \autoref{sec:def-name}) to a value. In this case we are binding a function (represented by \texttt{,\textbackslash}) to the name \texttt{Fold-left}! For more on binding values to names, see also \autoref{sec:bind-forms}
+\item The token \texttt{,\textbackslash} is just a token \texttt{fun} with a backquote. More on backquotes and function forms, please see \autoref{sec:backquotes} and \autoref{sec:fun-form}.
+\item Test if \texttt{Xs} is an empty list using the standard library function \texttt{?\#}. For more on the standard library, see \autoref{chap:std-lib}.
+\item This shows you how to do conditional branching in Towel. There are up to 10 kinds of \texttt{if} forms in Towel, each kind of them tests the TOS to see if it agrees with the predicate. See also \autoref{sec:ifs}.
+\item Calling the function \texttt{Fun} which is passed as an argument! Functions are first-class citizens in Towel.
+\item Backquoting the name \texttt{Fun} to prevent it from executing. Because in this case, we want this function to simply be a value that can be passed as an argument.
+\item Tail calling the function bound to \texttt{Fold-left} by appending an \texttt{@} symbol to the name.
+\item Function currying here. We are applying only the addition function to the trinary function \texttt{Fold-left}, to get a binary function that adds each element of the list to the accumulator. The two arguments of this function is the list and the initial value of the accumulator.
+\item Then, we use the standard library function \texttt{/flip} to flip the rest two arguments of the curried \texttt{Fold-left} so that it accepts the initial value then the list. After this, we apply a zero to the flipped curried \texttt{Fold-left} function, so that we obtain a unary function which does the same as the last function we get, except it accumulates from \textbf{0}.
+
+The \texttt{also} clause of the \texttt{bind-then} form binds the name \texttt{Sum} to this unary function we just obtained.
+\item List literal. See also \autoref{ssec:lists} for details on list literals.
+\item Calling the \texttt{Sum} function in the \texttt{then} clause of the \texttt{bind-then} form to sum the list we just created, and use standard library function \texttt{!println} to print the Answer \textbf{42}!
 \end{enumerate}
 
-To see more examples, please read \autoref{chap:examples}.
-
-If you want to learn more about this novel language, do read on for the Towel Reference Manual, where you will learn every aspect of the language.
-
-Don't panic!
+To see more examples, please read \autoref{chap:examples}. If you are interested, and want to learn more about this novel language, do read on for the Towel Reference Manual, where you will learn every aspect of the language.
 
 \part{The Towel Reference Manual}
 
@@ -340,15 +351,30 @@ You should also know that the computational model Towel uses is based on stacks,
 
 \section{Rules for Evaluation}\label{sec:eval-rule}
 
-When you reference to a word, Towel does the following:
+When you reference to words, Towel does the following for each kind of them:
+
 \begin{itemize}
-\item For literals, it pushes back them directly;
-\item For a backqoute, it pushes back whatever is quoted (i.e. without evaluating);
-\item For a function, it creates a new stack, gets whatever required arguments to it from caller's stack, does the computation, pushes back the TOS of its own stack to caller's stack (this is called in Towel ``returning a value'');
-\item For a sequence, it creates a new function out of the body of the sequence and evaluates that function;
-\item For a name, it looks up the value it references to, evaluates that value and pushes back the evaluated value.
-\item For \texttt{if} forms, test against the TOS and evaluate the word in respective branch;
-\item For bind-then form, it pushes a new scope, evaluates the values on stack that get bound (both \texttt{bind} clause and \texttt{also} clause) and binds the values evaluated to the names, then it evaluates the \texttt{then} clause within current scope. Finally it pops the scope.
+\item \textbf{Literals}
+
+pushes back them directly
+\item \textbf{Backqoutes}
+
+pushes back whatever is quoted (i.e. without evaluating)
+\item \textbf{Functions}
+
+creates a new stack, gets whatever required arguments to it from caller's stack, does the computation, pushes back the TOS of its own stack to caller's stack (this is called in Towel ``returning a value'')
+\item \textbf{Sequences}
+
+creates a new function out of the body of the sequence and evaluates that function
+\item \textbf{Names}
+
+looks up the value it references to, evaluates that value and pushes back the evaluated value
+\item \textbf{\texttt{if} forms}
+
+tests against the TOS and evaluates the word in respective branch
+\item \textbf{\texttt{bind-then} forms}
+
+pushes a new scope, evaluates the values on stack that get bound (both \texttt{bind} clause and \texttt{also} clauses) and binds the values evaluated to the names, then evaluates the \texttt{then} clause within current scope, and finally pops the scope
 \end{itemize}
 
 \section{Rules for Scoping}\label{sec:scope-rule}
@@ -387,6 +413,7 @@ You can create number and string literals by writing like this:
 Note that string items are surrounded by single quote, rather than double quote.\footnote{Because you don't have to hit the \textit{shift} key when inputing single quotes. Same goes for brackets.}
 
 \subsection{Lists}
+\label{ssec:lists}
 
 When creating a list literal, you must write a list of words separated with spaces in a pair of brackets, like the following code:
 \begin{mdframed}[style=example]
@@ -494,15 +521,16 @@ See \autoref{sec:switches} for more details.
 \end{mdframed}
 
 \section{Backquote}
+\label{sec:backquotes}
 
 Towel evaluates and pushes everything it encounters, you can use backquotes the values to prevent Towel from evaluating them so that Towel pushes them directly onto the data stack. Backquotes are created by appending a backquote to the words you want to backquote.
 
 You can backquote only limit types of words:
 \begin{itemize}
-\item literals; Towel pushes the literal back immediately
-\item names; Towel pushes whatever the name references to onto the stack, without evaluating them
-\item sequences and functions; Towel pushes them onto the stack without executing it
-\item backquotes; why would you do such a thing?
+\item \textbf{Literal}; Towel pushes the literal back immediately
+\item \textbf{Name}; Towel pushes whatever the name references to onto the stack, without evaluating them
+\item \textbf{Sequence and function}; Towel pushes them onto the stack without executing it
+\item \textbf{Backquote}; why would you do such a thing?
 \end{itemize}
 
 \begin{mdframed}[style=hint]
@@ -513,6 +541,7 @@ You can backquote only limit types of words:
 \end{mdframed}
 
 \section{\texttt{if} Forms}
+\label{sec:ifs}
 
 Towel supports 10 kinds of \texttt{if} forms for the sake of readability and convenience. They are of the same form, while differing in the predicate they use.
 
@@ -520,23 +549,44 @@ An \texttt{if} form contains two words separated by a comma. When evaluating an 
 
 The predicates used by \texttt{if} forms are as follows:
 \begin{itemize}
-\item \texttt{if>0}, if TOS is a number and greater than 0
-\item \texttt{if>=0}, if TOS is a number and greater than or equal to 0
-\item \texttt{if<0}, if TOS is a number and less than 0
-\item \texttt{if<=0}, if TOS is a number and less than or equal to 0
-\item \texttt{if=0}, if TOS is a number and equal to 0
-\item \texttt{if\textasciitilde 0}, if TOS is a number and not equal to 0
-\item \texttt{ife}, if the stack is empty
-\item \texttt{ifne}, if the stack is not empty
-\item \texttt{ift}, if TOS is an atom and equal to \texttt{true}
-\item \texttt{iff}, if TOS is an atom and equal to \texttt{false}
+\item \texttt{if>0}
+
+if TOS is a number and greater than 0
+\item \texttt{if>=0}
+
+if TOS is a number and greater than or equal to 0
+\item \texttt{if<0}
+
+if TOS is a number and less than 0
+\item \texttt{if<=0}
+
+if TOS is a number and less than or equal to 0
+\item \texttt{if=0}
+
+if TOS is a number and equal to 0
+\item \texttt{if\mtilde 0}
+
+if TOS is a number and not equal to 0
+\item \texttt{ife}
+
+if the stack is empty
+\item \texttt{ifne}
+
+if the stack is not empty
+\item \texttt{ift}
+
+if TOS is an atom and equal to \texttt{true}
+\item \texttt{iff}
+
+if TOS is an atom and equal to \texttt{false}
 \end{itemize}
 
 See \autoref{chap:examples} for examples on \texttt{if} forms.
 
 \section{Function Form}
+\label{sec:fun-form}
 
-Function forms are used to define anonymous functions of arbitrary arity. To define a function, first type the keyword \texttt{fun}, and a list of argument declarations and finally a word for the body of the function.
+Function forms are used to define anonymous functions of arbitrary arity. To define a function, first type the keyword \texttt{fun}, and a list of argument declarations and finally a word for the body of the function. The function will acquire the declared arguments from the stack in the reverse order as the argument declarations indicate.
 
 Because function form creates and evaluates function in place, the following code is valid\footnote{But not semantically correct, because you cannot invoke a number as function.}:
 \begin{mdframed}[style=example]
@@ -609,6 +659,7 @@ The output will be \texttt{[4 5]}.
 \end{mdframed}
 
 \section{Bind Form}
+\label{sec:bind-forms}
 
 Use bind forms to add new name bindings in a new scope. Names can be bound to any kind of values such as functions, atoms, and all kinds of literals as long as they exist on the stack.
 
@@ -754,6 +805,7 @@ If you turn on \texttt{optimize-seq} switch, when you create a sequence as the b
 \end{mdframed}
 
 \chapter{The Standard Library}
+\label{chap:std-lib}
 
 \section{Naming Conventions}
 
@@ -802,7 +854,7 @@ divide \marg1 by \marg2
 \begin{mdframed}[style=hint]
   This leftarrow thing is just to highlight the arguments that should be applied to the function, and implies the stack-based nature of Towel, i.e. the order the functions acquire their arguments.
 
-  For example, \arithstd{-} means that \mstd{-} grabs \marg2 first, then \marg1, but still calculates $\marg1 - \marg2$.
+  For example, \arithstd{-} means that although \mstd{-} grabs \marg2 first, then \marg1, it still calculates $\marg1 - \marg2$ (and is defined as \texttt{fun` \marg1 \marg2} if you look at the source code of \texttt{std.t}).
 \end{mdframed}
 
 It also contains various functions for comparison purposes:
@@ -2278,11 +2330,11 @@ In this chapter, we consider the term intermediate representation to be synonymo
   \label{fig:overall}
 \end{figure}
 
-\section{The Towel Compiler (Zihang Chen)}
+\section{Structural Overview on the Towel Compiler (Zihang Chen)}
 
   The compiler frontend (module \texttt{Weave}) first invokes \texttt{Switches.parse} to parse the switch configuration for the source code. Then it gets the abstract syntax tree out of the source code by tokenizing and parsing it with modules \texttt{Scanner.token} and \texttt{Parser.sentence}.
 
-  After that, it invokes module \texttt{Compile.compile} to transform the AST data structure to the AST of intermediate representation (or AST of bytecode). During this phase, \texttt{Compile} makes use of \texttt{Cseg.(|\mtilde ~\mtilde ~|)} and \texttt{Tasm\_ast} to build the IR AST, it also take advantage of module \texttt{Scoping} to do scope analysis at the same time.
+  After that, it invokes module \texttt{Compile.compile} to transform the AST data structure to the AST of intermediate representation. While traversing the AST, module \texttt{Compile} also makes use of module \texttt{Scoping} to do scope analysis and report any names that get referenced to without first binding something to it. If such name is found, the compilation aborts immediately.
 
   \begin{mdframed}[style=detail]
     Module \texttt{Cseg} defines an infix operator \texttt{(|\mtilde ~\mtilde ~|)} to represent the concatenation of two \texttt{Tasm\_ast.asm} data structures into one. This greatly simplifies the work for code generation. Because you can write the code generation part in a really straight-forward way, like this:
@@ -2299,9 +2351,9 @@ In this chapter, we consider the term intermediate representation to be synonymo
 
     \end{minted}
 
-    The \texttt{Compile.compile} function basically takes a \texttt{Sentence}, then for each word in the \texttt{Sentence}, it invokes \texttt{g\_word}. For each kind of word, \texttt{g\_word} route them to respective \texttt{g\_*} functions. For every kind of word, there exists a \texttt{g\_*} function corresponding it.
+    The \texttt{Compile.compile} function basically takes a \texttt{Sentence}, then for each word in the \texttt{Sentence}, it invokes \texttt{g\_word}. For each kind of word, \texttt{g\_word} route them to respective \texttt{g\_*} functions. For each kind of word, there exists a corresponding \texttt{g\_*} function.
 
-Each \texttt{g\_*} function takes a parameter \texttt{ctx} to keep track of the current context of the code generation, for example, the scope environment the piece of AST is in, or if the AST is in a backquote, etc.
+Each \texttt{g\_*} function takes a parameter \texttt{ctx} to keep track of the current context of the code generation, for example, the scope environment the piece of AST is in, or if the piece of AST is backquoted, etc.
 
 Some of the \texttt{g\_*} functions (specifically, those words that represents a single value, for example, literals, sequences, etc) also take another parameter \texttt{inst\_ctx} for the \texttt{g\_bind} function to generate proper \inst{bind} instruction.
 
@@ -2309,7 +2361,7 @@ Some of the \texttt{g\_*} functions (specifically, those words that represents a
 
   With the IR AST, the compiler invokes \texttt{Assemble.assemble} to get rid of all the labels, and replace them with absolute positions. After this step, the compiler gets Assembled IR AST.
 
-  In the last step, the compiler invokes \texttt{Tasm\_bytecode.b\_asm} to get the bytecode representation of the IR.
+  In the last step, the compiler invokes \texttt{Tasm\_bytecode.b\_asm} to procure the bytecode representation of the IR.
 
   \begin{mdframed}[style=hint]
   The above mainly talked about the very common invocation to the compiler, for other uses, for example, outputing text version of Assembled IR AST, the compiler uses \texttt{Tasm\_stringify.p\_asm}.
@@ -2324,22 +2376,27 @@ Some of the \texttt{g\_*} functions (specifically, those words that represents a
     squarednode/.style={rectangle, draw=red!60, fill=red!5, very
       thick, minimum size=2cm}, ]
     % Nodes
-    \node[squarednode] (sourcecode) {Source code}; \node[roundnode] (switches) [right=of sourcecode] {Switches.parse}; \node[roundnode]
-    (scanner) [right=of switches] {Tokenize}; \node[roundnode]
-    (parser) [right=of scanner] {Parse}; \node[roundnode] (compile)
-    [below left=1.2cm and 0cm of parser] {Compile}; \node[squarednode]
-    (ast_ir) [below=of compile] {IR AST}; \node[roundnode] (assemble)
-    [below left=1.2cm and 0cm of ast_ir] {Assemble}; \node[roundnode]
-    (stringify_raw) [below right=1.2cm and 0cm of ast_ir] {Stringify};
-    \node[squarednode] (raw) [below right=of stringify_raw] {Raw IR};
-    \node[roundnode] (ir_stringify) [below left=1.2cm and 0cm of
-    assemble] {Stringify}; \node[squarednode] (asm_ir) [below=of
-    ir_stringify] {Assembled IR}; \node[roundnode] (bytecode) [below
-    right=1.2cm and 0cm of assemble] {Bytecode}; \node[squarednode]
-    (bc_ir) [below=of bytecode] {Bytecode IR};
+    \node[squarednode] (sourcecode) {Source code}; \node[roundnode]
+    (switches) [right=of sourcecode] {Switches.parse};
+    \node[roundnode] (scanner) [right=of switches] {Tokenize};
+    \node[roundnode] (parser) [right=of scanner] {Parse};
+    \node[squarednode] (parsed_ast) [below left=1.2cm and 0cm of
+    parser] {AST}; \node[roundnode] (compile) [below=of parsed_ast]
+    {Compile}; \node[squarednode] (ast_ir) [below=of compile] {IR
+      AST}; \node[roundnode] (assemble) [below left=1.2cm and 0cm of
+    ast_ir] {Assemble}; \node[roundnode] (stringify_raw) [below
+    right=1.2cm and 0cm of ast_ir] {Stringify}; \node[squarednode]
+    (raw) [below right=of stringify_raw] {Raw IR}; \node[roundnode]
+    (ir_stringify) [below left=1.2cm and 0cm of assemble] {Stringify};
+    \node[squarednode] (asm_ir) [below=of ir_stringify] {Assembled
+      IR}; \node[roundnode] (bytecode) [below right=1.2cm and 0cm of
+    assemble] {Bytecode}; \node[squarednode] (bc_ir) [below=of
+    bytecode] {Bytecode IR};
     % Lines
-    \draw[->] (sourcecode.east) -- (switches.west); \draw[->] (switches.east) -- (scanner.west); \draw[->]
-    (scanner.east) -- (parser.west); \draw[->] (parser.south west) --
+    \draw[->] (sourcecode.east) -- (switches.west); \draw[->]
+    (switches.east) -- (scanner.west); \draw[->] (scanner.east) --
+    (parser.west); \draw[->] (parser.south west) --
+    (parsed_ast.north); \draw[->] (parsed_ast.south) --
     (compile.north); \draw[->] (compile.south) -- (ast_ir.north);
     \draw[->] (ast_ir.south) -- (assemble.north east); \draw[->]
     (ast_ir.south) -- (stringify_raw.north west); \draw[->]
@@ -2353,7 +2410,7 @@ Some of the \texttt{g\_*} functions (specifically, those words that represents a
   \label{fig:compiler-arch}
 \end{figure}
 
-\section{The Towel Virtual Machine (Zihang Chen)}
+\section{Structural Overview on the Towel Virtual Machine (Zihang Chen)}
 
 Things are much simpler on the VM-side. The virtual machine frontend \texttt{Tvm} first reads in the bytecode representation of IR, transforms it back into IR AST by invoking \texttt{Tasm\_inv\_bytecode.parse\_bytecode}. Then invokes \texttt{Nvm.exec} to execute all the instructions parsed. \texttt{Nvm.exec} is a simple wrapper function to bootstrap \texttt{Nvm.\_\_exec}, which actually does all the work.
 
@@ -3129,7 +3186,7 @@ tests if complicated list creation works (especially, function calls inside list
 
 \section{Zihang Chen}
 
-First of all, OCaml is great (but not perfect). Be patient and learn how to program in OCaml. It will change your life.
+First of all, OCaml is great (but not perfect). Be patient and learn how to program in it. It will change your life (for someone who hasn't been doing much functional programming).
 
 Discuss your ideas with your teammates, explain your code to people, fix your bugs right away. Keep a memo at hand, even before sleep.
 
@@ -3183,6 +3240,16 @@ class.
 
   Losing control of my own project doesn’t feel good, but I’m still happy about 
 having this chance to work with Zihang, and engaging in this crazy project.
+
+\section{Guanlin Chen}
+
+From the whole semester, under the tutoring of PLT class, we implemented what we learned and brought the knowledge into the real world. Towel language is a stack based programming language which roots in our team leader Zihang's mind. The logic of the programming language is complicated and requires comprehensively analysis, neatly blueprint, also intelligence.
+
+Together with Baochan, my work focuses on the virtual machine part. Even dealing with a minor part of the whole language , I am sometimes struggled to figure out the logic and the method to construct the VM. Impressively, the 'four stack' ages was the most challenging days, CTXS, DSS, SCPS and ORT were resemble to four distinct resource station, only a properly combination could figure the desired output. Even ORT is rejected at last because of our task to simplize the language, that part of work is also a memory segment which embedded deeply in my heart. For instance, the DSS stores the reference , which is the key of the harsh table, pointing at the data. During the programming, I always mistook the real value with the reference, which gave a inproper output.   
+
+So always be logical thinking and be preoccupied when implementing something in your intricate logic. So as Zihang mentioned, 'Everytime your program confuses you, check whether the type could match.'
+
+Another significant portion for the VM is the introduction of ruby. The basic notion occurs during the optimation of the VM. When dealing with the AST given by parser, huge amount of instructions are required, however, some of them have similar function and less distinguished programming methods. Ruby is resemble to a glue which could build script for our program to make some optimization. For the mathematics instructions portion of Towel, we should implement different mathematics operations, 'plus', 'substract', 'multiple', 'divide' for the parameters with the types like 'int', 'fint' etc...From the original method, we should deal with each of the operator with each of the type, that is time consuming and mechanical repetition tasks，once some parts should be modified, it is trivial to modify all the program. In ruby, a 'map' function could be employed to "glue" different parts by visiting all the elements from a list. This method is introduced to 'math', 'to', 'jmp'related instructions.
 
 \part{The Future}
 
