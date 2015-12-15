@@ -375,11 +375,11 @@ let exec should_trace should_warn insts =
                acc
              end
         in let acc = __pop_until_empty []
-        in dspush dss (OVTuple(ref acc));
+        in dspush dss (OVList(ref acc));
              __exec ctxs flags next_ip
       else let nl = List.fold_left (fun acc _ ->
           (dspop dss)::acc) [] (BatList.range 1 `To n)
-        in dspush dss (OVTuple(ref nl));
+        in dspush dss (OVList(ref nl));
         __exec ctxs flags next_ip
 
     | UNPACK -> trace "unpacking";
