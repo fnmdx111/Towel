@@ -773,7 +773,7 @@ Something is wrong with the compiler.");
                                             list_make_stack = []}
                            ::(ntos ctxs)
             in let tail_ip = frec.st |> succ
-            (* Bypass both the push-scope and push-stack instructions. *)
+            (* Bypass the push-scope instruction. *)
             in if frec.mod_id = curmod.id
             then __exec new_ctxs
                 {flags with scps = remove_scps scps (tos ctxs).scp_count}
