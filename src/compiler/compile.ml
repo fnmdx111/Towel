@@ -385,12 +385,14 @@ and g_seq ctx inst_ctx seq =
        let _x = if not is_shared
          then (put_label [seq_st_id])
               |~~| (line PUSH_STACK)
+              |~~| (line PUSH_SCOPE)
          else put_label [seq_st_id]
        in opt_cs _x
 
   in let seq_postamble =
        let _x = if not is_shared
          then (put_label [seq_end_id])
+              |~~| (line POP_SCOPE)
               |~~| (line RET)
          else (put_label [seq_end_id])
               |~~| (line SHARED_RET)
@@ -410,6 +412,9 @@ and g_seq ctx inst_ctx seq =
   in let seq_insts =
        cnil
        |~~| seq_preamble
+       |~~| (if ctx.is_backquoted
+             then (line INSTALL)
+             else cnil)
        |~~| body_insts
        |~~| seq_postamble
 
@@ -422,8 +427,7 @@ and g_seq ctx inst_ctx seq =
        (Hashtbl.fold (fun k v acc ->
            let nid, esid = k
            in acc |~~| line (CLOSURE(ArgLit(VUFixedInt(nid)))))
-           closure cnil) |~~| (if ctx.is_backquoted then (line INSTALL)
-                               else cnil)
+           closure cnil)
 
   in let () = if ctx.is_body
        then ()
