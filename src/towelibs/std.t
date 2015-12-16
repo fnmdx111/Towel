@@ -83,11 +83,24 @@ also /filter fun` ~l ?pred, (
   fun` ~acc ~x, (~x ?pred ift ~acc,
                  (~x ~acc ..cons\.w))
   /foldl #rev@)
-also /flip fun` ~1 ~2 ~f, (~2 ~1 ~f)
+
+also /arg-rot-n fun` ~f ~n, (
+  {~n .!pack\.w fun ~args, (~args ..tl\.w [(~args ..hd\.w)] #concat)
+   .!unpack\.w ~f})
+also /arg-rot3 (3 /arg-rot-n)
+also /flip (2 /arg-rot-n)
+
 also #len fun` ~1, (0u ~1 fun` ~acc _, (~acc 1u ..+\.w) /foldl@)
 also !# #len`
 
 also /apply fun` ~args ~f, (~args .!unpack\.w ~f)
+
+also .//foldl (/foldl` /arg-rot3)
+also .///foldl (/foldl` /arg-rot3 /arg-rot3)
+
+also #!vargs {-1 .!pack\.w}
+also /!vfoldl {#!vargs .//foldl}
+also #!vconcat {#!vargs #concat` [] .///foldl}
 
 also !invoke .!invoke\.w`
 
@@ -98,5 +111,6 @@ then export + - * / % =
 ~fint ~ufint ~int ~float ~str !print
 !println #hd #tl #cons ?#empty #1 #2 #3 /id /foldl #rev /map /filter
 /flip /foldr |#| #concat <# #> <#> ?# <<# !# #len /apply !read > >= < <= <>
-:not !!pop !!dup !!pack !!unpack $$ ^? #n ~idle !invoke @
+:not !!pop !!dup !!pack !!unpack $$ ^? #n ~idle !invoke /!vfoldl #!vconcat
+#!vargs /arg-rot-n /arg-rot3 @
 
