@@ -76,6 +76,11 @@ if __FILE__ == $0
   make_inline_fun.call '..tuple-at', ['tuple-at']
   make_inline_fun.call '.^?', ['type']
 
+  make_inline_fun.call '.#lbegin', ['push-lnil']
+  make_inline_fun.call '.#lend', ['end-list']
+  make_inline_fun.call '.#tbegin', ['push-tnil']
+  make_inline_fun.call '.#tend', ['end-list']
+
   make_inline_fun.call '!>ext', ['load-ext']
   make_inline_fun.call '!>>', ['extcall']
 
