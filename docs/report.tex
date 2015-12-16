@@ -302,7 +302,7 @@ Although they are not comparable to integers, they can be tested against each ot
 
 \subsection{Strings}
 
-A string is an immutable data structure of fixed-length sequence of characters (or bytes).
+A string is an enumerable data structure of a sequence of characters (or bytes). With that said, you can operate string with most of the list operations, for example, \mstd{\#hd} and \mstd{\#cons}.
 
 \begin{mdframed}[style=detail]
   To see how long a string can be in the underlying OCaml environment, go to your OCaml toplevel and type \texttt{Sys.max\_string\_length;;}.
@@ -527,10 +527,18 @@ Towel evaluates and pushes everything it encounters, you can use backquotes the 
 
 You can backquote only limit types of words:
 \begin{itemize}
-\item \textbf{Literal}; Towel pushes the literal back immediately
-\item \textbf{Name}; Towel pushes whatever the name references to onto the stack, without evaluating them
-\item \textbf{Sequence and function}; Towel pushes them onto the stack without executing it
-\item \textbf{Backquote}; why would you do such a thing?
+\item \textbf{Literal}
+
+Towel pushes the literal back immediately
+\item \textbf{Name}
+
+Towel pushes whatever the name references to onto the stack, without evaluating them
+\item \textbf{Sequence and function}
+
+Towel pushes them onto the stack without executing it
+\item \textbf{Backquote}
+
+Why would you do such a thing?
 \end{itemize}
 
 \begin{mdframed}[style=hint]
@@ -969,17 +977,30 @@ pop the last element on current stack
 duplicate the last element on current stack
 \item \texttt{...} \mla \marg{n} \mla \mstd{!!pack}
 
-pack \marg{n} elements on current stack into a tuple
+pack \marg{n} elements on current stack into a list, if \marg{n} is negative one, it packs all the elements on the stack until it encounters a phony (in this case, the phony is popped as always)
 \item \marg1 \mla \mstd{!!unpack}
 
 unpack \marg1 into N elements and push them onto current stack
+
+\begin{mdframed}[style=warning]
+  You may want to be cautious when \mstd{!!pack}'ing $-1$ on a stack that recently ran implicit import. You could pack every function that's imported and placed on the stack into a list, rendering the name bindings invalid.
+
+  Always using a phony when applying $-1$ to \mstd{!!pack} is a good idea.
+\end{mdframed}
+
 \item \marg{fun} \mla \mstd{!invoke}
 
 invoke \marg{fun} as a function when you don't know the arity of it
 \end{itemize}
 
 \begin{mdframed}[style=hint]
-  Because of the low-levelness of \mstd{!!pack} and \mstd{!!unpack}, they do not accept argument the same way other functions do, but directly from current stack. So you cannot create curried functions out of them.
+  \begin{itemize}
+  \item Because of the low-levelness of \mstd{!!pack} and
+    \mstd{!!unpack}, they do not accept argument the same way other
+    functions do, but directly from current stack. So you cannot
+    create curried functions out of them.
+  \item You can use \mstd{!!pack} to implement variadic functions.
+  \end{itemize}
 \end{mdframed}
 
 \subsection{Phony}
@@ -993,11 +1014,11 @@ Use \mstd{\$\$} to push a phony onto current stack.
 \subsection{Working with Enumerables}
 
 
-\subsubsection{Functions that Works with Both Lists and Tuples}
+\subsubsection{Functions that Works with Lists, Tuples and Strings}
 
 Only one exists for now: \marg{x} \mla \mstd{?\#}, \marg{x} emptiness test.
 
-\subsubsection{List-only Functions}
+\subsubsection{List and String only Functions}
 
 \begin{itemize}
 \item \marg{l} \mla \mstd{\#hd}
@@ -1008,13 +1029,13 @@ get the head of \marg{l}
 get the tail of \marg{l}
 \item \marg{e} \mla \marg{l} \mla \mstd{\#cons}
 
-cons \marg{e} and \marg{l} into a new list
+cons \marg{e} and \marg{l} into a new list or string if \marg{l} is a string
 \item \marg{l} \mla \mstd{\#rev}
 
 reverse \marg{l}
 \item \marg{l1} \mla \marg{l2} \mla \mstd{\#concat}
 
-concatenate \marg{l1} and \marg{l2}
+concatenate \marg{l1} and \marg{l2}, for strings it's the same as \mstd{\#cons}
 \item \marg{l} \mla \mstd{\#len}
 
 get the length of \marg{l}
@@ -1059,9 +1080,6 @@ maps function denoted by \marg{fun} onto \marg{list}
 \item \marg{list} \mla \texttt{?pred} \mla \mstd{/filter}
 
 for each element \marg{x} in \marg{list}, discards \marg{x} when \texttt{\marg{x} ?pred} turns out to be \texttt{true}
-\item \marg1 \mla \marg2 \mla \marg{fun} \mla \mstd{/flip}
-
-flips the arguments of a binary function \marg{fun}, i.e. \texttt{\marg2 \marg1 \marg{fun}}
 \item \marg{args} \mla \marg{fun} \mla \mstd{/apply}
 
 apply the elements in \marg{args} as arguments to \marg{fun}
@@ -1096,6 +1114,61 @@ To do this correctly, you should backquote \texttt{!println} like this
 
 This backquote prevents \texttt{!println} from executing, leaving it be as a function value so that it can be passed to \texttt{/map}.
 \end{mdframed}
+
+\subsection{Variadic Functions}
+
+Most of the variadic functions are implemented using one of the features of \mstd{!!pack} function, i.e. it packs all the elements before a phony into a list if \marg{n} is $-1$.
+
+\begin{itemize}
+\item \marg{f} \mla \marg{n} \mla \mstd{/arg-rot-n}
+
+rotates the last \marg{n} arguments of \marg{f}
+
+\begin{mdframed}[style=example]
+\begin{verbatim}
+  import 'std' @
+
+  bind Some-fun ,\ ~1 ~2 ~3, (~1 ~2 ~3 + *)
+  also Rot-some-fun-1 (Some-fun` 3 /arg-rot-n)
+  also Rot-some-fun-2 (Some-fun` 2 /arg-rot-n)
+  then (1 2 3 Some-fun !println
+        1 2 3 Rot-some-fun-1 !println
+        1 2 3 Rot-some-fun-2 !println)
+\end{verbatim}
+
+The above code will print out
+
+\begin{verbatim}
+  5
+  9
+  5
+\end{verbatim}
+
+We get the second output 9 is because after \texttt{3 /arg-rot-n}, the function\newline \texttt{\marg1 \mla \marg2 \mla \marg3 \mla Some-fun} becomes \texttt{\marg3 \mla \marg1 \mla \marg2 \mla Some-fun}, so the result is \texttt{3 1 2 + *}, which is 9.
+
+THe third output is still 5 because the operands of addition is interchangeable, despite the fact that \texttt{Some-fun} becomes \texttt{\marg1 \mla \marg3 \mla \marg2 \mla Some-fun}.
+\end{mdframed}
+
+\item \marg{f} \mla \mstd{/arg-rot3}
+
+a special version of \mstd{/arg-rot-n} that works with trinary functions
+
+\item \marg{f} \mla \mstd{/flip}
+
+a special version of \mstd{/arg-rot-n} that works with binary functions
+
+\item \texttt{...} \mla \mstd{\#!vargs}
+
+accumulates arguments into a list until it encounters a phony, effectively -1 applied to \mstd{!!pack}
+
+\item \texttt{...} \mla \marg{acc} \mla \marg{f} \mla \mstd{/!vfoldl}
+
+a variadic version of \mstd{/foldl}
+
+\item \texttt{...} \mla \mstd{\#!vconcat}
+
+concatenates all values (assuming they are of all concatenable data types) on the stack until it encounters a phony
+\end{itemize}
 
 \section{Module \texttt{Random}}
 
@@ -1757,9 +1830,9 @@ Assumes the TOS is a list or tuple, then unpacks it onto the stack.
   after unpack: [ ... | 1 | 2 | 3]
 \end{verbatim}
 \end{mdframed}
-\subsection{\texttt{0x1c} \inst{pack} \parg{N} \parg{1} \parg{2} ... \parg{3}}
+\subsection{\texttt{0x1c} \inst{pack} \parg{N} \parg{1} \parg{2} ... \parg{K} ...}
 
-Takes one integer \parg{N} from the stack to pack \parg{N} items on the stack into a tuple.
+Takes one integer \parg{N} from the stack to pack \parg{N} items on the stack into a list. If \parg{N} is negative one, it packs all the elements on the stack until it encounters a phony, in which case the phony will be popped.
 
 \begin{mdframed}[style=example]
 \begin{verbatim}
@@ -1941,23 +2014,23 @@ These instructions allow one type of TOS to convert into value of other types. T
 
 \subsection{\texttt{0x5e} \inst{car} \parg{XS}}
 
-Does CAR operation on linked lists. It takes a list from the stack, puts back the head of the list.
+Does CAR operation on linked lists and strings. It takes a list or string from the stack, puts back the head of the list or string.
 
 \subsection{\texttt{0x5f} \inst{cdr} \parg{XS}}
 
-Same as \inst{car}, except that it puts back the rest of the list.
+Same as \inst{car}, except that it puts back the rest of the list or string.
 
 \subsection{\texttt{0x60} \inst{cons} \parg{XS} \parg{X}}
 
-Does CONS operation on linked lists. It constructs a new list and then puts it back onto the stack.
+Does CONS operation on linked lists and strings. It constructs a new list or string depending on the type of operands and then puts it back onto the stack.
 
 \begin{mdframed}[style=hint]
-  If it encounters a tuple, TVM exits.
+  If it encounters a tuple, TVM complains and exits.
 \end{mdframed}
 
 \subsection{\texttt{0x61} \inst{list-empty} \parg{XS}}
 
-Tests if the TOS is an empty \textbf{list or tuple}. It puts back whether \texttt{true} or \texttt{false}, depending on the emptiness of the list or tuple.
+Tests if the TOS is an empty \textbf{list, tuple or string}. It puts back whether \texttt{true} or \texttt{false}, depending on the emptiness of the list, tuple or string.
 
 \subsection{\texttt{0xf3} \inst{tuple-at} \parg{N} \parg{XS}}
 
