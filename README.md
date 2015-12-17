@@ -54,9 +54,8 @@ The Future
 ----
 
 Of course the TOWEL-C COMPILER like the cool guys!!! (And of course not javascript, it just sucks.)
-Maybe a bytecode compiler for a VM in C.
 
-Oh, and algebraic data type. I'll have to do a lot of thinking.
+See also the related part in the report.
 
 License
 ----
