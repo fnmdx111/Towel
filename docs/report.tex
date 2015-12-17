@@ -9,7 +9,7 @@
 \usepackage{minted}
 \usepackage{xltxtra}
 \usepackage{appendix}
-\usepackage{xcolor}
+\usepackage[dvipsnames]{xcolor}
 \usepackage[nottoc,numbib]{tocbibind}
 \usepackage{tikz}
 \usetikzlibrary{positioning}
@@ -58,6 +58,13 @@ frametitlerule=true,frametitlerulecolor=white,
 frametitlebackgroundcolor=red,
 frametitlerulewidth=2pt}
 
+\mdfdefinestyle{grammar}{%
+rightline=true,innerleftmargin=10,innerrightmargin=10,
+frametitle={Grammar},
+frametitlerule=true,frametitlerulecolor=white,
+frametitlebackgroundcolor=YellowGreen,
+frametitlerulewidth=2pt}
+
 \newcommand{\mstd}[1]{\texttt{#1\textbackslash Std}}
 \newcommand{\mtilde}[1]{\textasciitilde}
 
@@ -66,7 +73,6 @@ frametitlerulewidth=2pt}
 \newcommand{\arithstd}[1]{\marg{1} \mla \marg{2} \mla \mstd{#1}}
 
 \newcommand{\inst}[1] {\texttt{inst:#1}}
-
 
 \begin{document}
 \maketitle
@@ -173,15 +179,14 @@ More formally,
 \begin{verbatim}
   unprintables ::= [all the unprintable ASCII characters]
   whitespaces ::= ['\n' '\t' ' ' '\r']
-  reserved_punct ::= ['`' ''' '"' ',' '\' '@'
+  reserved_punct ::= ['`' ''' '"' ',' '\' '@' '.'
                       '(' ')' '[' ']' '{' '}' whitespaces unprintables]
-  valid_punct ::= ['!' '~' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '|'
+  valid_punct ::= ['!' '~' '#' '$' '%' '^' '&' '*' '-' '_' '+' '=' '|' '.'
                    ':' '<' '>' '?' '/' ';']
   BQUOTE ::= '`'
   SQUOTE ::= '''
   DQUOTE ::= '"'
   COMMA ::= ','
-  PERIOD ::= '.'
   SLASH ::= '\'
   AT ::= '@'
   LPAREN ::= '('
@@ -331,11 +336,27 @@ You can use the built-in function \mstd{\string^?} to get the type of TOS. The r
 
 \section{Program Structure}\label{sec:basics}
 
-A Towel program consists of one or multiple so-called \textbf{words} or \textbf{forms}.
+\begin{mdframed}[style=grammar]
+\begin{verbatim}
+  sentence : word* TERMINATOR
+
+  word : backquote
+       | sequence
+       | literal
+       | control_sequence
+       | function_
+       | bind_sform
+       | import
+       | export
+       | name
+\end{verbatim}
+\end{mdframed}
+
+A Towel program is a sentence that consists of one or multiple so-called \textbf{words} or \textbf{forms}.
 
 When encountered multiple words, they are always evaluated one by one in the order they appear. Although most of the times, Towel remains in a postfix fashion, but for the sake of convenience, some parts of the grammar is of prefix or infix style (e.g. the bind form and namespaced name invocation).
 
-A word, can be one of the following:
+A word can be one of the following:
 \begin{itemize}
 \item literal
 \item name
@@ -368,6 +389,13 @@ creates a new stack, gets whatever required arguments to it from caller's stack,
 creates a new function out of the body of the sequence and evaluates that function
 \item \textbf{Names}
 
+  \begin{mdframed}[style=grammar]
+\begin{verbatim}
+    name : NAME (SLASH NAME)*
+         | name AT ;; tail recursive call
+\end{verbatim}
+  \end{mdframed}
+
 looks up the value it references to, evaluates that value and pushes back the evaluated value
 \item \textbf{\texttt{if} forms}
 
@@ -384,6 +412,16 @@ Only two forms in Towel can create a new scope: the function form and the \textt
 A name is only referenceable within the scope it is bound, plus the child scopes of that scope. For closures, the captured names are poured into the function's scope by default.
 
 \section{Literals}\label{sec:w-literal}
+
+\begin{mdframed}[style=grammar]
+\begin{verbatim}
+  literal : LITERAL
+          | STRING
+          | ATOM
+          | lit_list
+          | lit_tuple
+\end{verbatim}
+\end{mdframed}
 
 A literal is a literal value whose type is of the data types we have talked about in \autoref{chap:data-types}.
 
@@ -414,6 +452,12 @@ Note that string items are surrounded by single quote, rather than double quote.
 
 \subsection{Lists}
 \label{ssec:lists}
+
+\begin{mdframed}[style=grammar]
+\begin{verbatim}
+  lit_list : LBRACKET word* RBRACKET
+\end{verbatim}
+\end{mdframed}
 
 When creating a list literal, you must write a list of words separated with spaces in a pair of brackets, like the following code:
 \begin{mdframed}[style=example]
@@ -481,6 +525,12 @@ So in general, never ever put complicated words in a list literal. If you are re
 
 \subsection{Tuples}
 
+\begin{mdframed}[style=grammar]
+\begin{verbatim}
+  LBRACKET SLASH word* RBRACKET
+\end{verbatim}
+\end{mdframed}
+
 Tuples are fixed length lists, this means that you cannot CDR from them, nor CONSing to them. Create tuples like this:
 \begin{mdframed}[style=example]
 \begin{verbatim}
@@ -489,7 +539,20 @@ Tuples are fixed length lists, this means that you cannot CDR from them, nor CON
 \end{verbatim}
 \end{mdframed}
 
+Just so you know, the warning of the previous section on lists applies here as well.
+
 \section{Sequence}
+
+\begin{mdframed}[style=grammar]
+\begin{verbatim}
+  sequence : sequence_
+           | shared_sequence
+
+  sequence_ : LPAREN word* RPAREN
+
+  shared_sequence : LPAREN AT word* RPAREN
+\end{verbatim}
+\end{mdframed}
 
 Sequences are short-hand forms for creating anonymous functions with no arguments. You can create a sequence by writing the sequence body between a pair of parentheses.
 
@@ -523,6 +586,16 @@ See \autoref{sec:switches} for more details.
 \section{Backquote}
 \label{sec:backquotes}
 
+\begin{mdframed}[style=grammar]
+\begin{verbatim}
+  backquote : literal BQUOTE
+            | name BQUOTE
+            | sequence BQUOTE
+            | backquote BQUOTE
+            | LBRACE word* RBRACE ;; shorthand for backquoted shared sequence
+\end{verbatim}
+\end{mdframed}
+
 Towel evaluates and pushes everything it encounters, you can use backquotes the values to prevent Towel from evaluating them so that Towel pushes them directly onto the data stack. Backquotes are created by appending a backquote to the words you want to backquote.
 
 You can backquote only limit types of words:
@@ -550,6 +623,23 @@ Why would you do such a thing?
 
 \section{\texttt{if} Forms}
 \label{sec:ifs}
+
+\begin{mdframed}[style=grammar]
+\begin{verbatim}
+  control_sequence : if_sform
+
+  if_sform : IFGEZ word COMMA word
+           | IFGZ word COMMA word
+           | IFLEZ word COMMA word
+           | IFLZ word COMMA word
+           | IFE word COMMA word
+           | IFNE word COMMA word
+           | IFEZ word COMMA word
+           | IFNEZ word COMMA word
+           | IFT word COMMA word
+           | IFF word COMMA word
+\end{verbatim}
+\end{mdframed}
 
 Towel supports 10 kinds of \texttt{if} forms for the sake of readability and convenience. They are of the same form, while differing in the predicate they use.
 
@@ -594,6 +684,16 @@ See \autoref{chap:examples} for examples on \texttt{if} forms.
 \section{Function Form}
 \label{sec:fun-form}
 
+\begin{mdframed}[style=grammar]
+\begin{verbatim}
+  function_ : FUNCTION arg_def* COMMA word
+            | FUNCTION BQUOTE arg_def* COMMA word
+            | LAMBDA arg_def* COMMA word ;; same as FUNCTION BQUOTE
+
+  arg_def : NAME
+\end{verbatim}
+\end{mdframed}
+
 Function forms are used to define anonymous functions of arbitrary arity. To define a function, first type the keyword \texttt{fun}, and a list of argument declarations and finally a word for the body of the function. The function will acquire the declared arguments from the stack in the reverse order as the argument declarations indicate.
 
 Because function form creates and evaluates function in place, the following code is valid\footnote{But not semantically correct, because you cannot invoke a number as function.}:
@@ -621,7 +721,7 @@ See \autoref{chap:examples} for concrete examples.
 
 \subsection{Tail Recursive Function Calls}
 
-Any practical functional programming language provides tail recursion optimization. So does Towel. However, Towel is unable to identify\footnote{\textit{I admit I had been lazy.}} whether a function call is tail recursive, so users are responsible for tagging tail recursive calls with an at symbol at the end of the name of the function, like this:
+Any practical functional programming language provides tail recursion optimization. So does Towel. However, Towel is unable to identify\footnote{\textit{I admit I had been lazy.}} whether a function call is tail recursive, so users are responsible for tagging tail recursive calls with an \textbf{at} symbol at the end of the name of the function, like this:
 
 \begin{mdframed}[style=example]
 \begin{verbatim}
@@ -669,6 +769,14 @@ The output will be \texttt{[4 5]}.
 \section{Bind Form}
 \label{sec:bind-forms}
 
+\begin{mdframed}[style=grammar]
+\begin{verbatim}
+  bind_sform : BIND bind_body (ALSO bind_body)* THEN word
+
+  bind_body : NAME word
+\end{verbatim}
+\end{mdframed}
+
 Use bind forms to add new name bindings in a new scope. Names can be bound to any kind of values such as functions, atoms, and all kinds of literals as long as they exist on the stack.
 
 Simply type \texttt{bind} followed by the name and the value. Use keyword \texttt{also} to bind more names to more values. Bind forms have a compulsory \texttt{then} clause, which is followed by a word. You can do your computation under the name scope after this name binding in the \texttt{then} clause. Top-level name bindings, i.e. names bound by the outmost bind form, are visible across modules, you may want to take advantage of this behavior.
@@ -713,6 +821,13 @@ Modules, or namespaces, in Towel, are sets of names. Mechanisms like this preven
 
 \subsection{Importing a Module}\label{ssec:import}
 
+\begin{mdframed}[style=grammar]
+\begin{verbatim}
+  import : IMPORT STRING* SLASH ;; explicit import
+         | IMPORT STRING* AT ;; implicit import
+\end{verbatim}
+\end{mdframed}
+
 To import a module, use the \texttt{import} form.
 \begin{mdframed}[style=example]
 \begin{verbatim}
@@ -756,6 +871,12 @@ The path of the module file \texttt{'std.w'}, is searched as the following order
 Note that you can import multiple modules in a single \texttt{import} statement.
 
 \subsection{Exporting Names}
+
+\begin{mdframed}[style=grammar]
+\begin{verbatim}
+  export : EXPORT NAME* AT
+\end{verbatim}
+\end{mdframed}
 
 You can also export names in your module so that they are visible to other modules with \texttt{export} form as follows:
 
@@ -2260,7 +2381,7 @@ Last, write a Towel wrapper module for your extension module. In the \texttt{.w}
 \chapter{Project Plan}
 
 \section{A Little Bit of History about Towel}
-The original idea of Towel was to create an esoteric programming language like \textit{Shakespear} or \textit{Piet}. The central idea was that every program structure is identified by the first character. For example, \texttt{if} \texttt{is} \texttt{is-not} are all recognized as an \texttt{IF} token. And you could write a GCD program in a lorem-ipsum manner.
+The original idea of Towel was to create an esoteric programming language like \textit{Shakespear} or \textit{Piet}. The central idea was that every program structure is identified by the first character. For example, \texttt{if} \texttt{is} \texttt{is-not} are all recognized as an \texttt{IF} token. With this tokenizer, you could write a GCD program in a lorem-ipsum manner.
 
 But this soon turned out to be infeasible when you want to name more than 26 things. So the one-character grammar idea got abandoned.
 
@@ -2280,7 +2401,9 @@ Manuals (or specification) were modified along development (at least for the fir
 
 After each major feature was completed, one or two test cases would be created to test if the feature would work.
 
-Not long before feature freeze, some holistic test cases were made to ensure everything works correctly together. Such test cases include, for example, \texttt{quicksort.t} for quicksort and \texttt{adv-obj.t} for advanced OO simulation.
+Not long before feature freeze, some holistic test cases were made to ensure everything works correctly together. Such test cases include, for example, \texttt{quicksort.t} for quicksort and \texttt{adv-obj.t} for advanced OO simulation. It was during these tests, some serious defects were discovered, for example, scope leakage due to unbalanced \inst{pop-scope} instruction during code generation for sequences\footnote{Fixed in commit \texttt{adb1d3c752}.}, or improperly designed data structure in the virtual machine that causes function calls in list literals to return the return value to wrong location\footnote{Fixed in commit \texttt{ccdf962de7}.}.
+
+After the feature freeze, tests are still being added to the test suite.
 
 \section{Programming Style}
 
@@ -3344,6 +3467,40 @@ There are also still large parts missing in the standard library, for example, f
 
 \chapter{Full Code Listing}
 
+\section{License Information}
+
+This project is licensed under the terms of BSD 3-Clause License.
+
+\begin{verbatim}
+Copyright (c) 2015, Zihang Chen (qwert42, chsc4698@gmail.com)
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation 
+and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+may be used to endorse or promote products derived from this software without 
+specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+\end{verbatim}
 \begin{mdframed}[style=hint]
   Source code is also available online at \url{https://github.com/qwert42/Towel}.
 \end{mdframed}
