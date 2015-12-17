@@ -61,4 +61,4 @@ Oh, and algebraic data type. I'll have to do a lot of thinking.
 License
 ----
 
-This project is licensed under GPLv3.
+This project is licensed under BSD 3-Clause License.
