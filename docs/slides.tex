@@ -1,0 +1,346 @@
+\documentclass[10pt, compress, handout]{beamer}
+
+\usetheme[usetitleprogressbar]{metropolis}
+
+\usepackage{mdframed}
+
+\usepackage{booktabs}
+\usepackage[scale=2]{ccicons}
+\usepackage{minted}
+
+\usepackage{alltt}
+
+\newcommand{\sst}[1]{\textcolor{teal}{\textbf{#1}}}
+\newcommand{\ltt}[1]{\textcolor{violet}{\textbf{#1}}}
+\newcommand{\nmt}[1]{\textcolor{orange}{\textbf{#1}}}
+
+\newcommand{\msst}[1]{\textcolor{teal}{\texttt{#1}}}
+\newcommand{\mltt}[1]{\textcolor{violet}{\texttt{#1}}}
+\newcommand{\mnmt}[1]{\textcolor{orange}{\texttt{#1}}}
+
+\newcommand{\ssti}[1]{#1}
+\newcommand{\ltti}[1]{#1}
+\newcommand{\nmti}[1]{#1}
+
+\usemintedstyle{trac}
+
+\title{The Towel Programming Language \includegraphics[scale=0.15]{images.jpg}}
+\subtitle{W4115 PLT, Fall 2015}
+\author{Zihang Chen (zc2324) Baochan Zheng (bc2269) Guanlin Chen (gc2666)}
+\institute{Columbia University}
+
+\begin{document}
+
+\maketitle
+
+\begin{frame}[fragile]
+\frametitle{Introduction}
+What is Towel anyway?
+
+\pause
+It is ...
+\begin{itemize}[<+->]
+\item $\lambda$ \onslide<+->{: tail recursion, function as first-class citizen, etc.}
+\item Stack-based and postfix-syntaxed
+\item Dynamically strong-typed
+\item General-purpose
+  \onslide<+->{\begin{alltt}
+    \ltt{42} \nmt{!println}
+\end{alltt}}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Introduction}
+  What does it look like?
+
+\pause
+  \begin{mdframed}
+\begin{alltt}
+  import 'std' @
+
+  bind Fold-left ,\textbackslash Acc Xs Fun,
+    (Xs ?# ift Acc,
+       (Acc Xs #hd Fun Xs #tl Fun` Fold-left@))
+  also Sum (0 (+` Fold-left /flip))
+  then ([1 10 11 20] Sum !println)
+\end{alltt}
+  \end{mdframed}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{How to recognize different parts of the example}
+
+  Let me do some syntax-highlighting here.
+
+\pause
+  \begin{alltt}
+  \sst{import} 'std' \sst{@}
+
+  \sst{bind} Fold-left \sst{,\textbackslash} Acc Xs Fun\sst{,}
+    \sst{(}Xs ?# \sst{ift} Acc\sst{,}
+       \sst{(}Acc Xs #hd Fun Xs #tl Fun\sst{`} Fold-left\sst{@))}
+  \sst{also} Sum \sst{(}0 \sst{(}+\sst{`} Fold-left /flip\sst{))}
+  \sst{then} \sst{(}[1 10 11 20] Sum !println\sst{)}
+  \end{alltt}
+\vspace{0.5cm}
+
+  \begin{itemize}
+  \item \sst{Language Structures}:
+\small
+\msst{Sequence}, \msst{if} forms, \msst{Function}, \msst{Backquote}, \msst{bind-then} forms, \msst{import} form, \msst{export} form
+\normalsize
+  \end{itemize}
+\vspace{0.3cm}
+
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{How to recognize different parts of the example}
+
+  Let me do some syntax-highlighting here.
+
+  \begin{alltt}
+  \sst{import} 'std' \sst{@}
+
+  \sst{bind} Fold-left \sst{,\textbackslash} Acc Xs Fun\sst{,}
+    \sst{(}Xs ?# \sst{ift} Acc\sst{,}
+       \sst{(}Acc Xs #hd Fun Xs #tl Fun\sst{`} Fold-left\textcolor{red}{@}\sst{))}
+  \sst{also} Sum \sst{(}0 \sst{(}+\sst{`} Fold-left /flip\sst{))}
+  \sst{then} \sst{(}[1 10 11 20] Sum !println\sst{)}
+  \end{alltt}
+
+\vspace{-0.16cm}
+\textcolor{red}{Tail recursive function call}
+
+  \begin{itemize}
+  \item \sst{Language Structures}:
+\small
+\msst{Sequence}, \msst{if} forms, \msst{Function}, \msst{Backquote}, \msst{bind-then} forms, \msst{import} form, \msst{export} form
+\normalsize
+  \end{itemize}
+\vspace{0.3cm}
+
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{How to recognize different parts of the example}
+
+  Let me do some syntax-highlighting here.
+
+  \begin{alltt}
+  \sst{import} 'std' \sst{@}
+
+  \sst{bind} Fold-left \sst{,\textbackslash} Acc Xs Fun\sst{,}
+    \sst{(}Xs ?# \sst{ift} Acc\sst{,}
+       \sst{(}Acc Xs #hd Fun Xs #tl Fun\sst{`} Fold-left\sst{@))}
+  \sst{also} Sum \sst{(}0 \sst{(}\textcolor{red}{+` Fold-left} /flip\sst{))}
+  \sst{then} \sst{(}[1 10 11 20] Sum !println\sst{)}
+  \end{alltt}
+
+\vspace{-0.16cm}
+\textcolor{red}{Partial function application}
+
+  \begin{itemize}
+  \item \sst{Language Structures}:
+\small
+\msst{Sequence}, \msst{if} forms, \msst{Function}, \msst{Backquote}, \msst{bind-then} forms, \msst{import} form, \msst{export} form
+\normalsize
+  \end{itemize}
+\vspace{0.3cm}
+
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{How to recognize different parts of the example}
+
+  Let me do some syntax-highlighting here.
+  \begin{alltt}
+  \ssti{import} \ltt{'std'} \ssti{@}
+
+  \ssti{bind} Fold-left \ssti{,\textbackslash} Acc Xs Fun\ssti{,}
+    \ssti{(}Xs ?# \ssti{ift} Acc\ssti{,}
+       \ssti{(}Acc Xs #hd Fun Xs #tl Fun\ssti{`} Fold-left\ssti{@))}
+  \ssti{also} Sum \ssti{(}\ltt{0} \ssti{(}+\ssti{`} Fold-left /flip\ssti{))}
+  \ssti{then} \ssti{(}\ltt{[1 10 11 20]} Sum !println\ssti{)}
+  \end{alltt}
+\vspace{0.5cm}
+
+  \begin{itemize}
+  \item \ltt{Literals}: \small literals for \mltt{atoms}, \mltt{numbers}, \mltt{strings}, \mltt{lists}, \mltt{tuples} are supported
+\normalsize
+  \end{itemize}
+\vspace{0.3cm}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{How to recognize different parts of the example}
+
+  Let me do some syntax-highlighting here.
+  \begin{alltt}
+  \ssti{import} \ltti{'std'} \ssti{@}
+
+  \ssti{bind} \nmt{Fold-left} \ssti{,\textbackslash} \nmt{Acc} \nmt{Xs} \nmt{Fun}\ssti{,}
+    \ssti{(}\nmt{Xs} \nmt{?#} \ssti{ift} \nmt{Acc}\ssti{,}
+       \ssti{(}\nmt{Acc} \nmt{Xs} \nmt{#hd} \nmt{Fun} \nmt{Xs} \nmt{#tl} \nmt{Fun}\ssti{`} \nmt{Fold-left}\ssti{@))}
+  \ssti{also} \nmt{Sum} \ssti{(}\ltti{0} \ssti{(}\nmt{+}\ssti{`} \nmt{Fold-left} \nmt{/flip}\ssti{))}
+  \ssti{then} \ssti{(}\ltti{[1 10 11 20]} \nmt{Sum} \nmt{!println}\ssti{)}
+  \end{alltt}
+\vspace{0.5cm}
+
+  \begin{itemize}
+  \item \nmt{Names}: \small extensive characters supported, flexible naming \\ ~
+\normalsize
+  \end{itemize}
+\vspace{0.3cm}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{How to recognize different parts of the example}
+
+  Let me do some syntax-highlighting here.
+  \begin{alltt}
+  \sst{import} \ltt{'std'} \sst{@}
+
+  \sst{bind} \nmt{Fold-left} \sst{,\textbackslash} \nmt{Acc} \nmt{Xs} \nmt{Fun}\sst{,}
+    \sst{(}\nmt{Xs} \nmt{?#} \sst{ift} \nmt{Acc}\sst{,}
+       \sst{(}\nmt{Acc} \nmt{Xs} \nmt{#hd} \nmt{Fun} \nmt{Xs} \nmt{#tl} \nmt{Fun}\sst{`} \nmt{Fold-left}\sst{@))}
+  \sst{also} \nmt{Sum} \sst{(}\ltt{0} \sst{(}\nmt{+}\sst{`} \nmt{Fold-left} \nmt{/flip}\sst{))}
+  \sst{then} \sst{(}\ltt{[1 10 11 20]} \nmt{Sum} \nmt{!println}\sst{)}
+  \end{alltt}
+
+  \begin{itemize}
+  \item \sst{Language Structures}
+  \item \ltt{Literals}
+  \item \nmt{Names}
+  \end{itemize}
+
+The above three are what we call \textbf{word}s in Towel. A program in Towel is essentially a \textbf{sentence} of words.
+\end{frame}
+
+
+\newcommand{\tpt}[1]{\textcolor{magenta}{\texttt{#1}}}
+
+\begin{frame}
+  \frametitle{Types in Towel}
+
+Towel supports the following type:
+\pause
+  \begin{itemize}
+  \item<2-> \tpt{Int} $\rightarrow$ Big integer
+  \item<2-> \tpt{FixedInt} $\rightarrow$ Signed 64-bit integer
+  \item<2-> \tpt{UFixedInt} $\rightarrow$ Unsigned 64-bit integer
+  \item<2-> \tpt{Float} $\rightarrow$ IEEE754 floating point
+  \item<3-> \tpt{Atom}
+
+    $\rightarrow$ A constant with a name (see also Erlang atoms)
+  \item<4-> \tpt{String}
+
+    $\rightarrow$ String (one of the Enumerable types)
+  \item<4-> \tpt{List}
+
+    $\rightarrow$ Linked list (one of the Enumerable types)
+  \item<4-> \tpt{Tuple}
+
+    $\rightarrow$ Fixed, random accessible enumerable data type
+  \item<5-> \tpt{Function} 
+
+    $\rightarrow$ Passing around a piece of code
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{The Towel Standard Library, a.k.a. Towelibs}
+
+  In module \mnmt{Std}, you will find ...
+  \pause
+  \begin{itemize}[<+->]
+  \item Arithmetic Functions: \mnmt{+}, \mnmt{-}, etc. So \textbf{no operators}.
+  \item Conversion and Reflection Functions: \mnmt{\textasciitilde int}, \mnmt{\textasciitilde str}, etc.
+  \item Routines: functions with side(or stack)-effects, e.g. \mnmt{!println}, \mnmt{!!pop}, \mnmt{!!dup}, etc.
+  \item Functions that work with enumerables: \mnmt{\#hd}, \mnmt{\#tl}, \mnmt{\#cons}, etc.
+  \item The Fun Functions: \mnmt{/foldl}, \mnmt{/map}, \mnmt{/filter}, etc.
+  \item Variadic Functions: a pacman that eats arguments until the stack is empty. See manual for more detail.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{The Towel Compiler, codename \texttt{weave}}
+
+  How \texttt{weave} compiles a piece of \textit{towel}: it ...
+  \begin{enumerate}[<+->]
+  \item \textcolor{black}{Source} $\rightarrow$ \textcolor{gray}{Tokens}
+
+    tokenizes the source code using a scanner
+  \item \textcolor{gray}{Tokens} $\rightarrow$ \textcolor{orange}{AST}
+
+    parses the tokens with a parser
+  \item \textcolor{orange}{AST} $\rightarrow$ \textcolor{olive}{IR AST}
+
+    traverses and transforms AST to IR AST (along with some scope analysis that will detect unbound names)
+
+  \item \textcolor{olive}{IR AST} $\rightarrow$ \textcolor{blue}{Bytecode}
+
+    compiles IR AST into bytecode representation
+  \end{enumerate}
+
+  \onslide<+->{\textcolor{blue}{Bytecode} is runnable via the Towel Virtual Machine!}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{The Towel Virtual Machine}
+
+  The Towel Virtual Machine is a piece of software that ...
+  \begin{enumerate}[<+->]
+  \item \textcolor{blue}{Bytecode} $\rightarrow$ \textcolor{olive}{IR AST}
+
+     decompiles bytecode to IR AST
+
+   \item \textcolor{olive}{IR AST} $\rightarrow$ \textcolor{cyan}{42}
+
+     interprets the IR AST (essentially an array of instructions) one by one so you can get the answer
+  \end{enumerate}
+
+\onslide<+->{You can use the \textcolor{blue}{Extension} mechanism to call OCaml functions from within the Towel Virtual Machine! See manual for more detail.}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The future of Towel}
+
+  \begin{itemize}
+  \item A native compiler that compiles IR to C code.
+
+  \item Better error messages, both for the compiler and the virtual machine.
+
+  \item Better debugging facilities: need to make use the dynamicness feature of Towel.
+
+  \item Enrich the standard library so that it's batteries-included and \textbf{general-purpose}.
+
+  \item Statically typed Towel!
+
+    A stack-based language is very dynamic due to its unclearness of the data (i.e. type) flow. A static-typed Towel could be made by analyzing each function's stack-effect.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{And now for something completely different...}
+
+  \huge
+  The DEMO
+
+  \begin{figure}[H]
+    \includegraphics[scale=0.5]{sillywalk.jpeg}
+  \end{figure}
+  \normalsize
+  \begin{itemize}
+  \item Partial function application
+  \item Tail calls
+  \item Standard library
+  \item Extensions to the Towel Virtual Machine
+  \item The test suite
+  \item Anything you would like to ask
+  \end{itemize}
+\end{frame}
+
+\end{document}
+

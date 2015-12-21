@@ -62,7 +62,14 @@ frametitlerulewidth=2pt}
 rightline=true,innerleftmargin=10,innerrightmargin=10,
 frametitle={Grammar},
 frametitlerule=true,frametitlerulecolor=white,
-frametitlebackgroundcolor=YellowGreen,
+frametitlebackgroundcolor=teal,
+frametitlerulewidth=2pt}
+
+\mdfdefinestyle{tokens}{%
+rightline=true,innerleftmargin=10,innerrightmargin=10,
+frametitle={Lexeme Definition},
+frametitlerule=true,frametitlerulecolor=white,
+frametitlebackgroundcolor=teal,
 frametitlerulewidth=2pt}
 
 \newcommand{\mstd}[1]{\texttt{#1\textbackslash Std}}
@@ -140,8 +147,8 @@ Now, let me explain something:
 \item Calling the function \texttt{Fun} which is passed as an argument! Functions are first-class citizens in Towel.
 \item Backquoting the name \texttt{Fun} to prevent it from executing. Because in this case, we want this function to simply be a value that can be passed as an argument.
 \item Tail calling the function bound to \texttt{Fold-left} by appending an \texttt{@} symbol to the name.
-\item Function currying here. We are applying only the addition function to the trinary function \texttt{Fold-left}, to get a binary function that adds each element of the list to the accumulator. The two arguments of this function is the list and the initial value of the accumulator.
-\item Then, we use the standard library function \texttt{/flip} to flip the rest two arguments of the curried \texttt{Fold-left} so that it accepts the initial value then the list. After this, we apply a zero to the flipped curried \texttt{Fold-left} function, so that we obtain a unary function which does the same as the last function we get, except it accumulates from \textbf{0}.
+\item Partial function application here. We are applying only the addition function to the trinary function \texttt{Fold-left}, to get a binary function that adds each element of the list to the accumulator. The two arguments of this function is the list and the initial value of the accumulator.
+\item Then, we use the standard library function \texttt{/flip} to flip the rest two arguments of the partial-applied \texttt{Fold-left} so that it accepts the initial value then the list. After this, we apply a zero to the flipped partial-applied \texttt{Fold-left}, so that we obtain a unary function which does the same as the last function we get, except it accumulates from \textbf{0}.
 
 The \texttt{also} clause of the \texttt{bind-then} form binds the name \texttt{Sum} to this unary function we just obtained.
 \item List literal. See also \autoref{ssec:lists} for details on list literals.
@@ -155,12 +162,28 @@ To see more examples, please read \autoref{chap:examples}. If you are interested
 \chapter{Lexical Elements}\label{chap:grammar}
 \section{Keywords}
 
-Keywords in the Towel programming language is as follows:
+Keywords in the Towel programming language are defined as follows:
+\begin{mdframed}[style=tokens]
 \begin{verbatim}
-if>=0 if>0 if<=0 if<0 if~0 if=0 ift iff ife ifne
-fun bind also then export import ,\
+  IFGEZ ::= "if>=0"
+  IFGZ ::= "if>0"
+  IFLEZ ::= "if<=0"
+  IFLZ ::= "if<0"
+  IFNEZ ::= "if~0"
+  IFEZ ::= "if=0"
+  IFT ::= "ift"
+  IFF ::= "iff"
+  IFE ::= "ife"
+  IFNE ::= "ifne"
+  FUNCTION ::= "fun"
+  BIND ::= "bind"
+  ALSO ::= "also"
+  THEN ::= "then"
+  EXPORT ::= "export"
+  IMPORT ::= "import"
+  LAMBDA ::= ",\"
 \end{verbatim}
-
+\end{mdframed}
 \section{Punctuations}
 
 Punctuations used in the Towel programming language are as follows:
@@ -171,11 +194,7 @@ Punctuations used in the Towel programming language are as follows:
 \item Any unprintable character is reserved and won't be used.
 \end{itemize}
 
-\section{Names}\label{sec:def-name}
-
-Names are used for naming (or to be more precise, referencing to) values. Valid names should not start with reserved punctuations, lowercased letters, and numbers.
-
-More formally,
+\begin{mdframed}[style=tokens]
 \begin{verbatim}
   unprintables ::= [all the unprintable ASCII characters]
   whitespaces ::= ['\n' '\t' ' ' '\r']
@@ -195,28 +214,28 @@ More formally,
   RBRACKET ::= ']'
   LBRACE ::= '{'
   RBRACE ::= '}'
+\end{verbatim}
+\end{mdframed}
 
+\section{Names}\label{sec:def-name}
+
+Names are used for naming (or to be more precise, referencing to) values. Valid names should not start with reserved punctuations, lowercased letters, and numbers.
+
+More formally,
+\begin{mdframed}[style=tokens]
+\begin{verbatim}
   digit ::= ['0'-'9']
   hexdigit ::= ['0'-'9' 'a'-'f' 'A'-'F']
   bindigit ::= ['0'-'1']
   lc_chars ::= ['a'-'z']
   NAME ::= [^ '-' reserved_punct digit lc_chars] [^ reserved_punct]*
 \end{verbatim}
-
-You can also resolve names in other namespaces (what we call \textit{modules} in Towel) by concatenating them with a backslash.
-
-\begin{mdframed}[style=example]
-If you would like to access the name \texttt{+} in module \texttt{Std}, which is in module \texttt{MyStdlib}, you can write:
-
-\begin{verbatim}
-+\Std\MyStdlib
-\end{verbatim}
-
 \end{mdframed}
 
 \section{Literals}
 
 Most easy-to-use languages support a wide variety of literals (Python is a good example and Java is not). The Towel programming language supports literals for atoms, integers (fixed, unsigned fixed, big), floats, strings, lists and tuples. They are defined as follows (rule for list literals will be revealed later):
+\begin{mdframed}[style=tokens]
 \begin{verbatim}
   ATOM ::= lc_chars [^ reserved_punct]*
 
@@ -241,9 +260,10 @@ Most easy-to-use languages support a wide variety of literals (Python is a good 
   (Rules for strings is from the lexical parsing section of the Python
    language reference manual.)
 \end{verbatim}
+\end{mdframed}
 
 \begin{mdframed}[style=detail]
-Because positive (or negative) numbers, ``+1.'' for example, also uses the plus punctuation, \texttt{NAME} is actually more complicated than what's written above:
+Because positive (or negative) numbers, ``+1.'' for example, also uses the plus symbol, the rule for \texttt{NAME}s is actually more complicated than what's written above:
 \begin{verbatim}
   NAME ::= valid_upper_char common_valid_char*
          | '+' common_valid_char_no_digits?
@@ -565,8 +585,6 @@ Towel also provides another kind of sequences, the shared sequences. This kind o
 \end{verbatim}
 \end{mdframed}
 
-You may want to create a shared sequence when defining tail-recursive functions, otherwise, you lose the advantage of not stacking up contexts.
-
 \begin{mdframed}[style=hint]
 Just for your information, the Towel compiler automatically strips off the creation of certain unnecessary sequences for performance reasons. For example, the following sequences will be optimized out.
 
@@ -694,7 +712,7 @@ See \autoref{chap:examples} for examples on \texttt{if} forms.
 \end{verbatim}
 \end{mdframed}
 
-Function forms are used to define anonymous functions of arbitrary arity. To define a function, first type the keyword \texttt{fun}, and a list of argument declarations and finally a word for the body of the function. The function will acquire the declared arguments from the stack in the reverse order as the argument declarations indicate.
+Function forms are used to define and \textit{immediately} execute anonymous functions of arbitrary arity. To do this, first type the keyword \texttt{fun}, and a list of argument declarations and finally a word for the body of the function. The function will acquire the declared arguments from the stack in the reverse order as the argument declarations indicate.
 
 Because function form creates and evaluates function in place, the following code is valid\footnote{But not semantically correct, because you cannot invoke a number as function.}:
 \begin{mdframed}[style=example]
@@ -703,6 +721,7 @@ Because function form creates and evaluates function in place, the following cod
     (A B fun X, (3 X +))
 \end{verbatim}
 \end{mdframed}
+
 In practice, you may want to use the \texttt{bind-then} form and backquote jointly to create functions. You use backquote to prevent the function from evaluating so that you can use it later, for example, in the \texttt{then} clause.
 
 \begin{mdframed}[style=example]
@@ -732,9 +751,9 @@ Any practical functional programming language provides tail recursion optimizati
 \end{verbatim}
 \end{mdframed}
 
-\subsection{Currying}
+\subsection{Partial Function Application}
 
-When applied with insufficient number of arguments, Towel will return a partially applied function instead of doing all the computation it is supposed to. To be more precisely, Towel copies the function being called as a new value, install the arguments already applied to that new function value, then return this new function value as the return value of the old function. \sout{Yummy!}
+When applied with insufficient number of arguments, Towel will return a partially applied function instead of doing all the computation it is supposed to. To be more precisely, Towel copies the function being called as a new value, install the arguments already applied to that new function value, then return this new function value as the return value of the old function.
 
 \begin{mdframed}[style=example]
 \begin{verbatim}
@@ -754,7 +773,7 @@ A phony in Towel, is a special value on stack. When a phony is the current TOS, 
   This will print \texttt{true}.
 \end{mdframed}
 
-Often, phony is used in conjunction with currying to create a curried function.
+Often, phony is used in conjunction with partial function application to create a partial function.
 
 \begin{mdframed}[style=hint]
   Note that every phony will be popped by the TVM right after it is used, otherwise it will shadow anything pushed before it. For example the following code can produce expected answer because of this feature:
@@ -777,7 +796,7 @@ The output will be \texttt{[4 5]}.
 \end{verbatim}
 \end{mdframed}
 
-Use bind forms to add new name bindings in a new scope. Names can be bound to any kind of values such as functions, atoms, and all kinds of literals as long as they exist on the stack.
+Use bind forms to add new name bindings in a new scope. Names can be bound to any kind of values such as functions, atoms, and all kinds of literals as long as they exist on the stack or is exported by the respective module.
 
 Simply type \texttt{bind} followed by the name and the value. Use keyword \texttt{also} to bind more names to more values. Bind forms have a compulsory \texttt{then} clause, which is followed by a word. You can do your computation under the name scope after this name binding in the \texttt{then} clause. Top-level name bindings, i.e. names bound by the outmost bind form, are visible across modules, you may want to take advantage of this behavior.
 
@@ -1119,7 +1138,7 @@ invoke \marg{fun} as a function when you don't know the arity of it
   \item Because of the low-levelness of \mstd{!!pack} and
     \mstd{!!unpack}, they do not accept argument the same way other
     functions do, but directly from current stack. So you cannot
-    create curried functions out of them.
+    create partially applied functions out of them.
   \item You can use \mstd{!!pack} to implement variadic functions.
   \end{itemize}
 \end{mdframed}
@@ -1713,7 +1732,7 @@ When a new function call is made, the context of this call is pushed onto the ex
 
 Every function has a stack for itself to do its computation. This avoids stack corruptions along all the function executions. Data stack is essentially an important part of the context of the function call, but it is so important, we would like to operate them manually so that we could be more flexible.
 
-Normally, when a new function call is made, a new data stack is pushed onto the data stack stack. When the function returns, TVM pops the TOS from the TOS of data stack stack (i.e. the return value of this function is the TOS of current function's data stack), pushes it onto the caller's stack (next to the TOS of data stack stack). Then this data stack gets popped, thus the caller's data stack is now the TOS of the data stack stack. TVM now pops and evaluates the TOS of the caller's data stack (this is a vital step) and pushes back the evaluated value.
+Normally, when a new function call is made, a new data stack is pushed onto the data stack stack. When the function returns, TVM pops the TOS from the TOS of data stack stack (i.e. the return value of this function is the TOS of current function's data stack), pushes it onto the caller's stack (next to the TOS of data stack stack). Then this data stack gets popped, thus the caller's data stack is now the TOS of the data stack stack.
 
 \begin{mdframed}[style=detail]
   Data stack stack has one element (i.e. a data stack) in it
@@ -1727,7 +1746,7 @@ Normally, when a new function call is made, a new data stack is pushed onto the 
 
 \section{Flags}
 
-Flags stores the essential states for the virtual machine to run. For example, \texttt{curmod} records the current module whose instructions the PC is pointing at. \texttt{dss} is the data stack stack we talked about above. \texttt{scps} stores all the the names in scope stack (\texttt{scope\_t list}) for dynamic scoping.
+Flags stores the essential states for the virtual machine to run. For example, \texttt{curmod} records the current module whose instructions the PC is pointing at. \texttt{dss} is the data stack stack we talked about above. \texttt{scps} stores all the the names in scope stack (\texttt{scope\_t list}) for scoping.
 
 \section{Module table}
 
@@ -1747,7 +1766,7 @@ A module is a compiled Towel source code loaded into TVM, it has the following i
 
 \texttt{imports} is the absolute module id relative to this module. In the Towel compiler, names are resolved by a 2-tuple: the name id in the module and the module id. Because when compiling, the Towel compiler has no information about other modules other than the \texttt{.e} exportation file (like the header files you use in C). So it can only label other modules by IDs relative to itself (itself being zero).
 
-When importing a new module, the module gets a global (absolute) id, all the referencing of this module should be made through this very id. So it's vital that every module maintains a mapping from the relative module id in its instructions to the absolute module id given by TVM. See \ref{fig:imports} for an intuitive illustration.
+When importing a new module, the module gets a global (absolute) id, all the referencing of this module should be made through this very id. So it's vital that every module maintains a mapping from the relative module id in its instructions to the absolute module id given by TVM. See \ref{fig:fig-imports} for an intuitive illustration.
 
 \begin{figure}[h]
 \psscalebox{1 1} % Change this value to rescale the drawing.
@@ -1787,7 +1806,8 @@ When importing a new module, the module gets a global (absolute) id, all the ref
 \psline[linecolor=green, linewidth=0.04](2.82,0.4)(7.22,0.4)(7.22,-4.0)(7.62,-4.0)(7.62,-4.0)
 \end{pspicture}
 }
-\label{fig:imports}
+\caption{Illustration on the Usage of the \texttt{imports} table}
+\label{fig:fig-imports}
 \end{figure}
 
 \section{Extension table}
@@ -1885,7 +1905,7 @@ The argument \marg{UID} denotes the ID of the name that the TVM will bind TOS to
 
 If arguments were put into the table directly, applying arg2 with, for example, 10, in \texttt{ctx\_current} will result in \texttt{ctx1.arg2 <- 10} and \texttt{ctx0.arg2 <- 10}. In other words, you just corrupted the activation records.
 
-So you may ask, why not putting the arguments directly on stack, and bind the given \marg{UID} to the index of that argument, just like what \inst{bind} does? The reason is that, if this is the case, it would be almost impossible to implement automatic currying. Because when returning the partial applied function, the stack that saves the arguments will be destroyed, and all your arguments will be lost.
+So you may ask, why not putting the arguments directly on stack, and bind the given \marg{UID} to the index of that argument, just like what \inst{bind} does? The reason is that, if this is the case, it would be almost impossible to implement automatic partialization. Because when returning the partial applied function, the stack that saves the arguments will be destroyed, and all your arguments will be lost.
 \end{mdframed}
 
 Sorry for such a complicated (and probably the only complicated) instruction.
@@ -2077,7 +2097,7 @@ Tests the TOS with specific predicates. If the result is true, TVM jumps to \mar
 
 \subsection{\inst{hj*} \marg{POS} \parg{X}}
 
-Hungry versions of \inst{j*} instruction family, which consume the TOS they test against. Their \texttt{opcode}s are the ones of their non-hungry counterpart plus \texttt{0x10}. For example, the \texttt{opcode} of \texttt{jgz} is \texttt{0x42}.
+Hungry versions of \inst{j*} instruction family, which consume the TOS they test against. Their \texttt{opcode}s are the ones of their non-hungry counterpart plus \texttt{0x10}. For example, the \texttt{opcode} of \texttt{hjgz} is \texttt{0x42}.
 
 \subsection{\texttt{0x39} \inst{je} \marg{POS}, \texttt{0x3a} \inst{jne} \marg{POS}}
 
@@ -2612,7 +2632,7 @@ Things are much simpler on the VM-side. The virtual machine frontend \texttt{Tvm
 
 The function \texttt{Nvm.\_\_exec} implements all the instructions available in a very big \texttt{match} expression. After each execution of an instruction, it tail calls itself with the new state of the virtual machine (for example, \texttt{flags}, IP, etc.) to execute the next instruction pointed by IP. For more on the state of the Towel Virtual Machine, see also \autoref{chap:tvm-overview}.
 
-For certain instructions that are quite alike, for example, the arithmetic instructions and branching instructions, we use Ruby scripts to generate respective code for them, then invoke them in \texttt{Nvm.exec}.\footnote{An alternative to do this is by \texttt{camlp4}.} 
+For certain instructions that are quite alike, for example, the arithmetic instructions and branching instructions, we use Ruby scripts to generate respective code for them, then invoke them in \texttt{Nvm.exec}.\footnote{An alternative to do this is by \texttt{camlp4}.}
 
 \begin{mdframed}[style=detail]
 The \texttt{Nvm.exec} depends on many other functions from other modules to work. For example,
@@ -2629,7 +2649,7 @@ The \texttt{Nvm.exec} depends on many other functions from other modules to work
 
 \item The module \texttt{Jumps} provides \texttt{Jumps.branch} to do branching.
 
-\item The module \texttt{Dscoping} provides data structure and operations for dynamic scoping.
+\item The module \texttt{Dscoping} provides data structure and operations for scoping.
 
 \item The module \texttt{Ext} implements extension (plugin) mechanism for \inst{load-ext} and \inst{extcall}.
 \end{itemize}
@@ -3322,7 +3342,7 @@ tests whether nested \texttt{bind} forms and \texttt{also} clauses work or not.
 
 \item \texttt{functional.t}
 
-tests some of the functional features of Towel, for example, currying.
+tests some of the functional features of Towel, for example, partial function application.
 
 \item \texttt{gcd.t}
 
@@ -3415,33 +3435,33 @@ You'll never get to fix all your bugs.
 
 Working on this unique project with a smart student is really challenging.
 
-  The most important thing I learnt this semester is that communication is 
-extremely important for a teamwork task. From the very beginning, we should 
-have argued more about our project and make it more achievable for us. Besides, 
-although we stick to meeting at least once a week, we are so used to listening to 
-Zihang’s idea and doing things he told us to, but never challenge him. This bad 
-habit makes us took lots of detours, for example we’ve been to “data stack stack 
-stack” things and wasted a lot of time on “object reference table” which is proved 
-to be an inefficient way. 
+  The most important thing I learnt this semester is that communication is
+extremely important for a teamwork task. From the very beginning, we should
+have argued more about our project and make it more achievable for us. Besides,
+although we stick to meeting at least once a week, we are so used to listening to
+Zihang’s idea and doing things he told us to, but never challenge him. This bad
+habit makes us took lots of detours, for example we’ve been to “data stack stack
+stack” things and wasted a lot of time on “object reference table” which is proved
+to be an inefficient way.
 
-  On the other hand, although we spent almost the whole semester in struggling 
-to follow Zihang’s crazy idea, we do learn a lot from him. He showed us how to 
-make a language general-purpose, how to make it efficient and elegant. And we 
-tried to build our own virtual machine (although our coding on virtual machine 
-was updated by Zihang after a essential change on basic structure), which is the 
-thing many other groups are not working on. What’s more, we even learnt the 
-basic rules of Ruby to finish the module coding. We gained deep understanding 
-on runtime environment, stack management and other things mentioned in 
+  On the other hand, although we spent almost the whole semester in struggling
+to follow Zihang’s crazy idea, we do learn a lot from him. He showed us how to
+make a language general-purpose, how to make it efficient and elegant. And we
+tried to build our own virtual machine (although our coding on virtual machine
+was updated by Zihang after a essential change on basic structure), which is the
+thing many other groups are not working on. What’s more, we even learnt the
+basic rules of Ruby to finish the module coding. We gained deep understanding
+on runtime environment, stack management and other things mentioned in
 class.
 
-  Losing control of my own project doesn’t feel good, but I’m still happy about 
+  Losing control of my own project doesn’t feel good, but I’m still happy about
 having this chance to work with Zihang, and engaging in this crazy project.
 
 \section{Guanlin Chen}
 
 From the whole semester, under the tutoring of PLT class, we implemented what we learned and brought the knowledge into the real world. Towel language is a stack based programming language which roots in our team leader Zihang's mind. The logic of the programming language is complicated and requires comprehensively analysis, neatly blueprint, also intelligence.
 
-Together with Baochan, my work focuses on the virtual machine part. Even dealing with a minor part of the whole language , I am sometimes struggled to figure out the logic and the method to construct the VM. Impressively, the 'four stack' ages was the most challenging days, CTXS, DSS, SCPS and ORT were resemble to four distinct resource station, only a properly combination could figure the desired output. Even ORT is rejected at last because of our task to simplize the language, that part of work is also a memory segment which embedded deeply in my heart. For instance, the DSS stores the reference , which is the key of the harsh table, pointing at the data. During the programming, I always mistook the real value with the reference, which gave a inproper output.   
+Together with Baochan, my work focuses on the virtual machine part. Even dealing with a minor part of the whole language , I am sometimes struggled to figure out the logic and the method to construct the VM. Impressively, the 'four stack' ages was the most challenging days, CTXS, DSS, SCPS and ORT were resemble to four distinct resource station, only a properly combination could figure the desired output. Even ORT is rejected at last because of our task to simplize the language, that part of work is also a memory segment which embedded deeply in my heart. For instance, the DSS stores the reference , which is the key of the harsh table, pointing at the data. During the programming, I always mistook the real value with the reference, which gave a inproper output.
 
 So always be logical thinking and be preoccupied when implementing something in your intricate logic. So as Zihang mentioned, 'Everytime your program confuses you, check whether the type could match.'
 
@@ -3482,11 +3502,11 @@ modification, are permitted provided that the following conditions are met:
 this list of conditions and the following disclaimer.
 
 2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation 
+this list of conditions and the following disclaimer in the documentation
 and/or other materials provided with the distribution.
 
 3. Neither the name of the copyright holder nor the names of its contributors
-may be used to endorse or promote products derived from this software without 
+may be used to endorse or promote products derived from this software without
 specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -3510,6 +3530,10 @@ POSSIBILITY OF SUCH DAMAGE.
 \renewcommand\bibname{References}
 
 \begin{thebibliography}{9}
+\bibitem{haskell-report}
+
+Simon Marlow. \textit{Haskell 2010 Language Report}. \url{https://www.haskell.org/onlinereport/haskell2010/}, 2015-12-16.
+
 \bibitem{gcc-manual}
 The GNU Project. \textit{The GNU C Reference Manual}.
 \url{http://www.gnu.org/software/gnu-c-manual/gnu-c-manual.html}, 2015-12-12.

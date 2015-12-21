@@ -11,6 +11,11 @@ scheduled.
 Build
 ----
 
+Some work need to be done before you build this project, otherwise though the project still builds, it won't compile or execute any thing:
+
+* Modify src/compiler/config.ml and alter the directory to your install destination or this directory
+* Do the same for src/vm/config.ml
+
 We threw away the old Make building system and changed to Waf. Run
 
     waf configure build
@@ -30,11 +35,18 @@ To build Towel virtual machine, Run
 
     wal configure build --tvm
 
+After building, run compile_std.sh to compile the standard library.
+
+You are all set!
+
+One thing to note, before you run `./waf test`, do `mkdir -p tests/temp` to create a directory for `prefect` to place compiled test files.
+
 
 Don't panic!
 ----
 
-See `towel -h`.
+See `weave -h` or the manual.
+
 
 Roadmap
 ----
@@ -50,13 +62,13 @@ This is done by now. Parts missing: libpath mechanism, and maybe something else.
 assembly instructions that aren't covered in `asm`. Priority 2.
 This is also done by now. Parts missing: IDK.
 
+
 The Future
 ----
 
 Of course the TOWEL-C COMPILER like the cool guys!!! (And of course not javascript, it just sucks.)
 Maybe a bytecode compiler for a VM in C.
 
-Oh, and algebraic data type. I'll have to do a lot of thinking.
 
 License
 ----
